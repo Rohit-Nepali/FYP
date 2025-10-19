@@ -1,0 +1,29 @@
+[2025-10-19 08:22:26] INFO: Server is running on port http://localhost:3000
+[2025-10-19 08:22:26] INFO: ✅ DB connected successfully
+[2025-10-19 08:44:31] INFO: Server is running on port http://localhost:3000
+[2025-10-19 08:44:31] INFO: ✅ DB connected successfully
+[2025-10-19 09:03:12] INFO: Server is running on port http://localhost:3000
+[2025-10-19 09:03:12] INFO: ✅ DB connected successfully
+[2025-10-19 09:03:39] INFO: Server is running on port http://localhost:3000
+[2025-10-19 09:03:39] INFO: ✅ DB connected successfully
+[2025-10-19 09:04:47] ERROR: Error: Route / not found
+[2025-10-19 09:04:47] ERROR: Error: Route /favicon.ico not found
+[2025-10-19 09:39:57] INFO: Server is running on port http://localhost:3000
+[2025-10-19 09:39:57] INFO: ✅ DB connected successfully
+[2025-10-19 09:39:59] ERROR: Error: Route /api-test not found
+[2025-10-19 09:39:59] ERROR: Error: Route /favicon.ico not found
+[2025-10-19 13:56:16] INFO: Server is running on port http://localhost:3000
+[2025-10-19 13:56:17] INFO: ✅ DB connected successfully
+[2025-10-19 13:56:24] INFO: Server is running on port http://localhost:3000
+[2025-10-19 13:56:24] INFO: ✅ DB connected successfully
+[2025-10-19 13:56:36] INFO: Server is running on port http://localhost:3000
+[2025-10-19 13:56:36] INFO: ✅ DB connected successfully
+[2025-10-19 13:56:42] INFO: Server is running on port http://localhost:3000
+[2025-10-19 13:56:42] INFO: ✅ DB connected successfully
+[2025-10-19 13:56:55] INFO: Server is running on port http://localhost:3000
+[2025-10-19 13:56:55] INFO: ✅ DB connected successfully
+[2025-10-19 13:57:20] ERROR: Error: Route / not found
+[2025-10-19 13:57:20] ERROR: Error: Route /favicon.ico not found
+[2025-10-19 13:57:37] ERROR: Error: Route /.well-known/appspecific/com.chrome.devtools.json not found
+[2025-10-19 14:00:02] INFO: Server is running on port http://localhost:3000
+[2025-10-19 14:00:02] INFO: ✅ DB connected successfully

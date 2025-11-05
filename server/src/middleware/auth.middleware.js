@@ -1,5 +1,5 @@
-import { verifyAccessToken } from '../utils/jwt.utils.js';
-import { sendErrorResponse, HTTP_STATUS, ERROR_MESSAGES } from '../utils/response.utils.js';
+import { verifyAccessToken } from './../utils/jwt.utils.js'
+import { ApiResponse, HTTP_STATUS, ERROR_MESSAGES } from '../utils/response.utils.js';
 
 /**
  * Middleware to authenticate JWT tokens
@@ -12,7 +12,7 @@ export const authenticateToken = (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
-        return sendErrorResponse(res, HTTP_STATUS.UNAUTHORIZED, ERROR_MESSAGES.UNAUTHORIZED);
+        return ApiResponse.sendErrorResponse(res, HTTP_STATUS.UNAUTHORIZED, ERROR_MESSAGES.UNAUTHORIZED);
     }
 
     try {
@@ -20,7 +20,7 @@ export const authenticateToken = (req, res, next) => {
         req.user = decoded; // Attach user info to request
         next();
     } catch (error) {
-        return sendErrorResponse(res, HTTP_STATUS.UNAUTHORIZED, ERROR_MESSAGES.INVALID_TOKEN);
+        return ApiResponse.sendErrorResponse(res, HTTP_STATUS.UNAUTHORIZED, ERROR_MESSAGES.UNAUTHORIZED);
     }
 };
 

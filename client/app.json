@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "movieApp",
-    "slug": "movieApp",
+    "name": "ProductivityApp",
+    "slug": "ProductivityApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "movieapp",
+    "scheme": "productivityapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

@@ -14,11 +14,13 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "../contexts/AuthContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function SignupScreen() {
   const router = useRouter();
+  const { register, isLoading } = useAuth();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -28,7 +30,6 @@ export default function SignupScreen() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
@@ -48,8 +49,8 @@ export default function SignupScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters long");
+    if (password.length < 8) {
+      Alert.alert("Error", "Password must be at least 8 characters long");
       return;
     }
 
@@ -58,18 +59,22 @@ export default function SignupScreen() {
       return;
     }
 
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const fullName = `${firstName} ${lastName}`;
+      await register(fullName, email, password);
       Alert.alert("Success", "Account created successfully!", [
-        // { text: "OK", onPress: () => router.replace("/login") },
+        { text: "OK", onPress: () => router.replace("/") },
       ]);
-    }, 1500);
+    } catch (error) {
+      Alert.alert(
+        "Signup Failed",
+        error instanceof Error ? error.message : "An error occurred"
+      );
+    }
   };
 
   const handleSignIn = () => {
-    // router.push("/login");
+    router.push("/login");
   };
 
   return (

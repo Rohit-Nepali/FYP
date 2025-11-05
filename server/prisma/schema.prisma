@@ -27,4 +27,44 @@ model User {
   profileImage String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  sessions      UserSession[]
+  groupsOwned   Group[]       @relation("ownerGroups")
+  memberships   GroupMember[]
+}
+
+model UserSession {
+  id           String   @id @default(uuid())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  refreshToken String   @unique
+  ipAddress    String?
+  deviceInfo   String?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@index([userId])
+}
+
+model Group {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  createdBy   User         @relation("ownerGroups", fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime     @default(now())
+
+  members     GroupMember[]
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String   @default("member") 
+  joinedAt  DateTime @default(now())
+
+  @@unique([groupId, userId])
 }

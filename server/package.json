@@ -13,7 +13,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@prisma/client": "^6.17.0",
+    "@prisma/client": "^6.17.1",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -25,10 +25,11 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
-    "prisma": "^6.17.0"
+    "prisma": "^6.17.1"
   },
   "imports": {
     "#config/*": "./src/config/*",
-    "#routes/*": "./src/routes/*"
+    "#routes/*": "./src/routes/*",
+    "#utils/*": "./src/utils/*"
   }
 }

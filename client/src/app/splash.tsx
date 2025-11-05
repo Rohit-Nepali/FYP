@@ -1,40 +1,55 @@
 import React, { useEffect } from "react";
 import { View, Text } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace("/login");
-    }, 3000); // Show splash for 3 seconds
+    if (!isLoading) {
+      const timer = setTimeout(() => {
+        if (isAuthenticated) {
+          router.replace("/");
+        } else {
+          router.replace("/login");
+        }
+      }, 2000); // Show splash for 2 seconds
 
-    return () => clearTimeout(timer);
-  }, [router]);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   return (
-    <View className="flex-1 justify-center items-center bg-gradient-to-br from-blue-500 to-purple-600">
-      <View className="items-center justify-center flex-1">
+    <LinearGradient
+      colors={["#0B0F14", "#111827"]}
+      className="flex-1 justify-center items-center"
+    >
+      <View className="flex-1 justify-center items-center">
         <View className="mb-10">
-          <View className="w-30 h-30 rounded-full bg-white/20 justify-center items-center border-3 border-white/30">
-            <Text className="text-5xl font-bold text-white">PA</Text>
+          <View
+            className="w-30 h-30 rounded-full bg-white/10 justify-center items-center border-2 border-white/20"
+            style={{ width: 120, height: 120, borderRadius: 60 }}
+          >
+            <Text className="text-white font-bold" style={{ fontSize: 48 }}>
+              PA
+            </Text>
           </View>
         </View>
 
-        <Text className="text-4xl font-bold text-white mb-2 text-center">
+        <Text className="text-3xl font-bold text-gray-200 mb-2 text-center">
           ProductivityApp
         </Text>
-        <Text className="text-base text-white/80 text-center mb-15">
+        <Text className="text-base text-gray-400 text-center mb-15">
           Boost Your Productivity
         </Text>
 
         <View className="w-3/5 items-center">
-          <View className="w-full h-1 bg-white/30 rounded overflow-hidden">
-            <View className="h-full w-full bg-white rounded" />
-          </View>
+          <View className="w-full h-1 bg-white/10 rounded" />
         </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 }

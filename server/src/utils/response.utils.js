@@ -1,84 +1,82 @@
-/**
- * Utility functions for consistent API responses
- */
-
-/**
- * Send a successful response
- * @param {Object} res - Express response object
- * @param {number} statusCode - HTTP status code
- * @param {string} message - Success message
- * @param {Object} data - Response data
- * @param {Object} meta - Additional metadata (pagination, etc.)
- */
-export const sendSuccessResponse = (res, statusCode = 200, message = 'Success', data = null, meta = null) => {
-    const response = {
-        success: true,
-        message,
-        timestamp: new Date().toISOString()
-    };
-
-    if (data !== null) {
-        response.data = data;
-    }
-
-    if (meta !== null) {
-        response.meta = meta;
-    }
-
-    return res.status(statusCode).json(response);
-};
-
-/**
- * Send an error response
- * @param {Object} res - Express response object
- * @param {number} statusCode - HTTP status code
- * @param {string} message - Error message
- * @param {Object} errors - Validation errors or additional error details
- */
-export const sendErrorResponse = (res, statusCode = 500, message = 'Internal Server Error', errors = null) => {
-    const response = {
-        success: false,
-        error: {
+export const ApiResponse = {
+    /**
+     * Send a successful response
+     * @param {Object} res - Express response object
+     * @param {number} statusCode - HTTP status code
+     * @param {string} message - Success message
+     * @param {Object} data - Response data
+     * @param {Object} meta - Additional metadata (pagination, etc.)
+     */
+    sendSuccessResponse: (res, statusCode = 200, message = 'Success', data = null, meta = null) => {
+        const response = {
+            success: true,
             message,
-            statusCode
-        },
-        timestamp: new Date().toISOString()
-    };
+        };
 
-    if (errors !== null) {
-        response.error.details = errors;
+        if (data !== null) {
+            response.data = data;
+        }
+
+        if (meta !== null) {
+            response.meta = meta;
+        }
+
+        return res.status(statusCode).json(response);
+    },
+
+
+    /**
+     * Send an error response
+     * @param {Object} res - Express response object
+     * @param {number} statusCode - HTTP status code
+     * @param {string} message - Error message
+     * @param {Object} errors - Validation errors or additional error details
+     */
+    sendErrorResponse: (res, statusCode = 500, message = 'Internal Server Error', errors = null) => {
+        const response = {
+            success: false,
+            error: {
+                message,
+                statusCode
+            },
+        };
+
+        if (errors !== null) {
+            response.error.details = errors;
+        }
+
+        return res.status(statusCode).json(response);
+    },
+
+    /**
+     * Send a paginated response
+     * @param {Object} res - Express response object
+     * @param {Array} data - Array of data items
+     * @param {number} page - Current page number
+     * @param {number} limit - Items per page
+     * @param {number} total - Total number of items
+     * @param {string} message - Success message
+     */
+    sendPaginatedResponse: (res, data, page, limit, total, message = 'Data retrieved successfully') => {
+        const totalPages = Math.ceil(total / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
+        const meta = {
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalItems: total,
+                itemsPerPage: limit,
+                hasNextPage,
+                hasPrevPage
+            }
+        };
+
+        return sendSuccessResponse(res, 200, message, data, meta);
     }
 
-    return res.status(statusCode).json(response);
-};
-
-/**
- * Send a paginated response
- * @param {Object} res - Express response object
- * @param {Array} data - Array of data items
- * @param {number} page - Current page number
- * @param {number} limit - Items per page
- * @param {number} total - Total number of items
- * @param {string} message - Success message
- */
-export const sendPaginatedResponse = (res, data, page, limit, total, message = 'Data retrieved successfully') => {
-    const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
-
-    const meta = {
-        pagination: {
-            currentPage: page,
-            totalPages,
-            totalItems: total,
-            itemsPerPage: limit,
-            hasNextPage,
-            hasPrevPage
-        }
-    };
-
-    return sendSuccessResponse(res, 200, message, data, meta);
-};
+}
 
 /**
  * Common HTTP status codes
@@ -92,7 +90,6 @@ export const HTTP_STATUS = {
     FORBIDDEN: 403,
     NOT_FOUND: 404,
     CONFLICT: 409,
-    UNPROCESSABLE_ENTITY: 422,
     INTERNAL_SERVER_ERROR: 500
 };
 

@@ -19,7 +19,6 @@ export class AuthorizationError extends ApiError {
     }
 }
 
-
 export class NotFoundError extends ApiError {
     constructor(message = 'Not Found', statusCode = 404) {
         super(message, statusCode);

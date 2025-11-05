@@ -3,7 +3,7 @@ import logger from "./logger.js";
 
 const prisma = new PrismaClient();
 
-export const connectDB = async () => {
+const connectDB = async () => {
     try {
         await prisma.$connect();
         console.log("✅ DB connected successfully");
@@ -12,3 +12,4 @@ export const connectDB = async () => {
         console.error("❌ DB connection failed:", error);
     }
 }
+export { prisma, connectDB }

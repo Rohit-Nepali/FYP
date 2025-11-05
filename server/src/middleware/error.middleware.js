@@ -1,5 +1,4 @@
 import { ApiError } from '../utils/error.utils.js';
-import { sendErrorResponse } from '../utils/response.utils.js';
 import logger from '../config/logger.js';
 
 /**
@@ -59,6 +58,17 @@ export const errorMiddleware = (err, req, res, next) => {
         error = new ApiError(message, 404);
     }
 
+    // Joi validation error
+    if (err.isJoi) {
+        const message = 'Validation failed';
+        const errors = err.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message.replace(/"/g, '')
+        }));
+        error = new ApiError(message, 400);
+        error.errors = errors;
+    }
+
     // Default to 500 server error
     if (!(error instanceof ApiError)) {
         error = new ApiError('Internal Server Error', 500, false);
@@ -71,7 +81,7 @@ export const errorMiddleware = (err, req, res, next) => {
         res,
         error.statusCode,
         error.message,
-        errorDetails
+        error.errors || errorDetails
     );
 };
 

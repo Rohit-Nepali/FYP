@@ -45,4 +45,4 @@ app-example
 /android
 
 /src/generated/prisma
-./logs
+/logs

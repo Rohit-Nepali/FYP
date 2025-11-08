@@ -1,19 +1,23 @@
 import { Router } from "express";
-import {
-    signUpController,
-    signInController,
-    refreshTokenController,
-    logoutController,
-    getProfileController
-} from "../module/auth/auth.controller.js";
 import { authenticateToken } from "../middleware/auth.middleware.js";
+import {
+  signUpController, signInController, refreshTokenController,
+  logoutController, getProfileController
+} from "../controllers/auth.controller.js";
+
+import { validate } from "../middleware/validation.middleware.js";
+import {
+  signUpSchema,
+  signInSchema,
+  refreshTokenSchema,
+} from "../validator/auth.validator.js";
 
 const authRouter = Router();
 
 // Public routes
-authRouter.post("/sign-up", signUpController);
-authRouter.post("/sign-in", signInController);
-authRouter.post("/refresh-token", refreshTokenController);
+authRouter.post("/sign-up", validate(signUpSchema), signUpController);
+authRouter.post("/sign-in", validate(signInSchema), signInController);
+authRouter.post("/refresh-token", validate(refreshTokenSchema), refreshTokenController);
 
 // Protected routes
 authRouter.post("/logout", authenticateToken, logoutController);

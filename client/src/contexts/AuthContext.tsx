@@ -5,8 +5,16 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { authService } from "../services/authService";
+import {
+  login as authLogin,
+  register as authRegister,
+  logout as authLogout,
+  refreshToken as authRefreshToken,
+  getProfile,
+  storeTokens,
+  getStoredTokens,
+  clearTokens,
+} from "../services/authService";
 
 interface User {
   id: string;
@@ -45,16 +53,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const initializeAuth = async () => {
     try {
-      const tokens = await authService.getStoredTokens();
+      const tokens = await getStoredTokens();
       if (tokens.accessToken) {
         // Verify token and get user profile
-        const userProfile = await authService.getProfile();
+        const userProfile = await getProfile();
         setUser(userProfile);
       }
     } catch (error) {
       console.log("Auth initialization failed:", error);
       // Clear any invalid tokens
-      await authService.clearTokens();
+      await clearTokens();
     } finally {
       setIsLoading(false);
     }
@@ -63,13 +71,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await authService.login(email, password);
+      const response = await authLogin(email, password);
 
       // Store tokens
-      await authService.storeTokens(
-        response.accessToken,
-        response.refreshToken
-      );
+      await storeTokens(response.accessToken, response.refreshToken);
 
       // Set user
       setUser(response.user);
@@ -83,13 +88,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (name: string, email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await authService.register(name, email, password);
+      const response = await authRegister(name, email, password);
 
       // Store tokens
-      await authService.storeTokens(
-        response.accessToken,
-        response.refreshToken
-      );
+      await storeTokens(response.accessToken, response.refreshToken);
 
       // Set user
       setUser(response.user);
@@ -103,12 +105,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       setIsLoading(true);
-      await authService.logout();
+      await authLogout();
     } catch (error) {
       console.log("Logout error:", error);
     } finally {
       // Clear local state regardless of API call success
-      await authService.clearTokens();
+      await clearTokens();
       setUser(null);
       setIsLoading(false);
     }
@@ -116,13 +118,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshToken = async () => {
     try {
-      const tokens = await authService.getStoredTokens();
+      const tokens = await getStoredTokens();
       if (tokens.refreshToken) {
-        const response = await authService.refreshToken(tokens.refreshToken);
-        await authService.storeTokens(
-          response.accessToken,
-          response.refreshToken
-        );
+        const response = await authRefreshToken(tokens.refreshToken);
+        await storeTokens(response.accessToken, response.refreshToken);
       }
     } catch (error) {
       console.log("Token refresh failed:", error);

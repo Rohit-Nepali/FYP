@@ -3,6 +3,7 @@ import { View, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
+import { theme } from "../config/theme";
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function SplashScreen() {
 
   return (
     <LinearGradient
-      colors={["#0B0F14", "#111827"]}
+      colors={theme.background.gradient}
       className="flex-1 justify-center items-center"
     >
       <View className="flex-1 justify-center items-center">
@@ -33,21 +34,33 @@ export default function SplashScreen() {
             className="w-30 h-30 rounded-full bg-white/10 justify-center items-center border-2 border-white/20"
             style={{ width: 120, height: 120, borderRadius: 60 }}
           >
-            <Text className="text-white font-bold" style={{ fontSize: 48 }}>
+            <Text
+              className="font-bold"
+              style={{ fontSize: 48, color: theme.text.primary }}
+            >
               PA
             </Text>
           </View>
         </View>
 
-        <Text className="text-3xl font-bold text-gray-200 mb-2 text-center">
+        <Text
+          className="text-3xl font-bold mb-2 text-center"
+          style={{ color: theme.text.secondary }}
+        >
           ProductivityApp
         </Text>
-        <Text className="text-base text-gray-400 text-center mb-15">
+        <Text
+          className="text-base text-center mb-15"
+          style={{ color: theme.text.tertiary }}
+        >
           Boost Your Productivity
         </Text>
 
         <View className="w-3/5 items-center">
-          <View className="w-full h-1 bg-white/10 rounded" />
+          <View
+            className="w-full h-1 rounded"
+            style={{ backgroundColor: theme.divider.line }}
+          />
         </View>
       </View>
     </LinearGradient>

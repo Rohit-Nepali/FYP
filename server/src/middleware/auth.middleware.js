@@ -32,11 +32,11 @@ export const authenticateToken = (req, res, next) => {
 export const authorizeRoles = (roles) => {
     return (req, res, next) => {
         if (!req.user) {
-            return sendErrorResponse(res, HTTP_STATUS.UNAUTHORIZED, ERROR_MESSAGES.UNAUTHORIZED);
+            return ApiResponse.sendErrorResponse(res, HTTP_STATUS.UNAUTHORIZED, ERROR_MESSAGES.UNAUTHORIZED);
         }
 
         if (!roles.includes(req.user.role)) {
-            return sendErrorResponse(res, HTTP_STATUS.FORBIDDEN, ERROR_MESSAGES.FORBIDDEN);
+            return ApiResponse.sendErrorResponse(res, HTTP_STATUS.FORBIDDEN, ERROR_MESSAGES.FORBIDDEN);
         }
 
         next();

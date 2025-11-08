@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
+import { theme } from "../config/theme";
 
 const { width, height } = Dimensions.get("window");
 
@@ -78,7 +79,7 @@ export default function SignupScreen() {
   };
 
   return (
-    <LinearGradient colors={["#667eea", "#764ba2"]} style={styles.container}>
+    <LinearGradient colors={theme.background.gradient} style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -104,13 +105,13 @@ export default function SignupScreen() {
                   <Ionicons
                     name="person-outline"
                     size={20}
-                    color="#666"
+                    color={theme.input.icon}
                     style={styles.inputIcon}
                   />
                   <TextInput
                     style={styles.input}
                     placeholder="First Name"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={theme.input.placeholder}
                     value={formData.firstName}
                     onChangeText={(value) =>
                       handleInputChange("firstName", value)
@@ -124,13 +125,13 @@ export default function SignupScreen() {
                   <Ionicons
                     name="person-outline"
                     size={20}
-                    color="#666"
+                    color={theme.input.icon}
                     style={styles.inputIcon}
                   />
                   <TextInput
                     style={styles.input}
                     placeholder="Last Name"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={theme.input.placeholder}
                     value={formData.lastName}
                     onChangeText={(value) =>
                       handleInputChange("lastName", value)
@@ -145,13 +146,13 @@ export default function SignupScreen() {
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color="#666"
+                  color={theme.input.icon}
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Email"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={theme.input.placeholder}
                   value={formData.email}
                   onChangeText={(value) => handleInputChange("email", value)}
                   keyboardType="email-address"
@@ -164,13 +165,13 @@ export default function SignupScreen() {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color="#666"
+                  color={theme.input.icon}
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={theme.input.placeholder}
                   value={formData.password}
                   onChangeText={(value) => handleInputChange("password", value)}
                   secureTextEntry={!showPassword}
@@ -184,7 +185,7 @@ export default function SignupScreen() {
                   <Ionicons
                     name={showPassword ? "eye-outline" : "eye-off-outline"}
                     size={20}
-                    color="#666"
+                    color={theme.input.icon}
                   />
                 </TouchableOpacity>
               </View>
@@ -193,13 +194,13 @@ export default function SignupScreen() {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color="#666"
+                  color={theme.input.icon}
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Confirm Password"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={theme.input.placeholder}
                   value={formData.confirmPassword}
                   onChangeText={(value) =>
                     handleInputChange("confirmPassword", value)
@@ -307,27 +308,27 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: theme.card.background,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.3)",
+    borderWidth: 1,
+    borderColor: theme.card.border,
   },
   logoText: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "white",
+    color: theme.text.primary,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "white",
+    color: theme.text.secondary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
+    color: theme.text.tertiary,
     textAlign: "center",
   },
   form: {
@@ -344,11 +345,13 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 12,
+    backgroundColor: theme.input.background,
+    borderRadius: theme.radius.md,
     marginBottom: 16,
     paddingHorizontal: 16,
     height: 56,
+    borderWidth: 1,
+    borderColor: theme.input.border,
   },
   inputIcon: {
     marginRight: 12,
@@ -356,7 +359,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: "#333",
+    color: theme.input.text,
   },
   eyeIcon: {
     padding: 4,
@@ -371,30 +374,30 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.8)",
+    borderColor: theme.border.primary,
     marginRight: 12,
     marginTop: 2,
     justifyContent: "center",
     alignItems: "center",
   },
   checkboxChecked: {
-    backgroundColor: "#667eea",
-    borderColor: "#667eea",
+    backgroundColor: theme.button.primary.background,
+    borderColor: theme.button.primary.background,
   },
   termsText: {
     flex: 1,
-    color: "rgba(255, 255, 255, 0.8)",
+    color: theme.text.tertiary,
     fontSize: 12,
     lineHeight: 18,
   },
   termsLink: {
-    color: "white",
+    color: theme.text.link,
     fontWeight: "bold",
     textDecorationLine: "underline",
   },
   signupButton: {
-    backgroundColor: "white",
-    borderRadius: 12,
+    backgroundColor: theme.button.primary.background,
+    borderRadius: theme.radius.md,
     height: 56,
     justifyContent: "center",
     alignItems: "center",
@@ -412,7 +415,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   signupButtonText: {
-    color: "#667eea",
+    color: theme.button.primary.text,
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -424,10 +427,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: theme.divider.line,
   },
   dividerText: {
-    color: "rgba(255, 255, 255, 0.8)",
+    color: theme.divider.text,
     marginHorizontal: 16,
     fontSize: 14,
   },
@@ -435,13 +438,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 12,
+    backgroundColor: theme.button.secondary.background,
+    borderRadius: theme.radius.md,
     height: 56,
     paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: theme.button.secondary.border,
   },
   googleButtonText: {
-    color: "#333",
+    color: theme.button.secondary.text,
     fontSize: 16,
     fontWeight: "500",
     marginLeft: 12,
@@ -452,11 +457,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   footerText: {
-    color: "rgba(255, 255, 255, 0.8)",
+    color: theme.text.tertiary,
     fontSize: 14,
   },
   signInText: {
-    color: "white",
+    color: theme.text.link,
     fontSize: 14,
     fontWeight: "bold",
   },

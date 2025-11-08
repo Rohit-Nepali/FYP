@@ -18,7 +18,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Add routes
-app.use("/api", router);
+app.use("/", router);
 
 app.use(notFoundMiddleware); //handle 404 not found error before other error middleware
 app.use(errorMiddleware);

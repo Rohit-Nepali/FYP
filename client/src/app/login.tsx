@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
+import { theme } from "../config/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <LinearGradient colors={["#0B0F14", "#111827"]} className="flex-1">
+    <LinearGradient colors={theme.background.gradient} className="flex-1">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -52,8 +53,8 @@ export default function LoginScreen() {
             <View className="w-20 h-20 rounded-full bg-white/5 justify-center items-center mb-5 border border-white/10">
               <Text className="text-white font-bold text-3xl">PA</Text>
             </View>
-            <Text className="text-2xl font-bold text-gray-200 mb-2">
-              Welcome Back
+            <Text className="text-2xl font-bold text-gray-200 ">
+              Welcome Back !!
             </Text>
             <Text className="text-base text-gray-400 text-center">
               Sign in to your account

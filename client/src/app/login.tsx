@@ -51,7 +51,7 @@ export default function LoginScreen() {
         <View className="flex-1 px-7 justify-center">
           <View className="items-center mb-10">
             <View className="w-20 h-20 rounded-full bg-white/5 justify-center items-center mb-5 border border-white/10">
-              <Text className="text-white font-bold text-3xl">PA</Text>
+              <Text className="text-white font-bold text-3xl">T</Text>
             </View>
             <Text className="text-2xl font-bold text-gray-200 ">
               Welcome Back !!

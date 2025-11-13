@@ -38,7 +38,7 @@ export default function SplashScreen() {
               className="font-bold"
               style={{ fontSize: 48, color: theme.text.primary }}
             >
-              PA
+              T
             </Text>
           </View>
         </View>
@@ -47,7 +47,7 @@ export default function SplashScreen() {
           className="text-3xl font-bold mb-2 text-center"
           style={{ color: theme.text.secondary }}
         >
-          ProductivityApp
+          Taskora
         </Text>
         <Text
           className="text-base text-center mb-15"

@@ -1,10 +1,21 @@
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import "../../global.css";
-import { AuthProvider } from "../contexts/AuthContext";
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { BottomNavigation } from "../components/BottomNavigation";
+import { View } from "react-native";
 
-export default function RootLayout() {
+// Wrapper component to conditionally show bottom nav
+function AppLayout() {
+  const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
+
+  // Pages that should NOT show bottom navigation
+  const noNavPages = ["/login", "/signup", "/splash"];
+  const showBottomNav = isAuthenticated && !noNavPages.includes(pathname);
+
   return (
-    <AuthProvider>
+    <>
       <Stack>
         <Stack.Screen
           name="splash"
@@ -34,30 +45,35 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
-          name="first"
+          name="tasks"
           options={{
-            title: "First Page",
+            headerShown: false,
           }}
         />
         <Stack.Screen
-          name="second"
+          name="profile"
           options={{
-            title: "Second Page",
+            headerShown: false,
           }}
         />
         <Stack.Screen
-          name="third"
-          options={{
-            title: "Third Page",
-          }}
-        />
-        <Stack.Screen
-          name="(someone)"
+          name="chatbot"
           options={{
             headerShown: false,
           }}
         />
       </Stack>
-    </AuthProvider>
+      {showBottomNav && <BottomNavigation />}
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AppLayout />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

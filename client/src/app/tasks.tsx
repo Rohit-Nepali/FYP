@@ -42,6 +42,19 @@ export default function TasksScreen() {
   const [status, setStatus] = useState<TaskStatus>("TODO");
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [dueDate, setDueDate] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    buttons?: Array<{
+      text: string;
+      onPress?: () => void;
+      style?: 'default' | 'destructive';
+    }>;
+  } | null>(null);
 
   useEffect(() => {
     loadTasks();
@@ -57,7 +70,7 @@ export default function TasksScreen() {
       const result = await getAllTasks(filters);
       setTasks(result.tasks);
     } catch (error) {
-      Alert.alert(
+      showCustomAlert(
         "Error",
         error instanceof Error ? error.message : "Failed to load tasks"
       );
@@ -68,7 +81,7 @@ export default function TasksScreen() {
 
   const handleCreateTask = async () => {
     if (!title.trim()) {
-      Alert.alert("Error", "Please enter a task title");
+      showCustomAlert("Error", "Please enter a task title");
       return;
     }
 
@@ -81,7 +94,7 @@ export default function TasksScreen() {
           priority,
           dueDate: dueDate || undefined,
         });
-        Alert.alert("Success", "Task updated successfully");
+        showCustomAlert("Success", "Task updated successfully");
       } else {
         await createTask({
           title,
@@ -90,13 +103,13 @@ export default function TasksScreen() {
           priority,
           dueDate: dueDate || undefined,
         });
-        Alert.alert("Success", "Task created successfully");
+        showCustomAlert("Success", "Task created successfully");
       }
       resetForm();
       setModalVisible(false);
       loadTasks();
     } catch (error) {
-      Alert.alert(
+      showCustomAlert(
         "Error",
         error instanceof Error ? error.message : "Failed to save task"
       );
@@ -114,18 +127,18 @@ export default function TasksScreen() {
   };
 
   const handleDeleteTask = (taskId: string) => {
-    Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
-      { text: "Cancel", style: "cancel" },
+    showCustomAlert("Delete Task", "Are you sure you want to delete this task?", [
+      { text: "Cancel", style: "default" },
       {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
           try {
             await deleteTask(taskId);
-            Alert.alert("Success", "Task deleted successfully");
+            showCustomAlert("Success", "Task deleted successfully");
             loadTasks();
           } catch (error) {
-            Alert.alert(
+            showCustomAlert(
               "Error",
               error instanceof Error ? error.message : "Failed to delete task"
             );
@@ -151,7 +164,7 @@ export default function TasksScreen() {
       await updateTask(task.id, { status: newStatus });
       loadTasks();
     } catch (error) {
-      Alert.alert(
+      showCustomAlert(
         "Error",
         error instanceof Error ? error.message : "Failed to update task"
       );
@@ -199,6 +212,18 @@ export default function TasksScreen() {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString();
+  };
+
+  const showCustomAlert = (title: string, message: string, buttons?: Array<{
+    text: string;
+    onPress?: () => void;
+    style?: 'default' | 'destructive';
+  }>) => {
+    setCustomAlert({ visible: true, title, message, buttons });
+  };
+
+  const hideCustomAlert = () => {
+    setCustomAlert(null);
   };
 
   return (
@@ -492,6 +517,59 @@ export default function TasksScreen() {
               </LinearGradient>
             </View>
           </Modal>
+
+          {/* Custom Alert Modal */}
+          {customAlert && (
+            <Modal
+              visible={customAlert.visible}
+              animationType="fade"
+              transparent={true}
+              onRequestClose={hideCustomAlert}
+            >
+              <View className="flex-1 bg-black/50 justify-center items-center px-6">
+                <View className="bg-gray-800 rounded-xl p-6 w-full max-w-sm">
+                  <Text className="text-white text-xl font-bold mb-2 text-center">
+                    {customAlert.title}
+                  </Text>
+                  <Text className="text-gray-300 text-center mb-6">
+                    {customAlert.message}
+                  </Text>
+
+                  <View className="flex-row gap-3">
+                    {customAlert.buttons?.map((button, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        onPress={() => {
+                          hideCustomAlert();
+                          button.onPress?.();
+                        }}
+                        className={`flex-1 rounded-xl py-3 items-center ${
+                          button.style === 'destructive'
+                            ? 'bg-red-600'
+                            : 'bg-gray-700'
+                        }`}
+                      >
+                        <Text className={`font-medium ${
+                          button.style === 'destructive'
+                            ? 'text-white'
+                            : 'text-gray-200'
+                        }`}>
+                          {button.text}
+                        </Text>
+                      </TouchableOpacity>
+                    )) || (
+                      <TouchableOpacity
+                        onPress={hideCustomAlert}
+                        className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
+                      >
+                        <Text className="text-white font-medium">OK</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          )}
         </LinearGradient>
       </SafeAreaView>
     </ProtectedRoute>

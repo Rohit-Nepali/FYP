@@ -140,14 +140,14 @@ export default function GroupsScreen() {
 
           {/* Groups List */}
           {loading ? (
-            <View className="flex-1 justify-center items-center">
+            <View className="flex-1 justify-center items-center ">
               <ActivityIndicator size="large" color="#60A5FA" />
             </View>
           ) : (
             <FlatList
               data={groups}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={{ paddingBottom: 80 }}
+              contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
               renderItem={({ item: group }) => (
                 <TouchableOpacity
                   onPress={() => router.push(`/groups/${group.id}` as any)}

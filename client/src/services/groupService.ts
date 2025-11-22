@@ -159,3 +159,26 @@ export async function removeMember(
     method: "DELETE",
   });
 }
+
+export async function createInvite(
+  groupId: string,
+  email: string,
+  role?: "admin" | "member"
+): Promise<any> {
+  return makeRequest<any>(`/groups/${groupId}/invites`, {
+    method: "POST",
+    data: { email, role: role || "member" },
+  });
+}
+
+export async function acceptInvite(token: string): Promise<Group> {
+  return makeRequest<Group>(`/groups/invites/${token}/accept`, {
+    method: "POST",
+  });
+}
+
+export async function getInvites(groupId: string): Promise<any[]> {
+  return makeRequest<any[]>(`/groups/${groupId}/invites`, {
+    method: "GET",
+  });
+}

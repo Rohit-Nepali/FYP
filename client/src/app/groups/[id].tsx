@@ -8,6 +8,7 @@ import {
   Modal,
   ActivityIndicator,
   FlatList,
+  Share,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,10 +21,12 @@ import {
   addMember,
   removeMember,
   deleteGroup,
+  createInvite,
 } from "../../services/groupService";
 import { getUserByEmail } from "../../services/authService";
 import { Group, GroupMember } from "../../types";
 import { theme } from "../../config/theme";
+import { config } from "../../config/environment";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function GroupDetailScreen() {
@@ -95,20 +98,48 @@ export default function GroupDetailScreen() {
     }
 
     try {
-      // Get user by email
-      const user = await getUserByEmail(memberEmail.trim());
+      const result = await createInvite(
+        id as string,
+        memberEmail.trim(),
+        memberRole
+      );
 
-      // Add member to group
-      const updatedGroup = await addMember(id as string, {
-        memberId: user.id,
-        role: memberRole,
-      });
+      // Check if it's a direct member addition (user exists)
+      if (result.members) {
+        setGroup(result);
+        setMemberEmail("");
+        setMemberRole("member");
+        setAddMemberModalVisible(false);
+        Alert.alert("Success", "Member added successfully");
+      } else {
+        // It's an invite - show the invite link
+        const inviteLink = `https://productivityapp.com/invite/${result.token}`;
+        const shareMessage = `You've been invited to join the "${group?.name}" group! Click here to accept: ${inviteLink}`;
 
-      setGroup(updatedGroup);
-      setMemberEmail("");
-      setMemberRole("member");
-      setAddMemberModalVisible(false);
-      Alert.alert("Success", "Member added successfully");
+        Alert.alert(
+          "Invite Created",
+          `An invite has been created for ${memberEmail}. Share this link to invite them to join the group.`,
+          [
+            {
+              text: "Share Invite",
+              onPress: async () => {
+                try {
+                  await Share.share({
+                    message: shareMessage,
+                    url: inviteLink, // For iOS
+                  });
+                } catch (error) {
+                  Alert.alert("Error", "Failed to share invite");
+                }
+              },
+            },
+            { text: "OK" },
+          ]
+        );
+        setMemberEmail("");
+        setMemberRole("member");
+        setAddMemberModalVisible(false);
+      }
     } catch (error) {
       Alert.alert(
         "Error",

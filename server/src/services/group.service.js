@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
+import crypto from "crypto";
 
 export const groupService = {
   /**
@@ -338,5 +339,182 @@ export const groupService = {
 
     // Return updated group
     return await this.getById(groupId, userId);
+  },
+
+  /**
+   * Create an invite for a user to join the group
+   * @param {string} groupId - Group ID
+   * @param {string} userId - User ID (inviter, must be admin)
+   * @param {string} email - Email to invite
+   * @param {string} role - Role (default: member)
+   * @returns {Promise<Object>} Invite object
+   */
+  createInvite: async (groupId, userId, email, role = "member") => {
+    // Check if user is admin
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: groupId,
+        userId: userId,
+        role: "admin",
+      },
+    });
+
+    if (!membership) {
+      throw new ApiError(
+        "Only group admins can create invites",
+        HTTP_STATUS.FORBIDDEN
+      );
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email },
+    });
+
+    if (existingUser) {
+      // If user exists, add them directly
+      return await this.addMember(groupId, userId, existingUser.id, role);
+    }
+
+    // Check if invite already exists
+    const existingInvite = await prisma.groupInvite.findFirst({
+      where: {
+        groupId: groupId,
+        email: email,
+      },
+    });
+
+    if (existingInvite) {
+      throw new ApiError(
+        "An invite for this email already exists",
+        HTTP_STATUS.BAD_REQUEST
+      );
+    }
+
+    // Generate token
+    const token = crypto.randomBytes(32).toString("hex");
+
+    // Create invite (expires in 7 days)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const invite = await prisma.groupInvite.create({
+      data: {
+        email: email,
+        groupId: groupId,
+        role: role,
+        token: token,
+        invitedById: userId,
+        expiresAt: expiresAt,
+      },
+      include: {
+        group: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        invitedBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return invite;
+  },
+
+  /**
+   * Accept an invite
+   * @param {string} token - Invite token
+   * @param {string} userId - User ID accepting the invite
+   * @returns {Promise<Object>} Updated group
+   */
+  acceptInvite: async (token, userId) => {
+    const invite = await prisma.groupInvite.findUnique({
+      where: { token: token },
+      include: {
+        group: true,
+      },
+    });
+
+    if (!invite) {
+      throw new ApiError("Invalid invite token", HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (invite.expiresAt < new Date()) {
+      throw new ApiError("Invite has expired", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Check if user email matches invite email
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (user.email !== invite.email) {
+      throw new ApiError(
+        "This invite is not for your email address",
+        HTTP_STATUS.FORBIDDEN
+      );
+    }
+
+    // Add user to group
+    await this.addMember(
+      invite.groupId,
+      invite.invitedById,
+      userId,
+      invite.role
+    );
+
+    // Delete the invite
+    await prisma.groupInvite.delete({
+      where: { id: invite.id },
+    });
+
+    // Return updated group
+    return await this.getById(invite.groupId, userId);
+  },
+
+  /**
+   * Get invites for a group
+   * @param {string} groupId - Group ID
+   * @param {string} userId - User ID (must be admin)
+   * @returns {Promise<Array>} Invites
+   */
+  getInvites: async (groupId, userId) => {
+    // Check if user is admin
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: groupId,
+        userId: userId,
+        role: "admin",
+      },
+    });
+
+    if (!membership) {
+      throw new ApiError(
+        "Only group admins can view invites",
+        HTTP_STATUS.FORBIDDEN
+      );
+    }
+
+    const invites = await prisma.groupInvite.findMany({
+      where: { groupId: groupId },
+      include: {
+        invitedBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return invites;
   },
 };

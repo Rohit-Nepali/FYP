@@ -74,6 +74,12 @@ function AppLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="tasks/group/[groupId]"
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack>
       {showBottomNav && <BottomNavigation />}
     </>

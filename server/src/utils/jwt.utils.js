@@ -1,5 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { ApiError } from './error.utils.js';
+import dotenv from "dotenv";
+dotenv.config();
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
 
@@ -28,6 +31,7 @@ export const generateRefreshToken = (payload) => {
  */
 export const verifyAccessToken = (token) => {
     try {
+        console.log("verifying with jwt secre key : ", JWT_SECRET);
         return jwt.verify(token, JWT_SECRET);
     } catch (error) {
         throw new ApiError('Invalid or expired access token', 401);

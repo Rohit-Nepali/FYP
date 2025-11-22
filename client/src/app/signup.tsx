@@ -32,45 +32,98 @@ export default function SignupScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [errors, setErrors] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    terms?: string;
+  }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validateForm = () => {
+    const newErrors: typeof errors = {};
+    
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+    
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+    }
+    
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    if (!agreeToTerms) {
+      newErrors.terms = 'You must agree to the Terms and Conditions';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error for the field being edited
+    if (errors[field as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
   };
 
   const handleSignUp = async () => {
-    const { firstName, lastName, email, password, confirmPassword } = formData;
-
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
-    }
-
-    if (password.length < 8) {
-      Alert.alert("Error", "Password must be at least 8 characters long");
-      return;
-    }
-
-    if (!agreeToTerms) {
-      Alert.alert("Error", "Please agree to the Terms and Conditions");
-      return;
-    }
-
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+    
     try {
-      const fullName = `${firstName} ${lastName}`;
-      await register(fullName, email, password);
-      Alert.alert("Success", "Account created successfully!", [
-        { text: "OK", onPress: () => router.replace("/") },
-      ]);
-    } catch (error) {
+      const fullName = `${formData.firstName} ${formData.lastName}`;
+      await register(fullName, formData.email, formData.password);
+      
       Alert.alert(
-        "Signup Failed",
-        error instanceof Error ? error.message : "An error occurred"
+        "Success", 
+        "Account created successfully!",
+        [{ text: "OK", onPress: () => router.replace("/") }]
       );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      
+      if (errorMessage.includes('email') && errorMessage.includes('taken')) {
+        setErrors(prev => ({
+          ...prev,
+          email: 'This email is already registered. Please use a different email or sign in.'
+        }));
+      } else if (errorMessage.includes('network')) {
+        Alert.alert(
+          'Connection Error',
+          'Unable to connect to the server. Please check your internet connection.'
+        );
+      } else {
+        Alert.alert('Signup Failed', errorMessage);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -109,16 +162,20 @@ export default function SignupScreen() {
                     style={styles.inputIcon}
                   />
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input, 
+                      errors.firstName && styles.inputError
+                    ]}
                     placeholder="First Name"
-                    placeholderTextColor={theme.input.placeholder}
+                    placeholderTextColor={errors.firstName ? '#FCA5A5' : theme.input.placeholder}
                     value={formData.firstName}
-                    onChangeText={(value) =>
-                      handleInputChange("firstName", value)
-                    }
+                    onChangeText={(value) => handleInputChange("firstName", value)}
                     autoCapitalize="words"
                     autoCorrect={false}
                   />
+                  {errors.firstName && (
+                    <Text style={styles.errorText}>{errors.firstName}</Text>
+                  )}
                 </View>
 
                 <View style={[styles.inputContainer, styles.halfInput]}>
@@ -129,16 +186,20 @@ export default function SignupScreen() {
                     style={styles.inputIcon}
                   />
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input, 
+                      errors.lastName && styles.inputError
+                    ]}
                     placeholder="Last Name"
-                    placeholderTextColor={theme.input.placeholder}
+                    placeholderTextColor={errors.lastName ? '#FCA5A5' : theme.input.placeholder}
                     value={formData.lastName}
-                    onChangeText={(value) =>
-                      handleInputChange("lastName", value)
-                    }
+                    onChangeText={(value) => handleInputChange("lastName", value)}
                     autoCapitalize="words"
                     autoCorrect={false}
                   />
+                  {errors.lastName && (
+                    <Text style={styles.errorText}>{errors.lastName}</Text>
+                  )}
                 </View>
               </View>
 
@@ -150,15 +211,21 @@ export default function SignupScreen() {
                   style={styles.inputIcon}
                 />
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input, 
+                    errors.email && styles.inputError
+                  ]}
                   placeholder="Email"
-                  placeholderTextColor={theme.input.placeholder}
+                  placeholderTextColor={errors.email ? '#FCA5A5' : theme.input.placeholder}
                   value={formData.email}
                   onChangeText={(value) => handleInputChange("email", value)}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
+                {errors.email && (
+                  <Text style={styles.errorText}>{errors.email}</Text>
+                )}
               </View>
 
               <View style={styles.inputContainer}>
@@ -169,15 +236,21 @@ export default function SignupScreen() {
                   style={styles.inputIcon}
                 />
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input, 
+                    errors.password && styles.inputError
+                  ]}
                   placeholder="Password"
-                  placeholderTextColor={theme.input.placeholder}
+                  placeholderTextColor={errors.password ? '#FCA5A5' : theme.input.placeholder}
                   value={formData.password}
                   onChangeText={(value) => handleInputChange("password", value)}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
+                {errors.password && (
+                  <Text style={styles.errorText}>{errors.password}</Text>
+                )}
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
@@ -198,9 +271,12 @@ export default function SignupScreen() {
                   style={styles.inputIcon}
                 />
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input, 
+                    errors.confirmPassword && styles.inputError
+                  ]}
                   placeholder="Confirm Password"
-                  placeholderTextColor={theme.input.placeholder}
+                  placeholderTextColor={errors.confirmPassword ? '#FCA5A5' : theme.input.placeholder}
                   value={formData.confirmPassword}
                   onChangeText={(value) =>
                     handleInputChange("confirmPassword", value)
@@ -209,6 +285,9 @@ export default function SignupScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
+                {errors.confirmPassword && (
+                  <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+                )}
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                   style={styles.eyeIcon}
@@ -227,33 +306,47 @@ export default function SignupScreen() {
                 style={styles.termsContainer}
                 onPress={() => setAgreeToTerms(!agreeToTerms)}
               >
-                <View
+                <View style={styles.termsContainer}>
+                <TouchableOpacity
                   style={[
                     styles.checkbox,
-                    agreeToTerms && styles.checkboxChecked,
+                    errors.terms && !agreeToTerms && styles.checkboxError
                   ]}
+                  onPress={() => {
+                    setAgreeToTerms(!agreeToTerms);
+                    if (errors.terms) {
+                      setErrors(prev => ({
+                        ...prev,
+                        terms: undefined
+                      }));
+                    }
+                  }}
                 >
                   {agreeToTerms && (
-                    <Ionicons name="checkmark" size={16} color="white" />
+                    <Ionicons name="checkmark" size={16} color="#3B82F6" />
                   )}
-                </View>
+                </TouchableOpacity>
                 <Text style={styles.termsText}>
-                  I agree to the{" "}
-                  <Text style={styles.termsLink}>Terms and Conditions</Text> and{" "}
+                  I agree to the{' '}
+                  <Text style={styles.termsLink}>Terms and Conditions</Text> and{' '}
                   <Text style={styles.termsLink}>Privacy Policy</Text>
                 </Text>
+              </View>
+              {errors.terms && (
+                <Text style={[styles.errorText, { marginTop: 4 }]}>{errors.terms}</Text>
+              )}
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.signupButton,
-                  isLoading && styles.signupButtonDisabled,
+                  (isLoading || isSubmitting) && styles.signupButtonDisabled,
                 ]}
                 onPress={handleSignUp}
-                disabled={isLoading}
+                disabled={isLoading || isSubmitting}
               >
                 <Text style={styles.signupButtonText}>
-                  {isLoading ? "Creating Account..." : "Create Account"}
+                  {isLoading || isSubmitting ? 'Creating Account...' : 'Sign Up'}
                 </Text>
               </TouchableOpacity>
 
@@ -287,6 +380,19 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 8,
+  },
+  checkboxError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEE2E2',
   },
   keyboardView: {
     flex: 1,

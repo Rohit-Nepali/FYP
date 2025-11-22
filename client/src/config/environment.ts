@@ -1,6 +1,5 @@
-// Environment configuration for the client
+const apiBase = process.env.EXPO_PUBLIC_API_URL ?? "https://464adf92395b.ngrok-free.app";
+
 export const config = {
-  API_BASE_URL:
-    process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.65:3000/api",
-  // Add other environment variables here as needed
+  API_BASE_URL: apiBase.replace(/\/+$/, "") + "/api",
 };

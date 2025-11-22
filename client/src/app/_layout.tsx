@@ -63,7 +63,13 @@ function AppLayout() {
           }}
         />
         <Stack.Screen
-          name="groups"
+          name="groups/index"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="groups/[id]"
           options={{
             headerShown: false,
           }}

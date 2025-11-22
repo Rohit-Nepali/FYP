@@ -1,4 +1,8 @@
-import { ApiResponse, HTTP_STATUS, SUCCESS_MESSAGES } from "../utils/response.utils.js";
+import {
+  ApiResponse,
+  HTTP_STATUS,
+  SUCCESS_MESSAGES,
+} from "../utils/response.utils.js";
 import { authService } from "../services/auth.service.js";
 
 export const signUpController = async (req, res, next) => {
@@ -62,7 +66,7 @@ export const refreshTokenController = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}
+};
 
 export const logoutController = async (req, res, next) => {
   try {
@@ -85,6 +89,23 @@ export const getProfileController = async (req, res, next) => {
     const userId = req.user.id;
 
     const user = await authService.getProfile(userId);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.RETRIEVED,
+      user
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserByEmailController = async (req, res, next) => {
+  try {
+    const { email } = req.params;
+
+    const user = await authService.getUserByEmail(email);
 
     return ApiResponse.sendSuccessResponse(
       res,

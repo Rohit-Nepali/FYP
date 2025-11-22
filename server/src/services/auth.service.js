@@ -273,4 +273,29 @@ export const authService = {
 
     return user;
   },
+
+  /**
+   * Get user by email
+   * @param {string} email - User email
+   * @returns {Promise<Object>} User data
+   */
+  getUserByEmail: async (email) => {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        profileImage: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new ApiError("User not found", HTTP_STATUS.NOT_FOUND);
+    }
+
+    return user;
+  },
 };

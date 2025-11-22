@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  FlatList,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -115,9 +116,10 @@ export default function GroupsScreen() {
   };
 
   return (
-    <ProtectedRoute>
-      <SafeAreaView className="flex-1 bg-gray-900">
-        <LinearGradient colors={theme.background.gradient} className="flex-1">
+    // <ProtectedRoute>
+    <SafeAreaView className="flex-1 bg-gray-900">
+      <LinearGradient colors={theme.background.gradient} style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
           {/* Header */}
           <View className="pt-6 pb-4 px-6 bg-gray-900/50">
             <View className="flex-row items-center justify-between mb-4">
@@ -142,72 +144,59 @@ export default function GroupsScreen() {
               <ActivityIndicator size="large" color="#60A5FA" />
             </View>
           ) : (
-            <ScrollView
-              className="flex-1 px-4 py-4"
+            <FlatList
+              data={groups}
+              keyExtractor={(item) => item.id}
               contentContainerStyle={{ paddingBottom: 80 }}
-            >
-              {groups.length === 0 ? (
-                <View className="flex-1 justify-center items-center py-20">
-                  <Ionicons name="people-outline" size={64} color="#6B7280" />
-                  <Text className="text-gray-400 text-lg mt-4">
-                    No groups found
-                  </Text>
-                  <Text className="text-gray-500 text-sm mt-2">
-                    Create a new group to get started
-                  </Text>
-                </View>
-              ) : (
-                groups.map((group) => (
-                  <TouchableOpacity
-                    key={group.id}
-                    // onPress={() => router.push(`/groups/${group.id}`)}
-                    className="bg-gray-800 rounded-xl p-4 mb-3 border border-gray-700"
-                  >
-                    <View className="flex-row items-start justify-between mb-2">
-                      <View className="flex-1">
-                        <Text className="text-lg font-semibold text-gray-200 mb-1">
-                          {group.name}
+              renderItem={({ item: group }) => (
+                <TouchableOpacity
+                  onPress={() => router.push(`/groups/${group.id}` as any)}
+                  className="bg-gray-800 rounded-xl p-4 mb-3 border border-gray-700 active:bg-gray-750"
+                >
+                  <View className="flex-row items-start justify-between mb-2">
+                    <View className="flex-1">
+                      <Text className="text-lg font-semibold text-gray-200 mb-1">
+                        {group.name}
+                      </Text>
+                      {group.description && (
+                        <Text className="text-gray-400 text-sm mb-2">
+                          {group.description}
                         </Text>
-                        {group.description && (
-                          <Text className="text-gray-400 text-sm mb-2">
-                            {group.description}
-                          </Text>
-                        )}
-                        <View className="flex-row items-center gap-2">
-                          <Ionicons
-                            name="people-outline"
-                            size={16}
-                            color="#9CA3AF"
-                          />
-                          <Text className="text-gray-400 text-sm">
-                            {group.members.length} members
-                          </Text>
-                          <Text className="text-gray-500 text-sm">•</Text>
-                          <Text className="text-gray-400 text-sm">
-                            Created {formatDate(group.createdAt)}
-                          </Text>
-                        </View>
-                      </View>
-                      <View className="flex-row gap-2">
-                        <TouchableOpacity
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteGroup(group.id, group.name);
-                          }}
-                          className="p-2"
-                        >
-                          <Ionicons
-                            name="trash-outline"
-                            size={20}
-                            color="#EF4444"
-                          />
-                        </TouchableOpacity>
+                      )}
+                      <View className="flex-row items-center gap-2">
+                        <Ionicons
+                          name="people-outline"
+                          size={16}
+                          color="#9CA3AF"
+                        />
+                        <Text className="text-gray-400 text-sm">
+                          {group.members.length} members
+                        </Text>
+                        <Text className="text-gray-500 text-sm">•</Text>
+                        <Text className="text-gray-400 text-sm">
+                          Created {formatDate(group.createdAt)}
+                        </Text>
                       </View>
                     </View>
-                  </TouchableOpacity>
-                ))
+                    <View className="flex-row gap-2">
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDeleteGroup(group.id, group.name);
+                        }}
+                        className="p-2"
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={20}
+                          color="#EF4444"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
               )}
-            </ScrollView>
+            />
           )}
 
           {/* Create Group Modal */}
@@ -278,8 +267,9 @@ export default function GroupsScreen() {
               </LinearGradient>
             </View>
           </Modal>
-        </LinearGradient>
-      </SafeAreaView>
-    </ProtectedRoute>
+        </View>
+      </LinearGradient>
+    </SafeAreaView>
+    // </ProtectedRoute>
   );
 }

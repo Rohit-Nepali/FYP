@@ -172,6 +172,17 @@ export async function getProfile(): Promise<LoginResponse["user"]> {
   });
 }
 
+export async function getUserByEmail(
+  email: string
+): Promise<LoginResponse["user"]> {
+  return makeRequest<LoginResponse["user"]>(
+    `/auth/user/${encodeURIComponent(email)}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
 export async function storeTokens(
   accessToken: string,
   refreshToken: string

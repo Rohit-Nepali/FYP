@@ -1,43 +1,14 @@
 import axios, { AxiosError } from "axios";
 import { config } from "../config/environment";
 import { getStoredTokens } from "./authService";
+import {
+  Group,
+  CreateGroupData,
+  UpdateGroupData,
+  AddMemberData,
+} from "../types";
 
 const API_BASE_URL = config.API_BASE_URL;
-
-export interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-  dueDate?: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateTaskData {
-  title: string;
-  description?: string;
-  status?: "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-  dueDate?: string;
-}
-
-export interface UpdateTaskData {
-  title?: string;
-  description?: string;
-  status?: "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
-  dueDate?: string | null;
-}
-
-export interface TaskFilters {
-  status?: string;
-  priority?: string;
-  page?: number;
-  limit?: number;
-}
 
 interface ApiError {
   success: false;
@@ -135,64 +106,56 @@ async function makeRequest<T>(
 }
 
 // Public API functions
-export async function createTask(taskData: CreateTaskData): Promise<Task> {
-  return makeRequest<Task>("/tasks", {
+export async function createGroup(groupData: CreateGroupData): Promise<Group> {
+  return makeRequest<Group>("/groups", {
     method: "POST",
-    data: taskData,
+    data: groupData,
   });
 }
 
-export async function getAllTasks(filters?: TaskFilters): Promise<{
-  tasks: Task[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}> {
-  const response = await axiosInstance.get<ApiResponse<Task[]>>("/tasks", {
-    params: filters,
-  });
-
-  if (response.data.success) {
-    return {
-      tasks: response.data.data as Task[],
-      pagination: response.data.meta?.pagination || {
-        page: 1,
-        limit: 10,
-        total: 0,
-        totalPages: 0,
-      },
-    };
-  }
-  throw new Error("Failed to fetch tasks");
-}
-
-export async function getTaskById(taskId: string): Promise<Task> {
-  return makeRequest<Task>(`/tasks/${taskId}`, {
+export async function getAllGroups(): Promise<Group[]> {
+  return makeRequest<Group[]>("/groups", {
     method: "GET",
   });
 }
 
-export async function updateTask(
-  taskId: string,
-  updateData: UpdateTaskData
-): Promise<Task> {
-  return makeRequest<Task>(`/tasks/${taskId}`, {
+export async function getGroupById(groupId: string): Promise<Group> {
+  return makeRequest<Group>(`/groups/${groupId}`, {
+    method: "GET",
+  });
+}
+
+export async function updateGroup(
+  groupId: string,
+  updateData: UpdateGroupData
+): Promise<Group> {
+  return makeRequest<Group>(`/groups/${groupId}`, {
     method: "PUT",
     data: updateData,
   });
 }
 
-export async function deleteTask(taskId: string): Promise<void> {
-  return makeRequest<void>(`/tasks/${taskId}`, {
+export async function deleteGroup(groupId: string): Promise<void> {
+  return makeRequest<void>(`/groups/${groupId}`, {
     method: "DELETE",
   });
 }
 
-export async function getGroupTasks(groupId: string): Promise<Task[]> {
-  return makeRequest<Task[]>(`/tasks/group/${groupId}`, {
-    method: "GET",
+export async function addMember(
+  groupId: string,
+  memberData: AddMemberData
+): Promise<Group> {
+  return makeRequest<Group>(`/groups/${groupId}/members`, {
+    method: "POST",
+    data: memberData,
+  });
+}
+
+export async function removeMember(
+  groupId: string,
+  memberId: string
+): Promise<Group> {
+  return makeRequest<Group>(`/groups/${groupId}/members/${memberId}`, {
+    method: "DELETE",
   });
 }

@@ -9,6 +9,7 @@ export function BottomNavigation() {
   const tabs = [
     { name: "Home", icon: "home" as const, route: "/" as const },
     { name: "Tasks", icon: "list" as const, route: "/tasks" as const },
+    { name: "Groups", icon: "people" as const, route: "/groups" as const },
     { name: "Profile", icon: "person" as const, route: "/profile" as const },
     {
       name: "Chat",

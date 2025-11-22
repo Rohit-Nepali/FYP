@@ -97,3 +97,21 @@ export const deleteTaskController = async (req, res, next) => {
     }
 };
 
+export const getGroupTasksController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { groupId } = req.params;
+
+        const tasks = await taskService.getAllForGroup(groupId, userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.RETRIEVED,
+            tasks
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+

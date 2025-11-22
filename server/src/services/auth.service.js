@@ -26,9 +26,11 @@ export const authService = {
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
-
     if (existingUser) {
-      throw new ApiError(ERROR_MESSAGES.USER_ALREADY_EXISTS, HTTP_STATUS.CONFLICT);
+      throw new ApiError(
+        ERROR_MESSAGES.USER_ALREADY_EXISTS,
+        HTTP_STATUS.CONFLICT
+      );
     }
 
     // Hash password
@@ -103,14 +105,19 @@ export const authService = {
     });
 
     if (!user) {
-      throw new ApiError(ERROR_MESSAGES.INVALID_CREDENTIALS, HTTP_STATUS.UNAUTHORIZED);
+      throw new ApiError(
+        ERROR_MESSAGES.INVALID_CREDENTIALS,
+        HTTP_STATUS.UNAUTHORIZED
+      );
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-
     if (!isPasswordValid) {
-      throw new ApiError(ERROR_MESSAGES.INVALID_CREDENTIALS, HTTP_STATUS.UNAUTHORIZED);
+      throw new ApiError(
+        ERROR_MESSAGES.INVALID_CREDENTIALS,
+        HTTP_STATUS.UNAUTHORIZED
+      );
     }
 
     // Generate tokens
@@ -131,9 +138,9 @@ export const authService = {
 
     // Delete old sessions for this user (optional: keep last N sessions)
     // For now, we'll delete all and create a new one
-    await prisma.userSession.deleteMany({
-      where: { userId: user.id },
-    });
+    // await prisma.userSession.deleteMany({
+    //   where: { userId: user.id },
+    // });
 
     // Create new session
     await prisma.userSession.create({
@@ -186,12 +193,18 @@ export const authService = {
           where: { id: session.id },
         });
       }
-      throw new ApiError(ERROR_MESSAGES.INVALID_TOKEN, HTTP_STATUS.UNAUTHORIZED);
+      throw new ApiError(
+        ERROR_MESSAGES.INVALID_TOKEN,
+        HTTP_STATUS.UNAUTHORIZED
+      );
     }
 
     // Verify token matches user
     if (session.userId !== decoded.id) {
-      throw new ApiError(ERROR_MESSAGES.INVALID_TOKEN, HTTP_STATUS.UNAUTHORIZED);
+      throw new ApiError(
+        ERROR_MESSAGES.INVALID_TOKEN,
+        HTTP_STATUS.UNAUTHORIZED
+      );
     }
 
     // Generate new tokens
@@ -261,4 +274,3 @@ export const authService = {
     return user;
   },
 };
-

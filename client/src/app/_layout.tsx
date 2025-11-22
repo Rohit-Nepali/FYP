@@ -62,6 +62,12 @@ function AppLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="groups"
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack>
       {showBottomNav && <BottomNavigation />}
     </>

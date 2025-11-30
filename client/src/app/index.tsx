@@ -11,7 +11,6 @@ import {
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { useAuth } from "../contexts/AuthContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
 import {
   SafeAreaView,
   useSafeAreaInsets,

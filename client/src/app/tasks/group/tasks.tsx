@@ -12,16 +12,16 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { ProtectedRoute } from "../components/ProtectedRoute";
-import { useAuth } from "../contexts/AuthContext";
+import { ProtectedRoute } from "../../../components/ProtectedRoute";
+import { useAuth } from "../../../contexts/AuthContext";
 import {
   Task,
   createTask,
   getAllTasks,
   updateTask,
   deleteTask,
-} from "../services/taskService";
-import { theme } from "../config/theme";
+} from "../../../services/taskService";
+import { theme } from "../../../config/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type TaskStatus = "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
@@ -52,7 +52,7 @@ export default function TasksScreen() {
     buttons?: Array<{
       text: string;
       onPress?: () => void;
-      style?: 'default' | 'destructive';
+      style?: "default" | "destructive";
     }>;
   } | null>(null);
 
@@ -127,25 +127,29 @@ export default function TasksScreen() {
   };
 
   const handleDeleteTask = (taskId: string) => {
-    showCustomAlert("Delete Task", "Are you sure you want to delete this task?", [
-      { text: "Cancel", style: "default" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteTask(taskId);
-            showCustomAlert("Success", "Task deleted successfully");
-            loadTasks();
-          } catch (error) {
-            showCustomAlert(
-              "Error",
-              error instanceof Error ? error.message : "Failed to delete task"
-            );
-          }
+    showCustomAlert(
+      "Delete Task",
+      "Are you sure you want to delete this task?",
+      [
+        { text: "Cancel", style: "default" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteTask(taskId);
+              showCustomAlert("Success", "Task deleted successfully");
+              loadTasks();
+            } catch (error) {
+              showCustomAlert(
+                "Error",
+                error instanceof Error ? error.message : "Failed to delete task"
+              );
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleToggleStatus = async (task: Task) => {
@@ -214,11 +218,15 @@ export default function TasksScreen() {
     return date.toLocaleDateString();
   };
 
-  const showCustomAlert = (title: string, message: string, buttons?: Array<{
-    text: string;
-    onPress?: () => void;
-    style?: 'default' | 'destructive';
-  }>) => {
+  const showCustomAlert = (
+    title: string,
+    message: string,
+    buttons?: Array<{
+      text: string;
+      onPress?: () => void;
+      style?: "default" | "destructive";
+    }>
+  ) => {
     setCustomAlert({ visible: true, title, message, buttons });
   };
 
@@ -544,16 +552,18 @@ export default function TasksScreen() {
                           button.onPress?.();
                         }}
                         className={`flex-1 rounded-xl py-3 items-center ${
-                          button.style === 'destructive'
-                            ? 'bg-red-600'
-                            : 'bg-gray-700'
+                          button.style === "destructive"
+                            ? "bg-red-600"
+                            : "bg-gray-700"
                         }`}
                       >
-                        <Text className={`font-medium ${
-                          button.style === 'destructive'
-                            ? 'text-white'
-                            : 'text-gray-200'
-                        }`}>
+                        <Text
+                          className={`font-medium ${
+                            button.style === "destructive"
+                              ? "text-white"
+                              : "text-gray-200"
+                          }`}
+                        >
                           {button.text}
                         </Text>
                       </TouchableOpacity>

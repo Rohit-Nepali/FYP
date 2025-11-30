@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text } from "react-native";
+import { View, Text, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
@@ -30,31 +30,17 @@ export default function SplashScreen() {
     >
       <View className="flex-1 justify-center items-center">
         <View className="mb-10">
-          <View
-            className="w-30 h-30 rounded-full bg-white/10 justify-center items-center border-2 border-white/20"
-            style={{ width: 120, height: 120, borderRadius: 60 }}
-          >
-            <Text
-              className="font-bold"
-              style={{ fontSize: 48, color: theme.text.primary }}
-            >
-              T
-            </Text>
+          <View className="flex-1 items-center justify-center">
+            {/* add logo  here */}
+            <View className="w-24 h-24">
+              <Image
+                source={require("../../assets/images/logo.png")}
+                className="w-full h-full "
+                resizeMode="contain"
+              />
+            </View>
           </View>
         </View>
-
-        <Text
-          className="text-3xl font-bold mb-2 text-center"
-          style={{ color: theme.text.secondary }}
-        >
-          Taskora
-        </Text>
-        <Text
-          className="text-base text-center mb-15"
-          style={{ color: theme.text.tertiary }}
-        >
-          Boost Your Productivity
-        </Text>
 
         <View className="w-3/5 items-center">
           <View

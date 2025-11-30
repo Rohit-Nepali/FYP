@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BottomNavigation } from "../components/BottomNavigation";
 import { View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { theme } from "../config/theme";
 
 // Wrapper component to conditionally show bottom nav
 function AppLayout() {
@@ -25,7 +27,7 @@ function AppLayout() {
           }}
         />
         <Stack.Screen
-          name="login"
+          name="(auth)/login"
           options={{
             headerShown: false,
             gestureEnabled: false,

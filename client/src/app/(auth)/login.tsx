@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -15,12 +15,21 @@ import { useAuth } from "../../contexts/AuthContext";
 import { theme } from "../../config/theme";
 import { FormInput } from "@/src/components/common/FormInput";
 import { PrimaryButton } from "@/src/components/UI/Buttons";
+import { CustomAlert } from "@/src/components/UI/CustomAlert";
 import { useLoginForm } from "../../hooks/useLoginForm";
 import { handleAuthError, getAuthErrorMessage } from "../../utils/errorHandler";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login, isLoading } = useAuth();
+
+  // Alert state
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertType, setAlertType] = useState<
+    "default" | "success" | "error" | "warning" | "info"
+  >("default");
 
   // Use our custom hook for form state management
   const {
@@ -36,6 +45,21 @@ export default function LoginScreen() {
     clearError,
     togglePasswordVisibility,
   } = useLoginForm();
+
+  // Alert helper function
+  const showAlert = useCallback(
+    (
+      title: string,
+      message: string,
+      type: "default" | "success" | "error" | "warning" | "info" = "default"
+    ) => {
+      setAlertTitle(title);
+      setAlertMessage(message);
+      setAlertType(type);
+      setAlertVisible(true);
+    },
+    []
+  );
 
   // Memoized validation function
   const validateForm = useCallback(() => {
@@ -77,7 +101,7 @@ export default function LoginScreen() {
           password: "Invalid email or password",
         });
       } else {
-        Alert.alert(errorInfo.title, errorInfo.message);
+        showAlert(errorInfo.title, errorInfo.message, "error");
       }
     } finally {
       setIsSubmitting(false);
@@ -205,9 +229,10 @@ export default function LoginScreen() {
               title="Continue with Google"
               onPress={() => {
                 // Add Google login logic here
-                Alert.alert(
+                showAlert(
                   "Coming Soon",
-                  "Google login will be available soon!"
+                  "Google login will be available soon!",
+                  "info"
                 );
               }}
               variant="secondary"
@@ -226,6 +251,14 @@ export default function LoginScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        type={alertType}
+        onClose={() => setAlertVisible(false)}
+      />
     </LinearGradient>
   );
 }

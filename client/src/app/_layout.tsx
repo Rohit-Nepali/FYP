@@ -18,70 +18,23 @@ function AppLayout() {
 
   return (
     <>
-      <Stack>
-        <Stack.Screen
-          name="splash"
-          options={{
-            headerShown: false,
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="(auth)/login"
-          options={{
-            headerShown: false,
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="signup"
-          options={{
-            headerShown: false,
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="index"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="tasks"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="profile"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="chatbot"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="groups/index"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="groups/[id]"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="tasks/group/[groupId]"
-          options={{
-            headerShown: false,
-          }}
-        />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: "slide_from_left",
+          animationDuration: 100,
+        }}
+      >
+        <Stack.Screen name="splash" />
+        <Stack.Screen name="index" />
+        <Stack.Screen name="chatbot" />
+        <Stack.Screen name="profile" />
+        <Stack.Screen name="(auth)/login" />
+        <Stack.Screen name="(auth)/signup" />
+        <Stack.Screen name="tasks/tasks" />
+        <Stack.Screen name="groups/index" />
+        <Stack.Screen name="groups/[id]" />
+        <Stack.Screen name="tasks/group/[groupId]" />
       </Stack>
       {showBottomNav && <BottomNavigation />}
     </>

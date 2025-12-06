@@ -220,8 +220,12 @@ export default function SignupScreen() {
           <View className="flex-1 px-8 py-10 justify-center">
             {/* Header */}
             <View className="items-center mb-8">
-              <View className="w-16 h-16 rounded-full bg-white justify-center items-center mb-5 border border-gray-200">
-                <Text className="text-2xl font-bold text-gray-800">PA</Text>
+              <View className="w-24 h-24 mb-4">
+                <Image
+                  source={require("../../../assets/images/logo.png")}
+                  className="w-full h-full"
+                  resizeMode="contain"
+                />
               </View>
               <Text className="text-2xl font-bold text-gray-700 mb-2">
                 Create Account

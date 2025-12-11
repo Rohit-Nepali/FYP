@@ -21,7 +21,7 @@ function AppLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: "slide_from_left",
+          animation: "slide_from_right",
           animationDuration: 100,
         }}
       >

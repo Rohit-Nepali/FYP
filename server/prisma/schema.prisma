@@ -42,11 +42,13 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions     UserSession[]
-  groupsOwned  Group[]       @relation("ownerGroups")
-  memberships  GroupMember[]
-  tasks        Task[]
-  groupInvites GroupInvite[]
+  sessions           UserSession[]
+  groupsOwned        Group[]           @relation("ownerGroups")
+  memberships        GroupMember[]
+  projectsOwned      Project[]         @relation("ownerProjects")
+  projectMemberships ProjectMember[]
+  assignedTasks      Task[]            @relation("assignedTasks")
+  groupInvites       GroupInvite[]
 }
 
 model UserSession {
@@ -110,12 +112,43 @@ model Task {
   status      TaskStatus   @default(TODO)
   priority    TaskPriority @default(MEDIUM)
   dueDate     DateTime?
-  userId      String
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assigneeId  String?
+  assignee    User?        @relation("assignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  @@index([userId])
+  @@index([projectId])
+  @@index([assigneeId])
   @@index([status])
   @@index([priority])
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  ownerId     String
+  owner       User      @relation("ownerProjects", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  members ProjectMember[]
+  tasks   Task[]
+
+  @@index([ownerId])
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
 }

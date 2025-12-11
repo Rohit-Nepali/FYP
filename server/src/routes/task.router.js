@@ -6,7 +6,7 @@ import {
   getTaskByIdController,
   updateTaskController,
   deleteTaskController,
-  getGroupTasksController,
+  getProjectTasksController,
 } from "../controllers/task.controller.js";
 import { validate } from "../middleware/validation.middleware.js";
 import {
@@ -22,11 +22,10 @@ taskRouter.use(authenticateToken);
 // Task routes
 taskRouter.post("/", validate(createTaskSchema), createTaskController);
 taskRouter.get("/", getAllTasksController);
+// Project-scoped tasks should be matched before :id
+taskRouter.get("/project/:projectId", getProjectTasksController);
 taskRouter.get("/:id", getTaskByIdController);
 taskRouter.put("/:id", validate(updateTaskSchema), updateTaskController);
 taskRouter.delete("/:id", deleteTaskController);
-
-// Group task routes
-taskRouter.get("/group/:groupId", getGroupTasksController);
 
 export default taskRouter;

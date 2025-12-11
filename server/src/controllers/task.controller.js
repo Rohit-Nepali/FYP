@@ -97,12 +97,12 @@ export const deleteTaskController = async (req, res, next) => {
     }
 };
 
-export const getGroupTasksController = async (req, res, next) => {
+export const getProjectTasksController = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        const { groupId } = req.params;
+        const { projectId } = req.params;
 
-        const tasks = await taskService.getAllForGroup(groupId, userId);
+        const tasks = await taskService.getAllForProject(projectId, userId);
 
         return ApiResponse.sendSuccessResponse(
             res,

@@ -9,6 +9,8 @@ export const createTaskSchema = joi.object({
     status: joi.string().valid(...taskStatusEnum).optional(),
     priority: joi.string().valid(...taskPriorityEnum).optional(),
     dueDate: joi.date().iso().allow(null).optional(),
+    projectId: joi.string().uuid().required(),
+    assigneeId: joi.string().uuid().allow(null).optional(),
 });
 
 export const updateTaskSchema = joi.object({
@@ -17,5 +19,7 @@ export const updateTaskSchema = joi.object({
     status: joi.string().valid(...taskStatusEnum).optional(),
     priority: joi.string().valid(...taskPriorityEnum).optional(),
     dueDate: joi.date().iso().allow(null).optional(),
+    assigneeId: joi.string().uuid().allow(null).optional(),
+    projectId: joi.string().uuid().optional(),
 });
 

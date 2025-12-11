@@ -5,23 +5,22 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Modal,
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { ProtectedRoute } from "../../components/ProtectedRoute";
-import { useAuth } from "../../contexts/AuthContext";
+import { ProtectedRoute } from "../components/ProtectedRoute";
+import { useAuth } from "../contexts/AuthContext";
 import {
   Task,
   createTask,
   getAllTasks,
   updateTask,
   deleteTask,
-} from "../../services/taskService";
-import { theme } from "../../config/theme";
+} from "../services/taskService";
+import { theme } from "../config/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type TaskStatus = "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";

@@ -1,5 +1,5 @@
 import { useRouter, usePathname } from "expo-router";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export function BottomNavigation() {
@@ -8,11 +8,14 @@ export function BottomNavigation() {
 
   const tabs = [
     { name: "Home", icon: "home" as const, route: "/" as const },
-    { name: "Tasks", icon: "list" as const, route: "/tasks" as const },
-    { name: "Groups", icon: "people" as const, route: "/groups" as const },
+    {
+      name: "Tasks",
+      icon: "checkmark-done" as const,
+      route: "/tasks" as const,
+    },
     { name: "Profile", icon: "person" as const, route: "/profile" as const },
     {
-      name: "Chat",
+      name: "Chatbot",
       icon: "chatbubble-ellipses" as const,
       route: "/chatbot" as const,
     },
@@ -30,11 +33,14 @@ export function BottomNavigation() {
       <View className="flex-row justify-around py-3">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.name.toLowerCase();
+
           return (
             <TouchableOpacity
               key={tab.name}
               className="items-center justify-center py-2 flex-1"
-              onPress={() => router.push(tab.route)}
+              onPress={() => {
+                router.push(tab.route);
+              }}
             >
               <Ionicons
                 name={tab.icon as any}

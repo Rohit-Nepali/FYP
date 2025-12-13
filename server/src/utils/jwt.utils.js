@@ -31,7 +31,6 @@ export const generateRefreshToken = (payload) => {
  */
 export const verifyAccessToken = (token) => {
     try {
-        console.log("verifying with jwt secre key : ", JWT_SECRET);
         return jwt.verify(token, JWT_SECRET);
     } catch (error) {
         throw new ApiError('Invalid or expired access token', 401);

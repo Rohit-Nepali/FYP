@@ -13,6 +13,11 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Progress from "react-native-progress";
 import { Task, getAllTasks } from "../services/taskService";
+import {
+  Project as ApiProject,
+  getAllProjects,
+  getProjectById,
+} from "../services/projectService";
 
 export default function Index() {
   const router = useRouter();
@@ -22,14 +27,57 @@ export default function Index() {
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [taskError, setTaskError] = useState<string | null>(null);
 
-  const projects = [
-    { name: "Project Phoenix", progress: 0.75, color: "#8b5cf6" },
-    { name: "Website Redesign", progress: 0.4, color: "#10b981" },
-  ];
+  const [projects, setProjects] = useState<
+    { id: string; name: string; progress: number; color: string }[]
+  >([]);
+
+  const colors = ["#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4"];
 
   useEffect(() => {
+    loadProjects();
+  }, []);
+
+  useEffect(() => {
+    // load tasks is still needed for the task list
     loadTasks();
   }, []);
+
+  const loadProjects = async () => {
+    try {
+      const apiProjects: ApiProject[] = await getAllProjects();
+      console.log("apiProjects", apiProjects);
+
+      // For each project fetch details to compute progress (tasks)
+      const detailed = await Promise.all(
+        apiProjects.map(async (p, i) => {
+          try {
+            const full = await getProjectById(p.id);
+            const tasks = full.tasks || [];
+            const total = tasks.length;
+            const completed = tasks.filter((t: any) => t.status === "COMPLETED").length;
+            const progress = total > 0 ? completed / total : 0;
+            return {
+              id: p.id,
+              name: p.title,
+              progress,
+              color: colors[i % colors.length],
+            };
+          } catch (err) {
+            return {
+              id: p.id,
+              name: p.title,
+              progress: 0,
+              color: colors[i % colors.length],
+            };
+          }
+        })
+      );
+
+      setProjects(detailed);
+    } catch (error) {
+      console.error("Failed to load projects", error);
+    }
+  };
 
   const loadTasks = async () => {
     try {
@@ -90,37 +138,13 @@ export default function Index() {
       <SafeAreaView className="flex-1 bg-gray-900">
         <ScrollView className="flex-1 px-5">
           {/* Greeting */}
-          <Text className="text-white text-lg mt-2">
-            Hi{" "}
-            <Text className="font-bold">
-              {user?.fullName || user?.username || "there"}
-            </Text>
-            ,
+          <Text className="text-white text-lg mt-8">
+            Hi <Text className="font-bold">{user?.name || "there"}</Text>!
           </Text>
+
           <Text className="text-white text-2xl font-bold mt-1 mb-6">
             What's on your plate?
           </Text>
-
-          {/* Stats */}
-          <View className="flex-row justify-between mb-8">
-            <View className="bg-gray-800 rounded-2xl p-4 flex-1 mr-3 items-center">
-              <View className="bg-red-500 rounded-full w-10 h-10 items-center justify-center mb-2">
-                <Text className="text-white font-bold text-lg">!</Text>
-              </View>
-              <Text className="text-white font-bold text-3xl">{todoCount}</Text>
-              <Text className="text-gray-400 text-sm">To do</Text>
-            </View>
-
-            <View className="bg-gray-800 rounded-2xl p-4 flex-1 ml-3 items-center">
-              <View className="bg-yellow-500 rounded-full w-10 h-10 items-center justify-center mb-2">
-                <MaterialIcons name="emoji-events" size={20} color="white" />
-              </View>
-              <Text className="text-white font-bold text-3xl">
-                {inProgressCount}
-              </Text>
-              <Text className="text-gray-400 text-sm">In progress</Text>
-            </View>
-          </View>
 
           {/* Projects */}
           <View className="flex-row justify-between items-center mb-4">
@@ -130,12 +154,12 @@ export default function Index() {
             </Link>
           </View>
 
-          <View className="mb-6 space-y-4">
+          <View className="mb-6 space-y-4 border-2 border-white-700 pb-6">
             {projects.map((project, index) => (
               <TouchableOpacity
                 key={index}
                 className="bg-gray-800 rounded-xl p-4"
-                // onPress={() => router.push(`/project/${project.name}`)}
+              // onPress={() => router.push(`/project/${project.name}`)}
               >
                 <View className="flex-row items-center justify-between mb-2">
                   <View className="flex-row items-center">
@@ -234,11 +258,10 @@ export default function Index() {
                   <View className="flex-1">
                     <View className="flex-row items-start justify-between gap-3">
                       <Text
-                        className={`text-white font-semibold flex-1 ${
-                          task.status === "COMPLETED"
-                            ? "line-through text-gray-400"
-                            : ""
-                        }`}
+                        className={`text-white font-semibold flex-1 ${task.status === "COMPLETED"
+                          ? "line-through text-gray-400"
+                          : ""
+                          }`}
                       >
                         {task.title}
                       </Text>

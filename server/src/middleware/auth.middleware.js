@@ -14,8 +14,6 @@ import {
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
-  console.log("authHeader:", authHeader);
-  console.log("token:", token);
 
   if (!token) {
     return ApiResponse.sendErrorResponse(

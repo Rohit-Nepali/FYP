@@ -258,7 +258,7 @@ export default function GroupsScreen() {
 
                 <TouchableOpacity
                   onPress={handleCreateGroup}
-                  className="bg-blue-700 rounded-xl py-4 items-center mb-4"
+                  className="bg-blue-600 rounded-xl py-4 items-center mb-4"
                 >
                   <Text className="text-white font-bold text-lg">
                     Create Group

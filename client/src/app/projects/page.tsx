@@ -114,8 +114,8 @@ export default function Projects() {
                                         title={p.title}
                                         description={p.description || undefined}
                                         membersCount={p.members ? p.members.length : 0}
-                                        progress={0}
-                                    //   onPress={() => router.push(`/projects/${p.id}`)}
+                                        // progress={0}
+                                        onPress={() => router.push(`/projects/${p.id}`)}
                                     />
                                 ))}
                             </View>
@@ -139,10 +139,10 @@ export default function Projects() {
                     transparent={true}
                     onRequestClose={resetModal}
                 >
-                    <View className="flex-1 justify-end bg-black/50">
+                    <View className="flex-1 justify-end bg-black/10 ">
                         <LinearGradient
                             colors={["#1F2937", "#111827"]}
-                            className="rounded-t-3xl p-6 max-h-[70%]"
+                            className="rounded-t-xl p-6 max-h-[70%]"
                         >
                             <View className="flex-row items-center justify-between mb-4">
                                 <Text className="text-2xl font-bold text-white">
@@ -154,11 +154,8 @@ export default function Projects() {
                             </View>
 
                             <View className="mb-4">
-                                <Text className="text-gray-300 mb-2 font-medium">
-                                    Project Title *
-                                </Text>
                                 <TextInput
-                                    className="bg-gray-800 rounded-xl px-4 py-3 text-gray-200 border border-gray-700"
+                                    className="bg-gray-600 rounded-xl px-4 py-3 text-gray-200 "
                                     placeholder="Enter project title"
                                     placeholderTextColor="#6B7280"
                                     value={projectTitle}
@@ -168,9 +165,6 @@ export default function Projects() {
                             </View>
 
                             <View className="mb-6">
-                                <Text className="text-gray-300 mb-2 font-medium">
-                                    Description
-                                </Text>
                                 <TextInput
                                     className="bg-gray-800 rounded-xl px-4 py-3 text-gray-200 border border-gray-700 min-h-[100px]"
                                     placeholder="Enter project description (optional)"
@@ -185,7 +179,7 @@ export default function Projects() {
 
                             <TouchableOpacity
                                 onPress={handleCreateProject}
-                                className="bg-blue-700 rounded-xl py-4 items-center mb-4"
+                                className="bg-blue-600 rounded-xl py-4 items-center mb-4"
                                 disabled={saving}
                             >
                                 {saving ? (

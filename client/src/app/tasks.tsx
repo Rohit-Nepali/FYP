@@ -260,7 +260,7 @@ export default function TasksScreen() {
               <TouchableOpacity
                 onPress={() => setFilterStatusId(null)}
                 className={`px-4 py-2 rounded-lg ${
-                  filterStatusId === null ? "bg-blue-700" : "bg-gray-800"
+                  filterStatusId === null ? "bg-blue-600" : "bg-gray-800"
                 }`}
               >
                 <Text className="text-white text-sm font-medium">All</Text>
@@ -270,7 +270,7 @@ export default function TasksScreen() {
                   key={status.id}
                   onPress={() => setFilterStatusId(status.id)}
                   className={`px-4 py-2 rounded-lg ${
-                    filterStatusId === status.id ? "bg-blue-700" : "bg-gray-800"
+                    filterStatusId === status.id ? "bg-blue-600" : "bg-gray-800"
                   }`}
                 >
                   <Text className="text-white text-sm font-medium">
@@ -391,7 +391,7 @@ export default function TasksScreen() {
                     <View className="flex-row justify-end gap-3 mt-3 ml-8">
                       <TouchableOpacity
                         onPress={() => handleEditTask(task)}
-                        className="px-3 py-1 bg-blue-700 rounded-lg"
+                        className="px-3 py-1 bg-blue-600 rounded-lg"
                       >
                         <Text className="text-white text-sm">Edit</Text>
                       </TouchableOpacity>
@@ -476,7 +476,7 @@ export default function TasksScreen() {
                           key={s.id}
                           onPress={() => setStatusId(s.id)}
                           className={`px-4 py-2 rounded-lg ${
-                            statusId === s.id ? "bg-blue-700" : "bg-gray-800"
+                            statusId === s.id ? "bg-blue-600" : "bg-gray-800"
                           }`}
                           style={
                             statusId === s.id && s.color
@@ -500,7 +500,7 @@ export default function TasksScreen() {
                           key={p.id}
                           onPress={() => setPriorityId(p.id)}
                           className={`px-4 py-2 rounded-lg ${
-                            priorityId === p.id ? "bg-blue-700" : "bg-gray-800"
+                            priorityId === p.id ? "bg-blue-600" : "bg-gray-800"
                           }`}
                           style={
                             priorityId === p.id && p.color
@@ -529,7 +529,7 @@ export default function TasksScreen() {
 
                   <TouchableOpacity
                     onPress={handleCreateTask}
-                    className="bg-blue-700 rounded-xl py-4 items-center mb-4"
+                    className="bg-blue-600 rounded-xl py-4 items-center mb-4"
                   >
                     <Text className="text-white font-bold text-lg">
                       {editingTask ? "Update Task" : "Create Task"}
@@ -584,7 +584,7 @@ export default function TasksScreen() {
                     )) || (
                       <TouchableOpacity
                         onPress={hideCustomAlert}
-                        className="flex-1 bg-blue-700 rounded-xl py-3 items-center"
+                        className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
                       >
                         <Text className="text-white font-medium">OK</Text>
                       </TouchableOpacity>

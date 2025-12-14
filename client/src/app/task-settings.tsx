@@ -232,7 +232,7 @@ export default function TaskSettingsScreen() {
               <TouchableOpacity
                 onPress={() => setActiveTab("status")}
                 className={`flex-1 py-2 rounded-lg ${
-                  activeTab === "status" ? "bg-blue-600" : "bg-gray-800"
+                  activeTab === "status" ? "bg-blue-700" : "bg-gray-800"
                 }`}
               >
                 <Text className="text-white text-center font-medium">
@@ -242,7 +242,7 @@ export default function TaskSettingsScreen() {
               <TouchableOpacity
                 onPress={() => setActiveTab("priority")}
                 className={`flex-1 py-2 rounded-lg ${
-                  activeTab === "priority" ? "bg-blue-600" : "bg-gray-800"
+                  activeTab === "priority" ? "bg-blue-700" : "bg-gray-800"
                 }`}
               >
                 <Text className="text-white text-center font-medium">
@@ -294,7 +294,7 @@ export default function TaskSettingsScreen() {
                       <View className="flex-row gap-2">
                         <TouchableOpacity
                           onPress={() => handleEdit(item)}
-                          className="px-3 py-1 bg-blue-600 rounded-lg"
+                          className="px-3 py-1 bg-blue-700 rounded-lg"
                         >
                           <Text className="text-white text-sm">Edit</Text>
                         </TouchableOpacity>
@@ -384,7 +384,7 @@ export default function TaskSettingsScreen() {
 
                   <TouchableOpacity
                     onPress={handleCreate}
-                    className="bg-blue-600 rounded-xl py-4 items-center mb-4"
+                    className="bg-blue-700 rounded-xl py-4 items-center mb-4"
                   >
                     <Text className="text-white font-bold text-lg">
                       {editingItem ? "Update" : "Create"}
@@ -439,7 +439,7 @@ export default function TaskSettingsScreen() {
                     )) || (
                       <TouchableOpacity
                         onPress={hideCustomAlert}
-                        className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
+                        className="flex-1 bg-blue-700 rounded-xl py-3 items-center"
                       >
                         <Text className="text-white font-medium">OK</Text>
                       </TouchableOpacity>

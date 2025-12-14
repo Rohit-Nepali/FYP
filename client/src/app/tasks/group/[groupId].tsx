@@ -88,7 +88,7 @@ export default function GroupTasksScreen() {
               <TouchableOpacity
                 onPress={() => setFilterStatusId(null)}
                 className={`px-4 py-2 rounded-lg ${
-                  filterStatusId === null ? "bg-blue-600" : "bg-gray-800"
+                  filterStatusId === null ? "bg-blue-700" : "bg-gray-800"
                 }`}
               >
                 <Text className="text-white text-sm font-medium">All</Text>
@@ -98,7 +98,7 @@ export default function GroupTasksScreen() {
                   key={status.id}
                   onPress={() => setFilterStatusId(status.id)}
                   className={`px-4 py-2 rounded-lg ${
-                    filterStatusId === status.id ? "bg-blue-600" : "bg-gray-800"
+                    filterStatusId === status.id ? "bg-blue-700" : "bg-gray-800"
                   }`}
                 >
                   <Text className="text-white text-sm font-medium">

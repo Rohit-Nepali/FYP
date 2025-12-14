@@ -129,7 +129,7 @@ export default function ProfileScreen() {
                   {user?.email || "user@example.com"}
                 </Text>
                 <View className="flex-row items-center mt-2">
-                  <View className="bg-blue-600 px-3 py-1 rounded-full">
+                  <View className="bg-blue-700 px-3 py-1 rounded-full">
                     <Text className="text-white text-xs font-medium capitalize">
                       {user?.role || "user"}
                     </Text>
@@ -144,7 +144,7 @@ export default function ProfileScreen() {
                     "Edit profile will be available soon!"
                   );
                 }}
-                className="bg-blue-600 rounded-xl py-3 items-center"
+                className="bg-blue-700 rounded-xl py-3 items-center"
               >
                 <Text className="text-white font-medium">Edit Profile</Text>
               </TouchableOpacity>

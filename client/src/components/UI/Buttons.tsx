@@ -23,7 +23,7 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
     const baseStyle = "rounded-xl h-14 justify-center items-center";
 
     if (variant === "primary") {
-      return `${baseStyle} ${disabled ? "bg-blue-600 opacity-70" : "bg-blue-600"}`;
+      return `${baseStyle} ${disabled ? "bg-blue-700 opacity-70" : "bg-blue-700"}`;
     }
 
     return `${baseStyle} bg-gray-900 border border-gray-700`;

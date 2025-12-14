@@ -237,7 +237,7 @@ export default function GroupDetailScreen() {
       </View>
       <View className="flex-row items-center gap-2">
         <View
-          className={`px-3 py-1 rounded-full ${member.role === "admin" ? "bg-blue-600" : "bg-gray-600"}`}
+          className={`px-3 py-1 rounded-full ${member.role === "admin" ? "bg-blue-700" : "bg-gray-600"}`}
         >
           <Text className="text-white text-xs font-medium capitalize">
             {member.role}
@@ -371,7 +371,7 @@ export default function GroupDetailScreen() {
                       onPress={() => {
                         setAddMemberModalVisible(true);
                       }}
-                      className="mb-4 bg-blue-600 rounded-xl py-3 items-center"
+                      className="mb-4 bg-blue-700 rounded-xl py-3 items-center"
                     >
                       <Text className="text-white font-medium">
                         + Add Member
@@ -383,7 +383,7 @@ export default function GroupDetailScreen() {
                 {/* Group Tasks Button */}
                 <TouchableOpacity
                   onPress={() => router.push(`/tasks/group/${group.id}`)}
-                  className="bg-blue-600 rounded-xl py-4 items-center mb-4"
+                  className="bg-blue-700 rounded-xl py-4 items-center mb-4"
                 >
                   <View className="flex-row items-center gap-2">
                     <Ionicons name="list-outline" size={20} color="#fff" />
@@ -417,7 +417,7 @@ export default function GroupDetailScreen() {
                 {isAdmin() && (
                   <TouchableOpacity
                     onPress={() => setAddMemberModalVisible(true)}
-                    className="mt-4 bg-blue-600 rounded-xl py-3 px-6"
+                    className="mt-4 bg-blue-700 rounded-xl py-3 px-6"
                   >
                     <Text className="text-white font-medium">
                       + Add First Member
@@ -479,7 +479,7 @@ export default function GroupDetailScreen() {
               </View>
               <TouchableOpacity
                 onPress={handleUpdateGroup}
-                className="bg-blue-600 rounded-xl py-4 items-center"
+                className="bg-blue-700 rounded-xl py-4 items-center"
                 activeOpacity={0.8}
               >
                 <Text className="text-white font-bold text-lg">
@@ -535,7 +535,7 @@ export default function GroupDetailScreen() {
                       key={role}
                       onPress={() => setMemberRole(role as "admin" | "member")}
                       className={`px-4 py-2 rounded-lg flex-1 ${
-                        memberRole === role ? "bg-blue-600" : "bg-gray-800"
+                        memberRole === role ? "bg-blue-700" : "bg-gray-800"
                       }`}
                     >
                       <Text className="text-white text-sm capitalize text-center">
@@ -547,7 +547,7 @@ export default function GroupDetailScreen() {
               </View>
               <TouchableOpacity
                 onPress={handleAddMember}
-                className="bg-blue-600 rounded-xl py-4 items-center"
+                className="bg-blue-700 rounded-xl py-4 items-center"
                 activeOpacity={0.8}
               >
                 <Text className="text-white font-bold text-lg">Add Member</Text>

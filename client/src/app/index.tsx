@@ -98,23 +98,81 @@ export default function Index() {
     <SafeAreaView className="flex-1 bg-gray-900">
       <ScrollView className="flex-1 px-4 ">
         {/* Greeting */}
-        <Text className="text-white text-3xl mt-2">
-          Hi <Text className="font-bold ">{user?.name || "there"}</Text>!
+        <Text className="text-white font-bold text-xl mt-4">
+          Hi <Text className="font-bold text-2xl">{user?.name?.split(' ')[0] || "there"}</Text> !
         </Text>
-
-        <Text className="text-white text-2xl font-bold mt-1 mb-6">
+ 
+        <Text className="text-white text-2xl font-bold mt-2 mb-6">
           What's on your plate?
         </Text>
 
         {/* Projects */}
         <View className="flex-row justify-between items-center mb-4">
           <Text className="text-white text-lg font-semibold">Projects</Text>
-          <Link href="/">
+          <Link href="/projects/page">
             <Text className="text-purple-400 text-sm">See All</Text>
           </Link>
         </View>
 
-        <View className="mb-6 space-y-4 pb-6"></View>
+        <View className="mb-6 space-y-4 pb-6">
+          {loadingProjects ? (
+            <View className="py-10 items-center justify-center">
+              <ActivityIndicator size="large" color="#8b5cf6" />
+            </View>
+          ) : projectError ? (
+            <View className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+              <Text className="text-red-300 font-semibold mb-2">
+                Unable to load projects
+              </Text>
+              <Text className="text-gray-400 text-sm mb-3">{projectError}</Text>
+              <TouchableOpacity
+                onPress={loadProjects}
+                className="bg-red-600 rounded-lg py-2 items-center"
+              >
+                <Text className="text-white font-medium">Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : projects.length === 0 ? (
+            <View className="py-12 items-center justify-center bg-gray-800 rounded-xl">
+              <Ionicons
+                name="folder-open-outline"
+                size={48}
+                color="#6B7280"
+              />
+              <Text className="text-gray-300 font-semibold mt-3">
+                No projects yet
+              </Text>
+              <Text className="text-gray-500 text-sm mt-1 text-center px-6">
+                Create your first project to organize your tasks.
+              </Text>
+            </View>
+          ) : (
+            projects.map((project) => (
+              <View key={project.id} className="bg-gray-800 rounded-xl p-4">
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-white font-semibold flex-1">
+                    {project.name}
+                  </Text>
+                  <View
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: project.color }}
+                  />
+                </View>
+                <Progress.Bar
+                  progress={project.progress / 100}
+                  width={null}
+                  color={project.color}
+                  unfilledColor="#374151"
+                  borderWidth={0}
+                  height={6}
+                />
+                <Text className="text-gray-400 text-xs mt-2">
+                  {project.progress}% Complete
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
 
         {/* Tasks on Home */}
         <View className="flex-row justify-between items-center mb-4">
@@ -167,14 +225,14 @@ export default function Index() {
                   <Ionicons
                     name={
                       task.status.name.toLowerCase().includes("complete") ||
-                      task.status.name.toLowerCase().includes("done")
+                        task.status.name.toLowerCase().includes("done")
                         ? "checkmark-circle"
                         : "ellipse-outline"
                     }
                     size={22}
                     color={
                       task.status.name.toLowerCase().includes("complete") ||
-                      task.status.name.toLowerCase().includes("done")
+                        task.status.name.toLowerCase().includes("done")
                         ? "#10B981"
                         : "#9CA3AF"
                     }
@@ -183,12 +241,11 @@ export default function Index() {
                 <View className="flex-1">
                   <View className="flex-row items-start justify-between gap-3">
                     <Text
-                      className={`text-white font-semibold flex-1 ${
-                        task.status.name.toLowerCase().includes("complete") ||
+                      className={`text-white font-semibold flex-1 ${task.status.name.toLowerCase().includes("complete") ||
                         task.status.name.toLowerCase().includes("done")
-                          ? "line-through text-gray-400"
-                          : ""
-                      }`}
+                        ? "line-through text-gray-400"
+                        : ""
+                        }`}
                     >
                       {task.title}
                     </Text>

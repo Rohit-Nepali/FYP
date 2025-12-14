@@ -3,10 +3,6 @@ import "../../global.css";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BottomNavigation } from "../components/BottomNavigation";
-import { View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { theme } from "../config/theme";
-import { ProtectedRoute } from "../components/ProtectedRoute";
 
 // Wrapper component to conditionally show bottom nav
 function AppLayout() {
@@ -40,6 +36,7 @@ function AppLayout() {
         <Stack.Screen name="groups/index" />
         <Stack.Screen name="groups/[id]" />
         <Stack.Screen name="tasks/group/[groupId]" />
+        <Stack.Screen name="projects/page" />
       </Stack>
       {showBottomNav && <BottomNavigation />}
     </>

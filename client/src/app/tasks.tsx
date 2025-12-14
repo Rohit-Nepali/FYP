@@ -159,7 +159,7 @@ export default function TasksScreen() {
             try {
               await deleteTask(taskId);
               showCustomAlert("Success", "Task deleted successfully");
-              loadTasks();
+              // loadTasks();
             } catch (error) {
               showCustomAlert(
                 "Error",

@@ -20,26 +20,27 @@ import {
   updateTask,
   deleteTask,
 } from "../services/taskService";
+import { Status, getAllStatuses } from "../services/statusService";
+import { Priority, getAllPriorities } from "../services/priorityService";
 import { theme } from "../config/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-type TaskStatus = "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 export default function TasksScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [statuses, setStatuses] = useState<Status[]>([]);
+  const [priorities, setPriorities] = useState<Priority[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterStatusId, setFilterStatusId] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<TaskStatus>("TODO");
-  const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
+  const [statusId, setStatusId] = useState<string>("");
+  const [priorityId, setPriorityId] = useState<string>("");
   const [dueDate, setDueDate] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
@@ -56,22 +57,32 @@ export default function TasksScreen() {
   } | null>(null);
 
   useEffect(() => {
-    loadTasks();
-  }, [filterStatus]);
+    loadData();
+  }, [filterStatusId]);
 
-  const loadTasks = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const filters: any = {};
-      if (filterStatus !== "all") {
-        filters.status = filterStatus;
+      const [tasksResult, statusesData, prioritiesData] = await Promise.all([
+        getAllTasks(filterStatusId ? { statusId: filterStatusId } : {}),
+        getAllStatuses(),
+        getAllPriorities(),
+      ]);
+      setTasks(tasksResult.tasks);
+      setStatuses(statusesData);
+      setPriorities(prioritiesData);
+
+      // Set default status and priority if not set
+      if (statusesData.length > 0 && !statusId) {
+        setStatusId(statusesData[0].id);
       }
-      const result = await getAllTasks(filters);
-      setTasks(result.tasks);
+      if (prioritiesData.length > 0 && !priorityId) {
+        setPriorityId(prioritiesData[0].id);
+      }
     } catch (error) {
       showCustomAlert(
         "Error",
-        error instanceof Error ? error.message : "Failed to load tasks"
+        error instanceof Error ? error.message : "Failed to load data"
       );
     } finally {
       setLoading(false);
@@ -84,13 +95,23 @@ export default function TasksScreen() {
       return;
     }
 
+    if (!statusId) {
+      showCustomAlert("Error", "Please select a status");
+      return;
+    }
+
+    if (!priorityId) {
+      showCustomAlert("Error", "Please select a priority");
+      return;
+    }
+
     try {
       if (editingTask) {
         await updateTask(editingTask.id, {
           title,
           description: description || undefined,
-          status,
-          priority,
+          statusId,
+          priorityId,
           dueDate: dueDate || undefined,
         });
         showCustomAlert("Success", "Task updated successfully");
@@ -98,15 +119,15 @@ export default function TasksScreen() {
         await createTask({
           title,
           description: description || undefined,
-          status,
-          priority,
+          statusId,
+          priorityId,
           dueDate: dueDate || undefined,
         });
         showCustomAlert("Success", "Task created successfully");
       }
       resetForm();
       setModalVisible(false);
-      loadTasks();
+      loadData();
     } catch (error) {
       showCustomAlert(
         "Error",
@@ -119,8 +140,8 @@ export default function TasksScreen() {
     setEditingTask(task);
     setTitle(task.title);
     setDescription(task.description || "");
-    setStatus(task.status);
-    setPriority(task.priority);
+    setStatusId(task.statusId);
+    setPriorityId(task.priorityId);
     setDueDate(task.dueDate || "");
     setModalVisible(true);
   };
@@ -152,20 +173,14 @@ export default function TasksScreen() {
   };
 
   const handleToggleStatus = async (task: Task) => {
-    let newStatus: TaskStatus;
-    if (task.status === "TODO") {
-      newStatus = "IN_PROGRESS";
-    } else if (task.status === "IN_PROGRESS") {
-      newStatus = "COMPLETED";
-    } else if (task.status === "COMPLETED") {
-      newStatus = "TODO";
-    } else {
-      newStatus = "TODO";
-    }
+    // Cycle to next status
+    const currentIndex = statuses.findIndex((s) => s.id === task.statusId);
+    const nextIndex = (currentIndex + 1) % statuses.length;
+    const newStatusId = statuses[nextIndex].id;
 
     try {
-      await updateTask(task.id, { status: newStatus });
-      loadTasks();
+      await updateTask(task.id, { statusId: newStatusId });
+      loadData();
     } catch (error) {
       showCustomAlert(
         "Error",
@@ -178,37 +193,23 @@ export default function TasksScreen() {
     setEditingTask(null);
     setTitle("");
     setDescription("");
-    setStatus("TODO");
-    setPriority("MEDIUM");
+    if (statuses.length > 0) setStatusId(statuses[0].id);
+    if (priorities.length > 0) setPriorityId(priorities[0].id);
     setDueDate("");
   };
 
-  const getPriorityColor = (priority: TaskPriority) => {
-    switch (priority) {
-      case "URGENT":
-        return "bg-red-500";
-      case "HIGH":
-        return "bg-orange-500";
-      case "MEDIUM":
-        return "bg-yellow-500";
-      case "LOW":
-        return "bg-green-500";
-      default:
-        return "bg-gray-500";
+  const getPriorityColor = (priority: Priority) => {
+    if (priority.color) {
+      return { backgroundColor: priority.color };
     }
+    return { backgroundColor: "#6B7280" };
   };
 
-  const getStatusColor = (status: TaskStatus) => {
-    switch (status) {
-      case "COMPLETED":
-        return "bg-green-500";
-      case "IN_PROGRESS":
-        return "bg-blue-500";
-      case "CANCELLED":
-        return "bg-gray-500";
-      default:
-        return "bg-yellow-500";
+  const getStatusColor = (status: Status) => {
+    if (status.color) {
+      return { backgroundColor: status.color };
     }
+    return { backgroundColor: "#6B7280" };
   };
 
   const formatDate = (dateString?: string) => {
@@ -255,17 +256,25 @@ export default function TasksScreen() {
             </View>
 
             {/* Filter Buttons */}
-            <View className="flex-row gap-2">
-              {["all", "TODO", "IN_PROGRESS", "COMPLETED"].map((filter) => (
+            <View className="flex-row gap-2 flex-wrap">
+              <TouchableOpacity
+                onPress={() => setFilterStatusId(null)}
+                className={`px-4 py-2 rounded-lg ${
+                  filterStatusId === null ? "bg-blue-600" : "bg-gray-800"
+                }`}
+              >
+                <Text className="text-white text-sm font-medium">All</Text>
+              </TouchableOpacity>
+              {statuses.map((status) => (
                 <TouchableOpacity
-                  key={filter}
-                  onPress={() => setFilterStatus(filter)}
+                  key={status.id}
+                  onPress={() => setFilterStatusId(status.id)}
                   className={`px-4 py-2 rounded-lg ${
-                    filterStatus === filter ? "bg-blue-600" : "bg-gray-800"
+                    filterStatusId === status.id ? "bg-blue-600" : "bg-gray-800"
                   }`}
                 >
-                  <Text className="text-white text-sm font-medium capitalize">
-                    {filter === "all" ? "All" : filter.replace("_", " ")}
+                  <Text className="text-white text-sm font-medium">
+                    {status.name}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -311,13 +320,19 @@ export default function TasksScreen() {
                           >
                             <Ionicons
                               name={
-                                task.status === "COMPLETED"
+                                task.status.name
+                                  .toLowerCase()
+                                  .includes("complete") ||
+                                task.status.name.toLowerCase().includes("done")
                                   ? "checkmark-circle"
                                   : "ellipse-outline"
                               }
                               size={24}
                               color={
-                                task.status === "COMPLETED"
+                                task.status.name
+                                  .toLowerCase()
+                                  .includes("complete") ||
+                                task.status.name.toLowerCase().includes("done")
                                   ? "#10B981"
                                   : "#9CA3AF"
                               }
@@ -325,7 +340,10 @@ export default function TasksScreen() {
                           </TouchableOpacity>
                           <Text
                             className={`text-lg font-semibold text-gray-200 flex-1 ${
-                              task.status === "COMPLETED"
+                              task.status.name
+                                .toLowerCase()
+                                .includes("complete") ||
+                              task.status.name.toLowerCase().includes("done")
                                 ? "line-through opacity-60"
                                 : ""
                             }`}
@@ -340,21 +358,19 @@ export default function TasksScreen() {
                         )}
                         <View className="flex-row items-center gap-2 ml-8">
                           <View
-                            className={`px-2 py-1 rounded ${getPriorityColor(
-                              task.priority
-                            )}`}
+                            className="px-2 py-1 rounded"
+                            style={getPriorityColor(task.priority)}
                           >
                             <Text className="text-white text-xs font-medium">
-                              {task.priority}
+                              {task.priority.name}
                             </Text>
                           </View>
                           <View
-                            className={`px-2 py-1 rounded ${getStatusColor(
-                              task.status
-                            )}`}
+                            className="px-2 py-1 rounded"
+                            style={getStatusColor(task.status)}
                           >
                             <Text className="text-white text-xs font-medium">
-                              {task.status.replace("_", " ")}
+                              {task.status.name}
                             </Text>
                           </View>
                           {task.dueDate && (
@@ -455,24 +471,20 @@ export default function TasksScreen() {
                       Status
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
-                      {(
-                        [
-                          "TODO",
-                          "IN_PROGRESS",
-                          "COMPLETED",
-                          "CANCELLED",
-                        ] as TaskStatus[]
-                      ).map((s) => (
+                      {statuses.map((s) => (
                         <TouchableOpacity
-                          key={s}
-                          onPress={() => setStatus(s)}
+                          key={s.id}
+                          onPress={() => setStatusId(s.id)}
                           className={`px-4 py-2 rounded-lg ${
-                            status === s ? "bg-blue-600" : "bg-gray-800"
+                            statusId === s.id ? "bg-blue-600" : "bg-gray-800"
                           }`}
+                          style={
+                            statusId === s.id && s.color
+                              ? { backgroundColor: s.color }
+                              : undefined
+                          }
                         >
-                          <Text className="text-white text-sm">
-                            {s.replace("_", " ")}
-                          </Text>
+                          <Text className="text-white text-sm">{s.name}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -483,17 +495,20 @@ export default function TasksScreen() {
                       Priority
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
-                      {(
-                        ["LOW", "MEDIUM", "HIGH", "URGENT"] as TaskPriority[]
-                      ).map((p) => (
+                      {priorities.map((p) => (
                         <TouchableOpacity
-                          key={p}
-                          onPress={() => setPriority(p)}
+                          key={p.id}
+                          onPress={() => setPriorityId(p.id)}
                           className={`px-4 py-2 rounded-lg ${
-                            priority === p ? "bg-blue-600" : "bg-gray-800"
+                            priorityId === p.id ? "bg-blue-600" : "bg-gray-800"
                           }`}
+                          style={
+                            priorityId === p.id && p.color
+                              ? { backgroundColor: p.color }
+                              : undefined
+                          }
                         >
-                          <Text className="text-white text-sm">{p}</Text>
+                          <Text className="text-white text-sm">{p.name}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>

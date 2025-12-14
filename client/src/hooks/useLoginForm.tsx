@@ -7,6 +7,7 @@ export const useLoginForm = () => {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>(
     {}
   );
+  console.log("errors ", errors)
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const clearError = useCallback((field: keyof typeof errors) => {

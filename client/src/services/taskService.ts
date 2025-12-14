@@ -1,6 +1,8 @@
 import axios, { AxiosError } from "axios";
 import { config } from "../config/environment";
 import { getStoredTokens } from "./authService";
+import { Status } from "./statusService";
+import { Priority } from "./priorityService";
 
 const API_BASE_URL = config.API_BASE_URL;
 
@@ -8,10 +10,14 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  status: "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  statusId: string;
+  status: Status;
+  priorityId: string;
+  priority: Priority;
   dueDate?: string;
-  userId: string;
+  creatorId: string;
+  projectId?: string;
+  assigneeId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,22 +25,26 @@ export interface Task {
 export interface CreateTaskData {
   title: string;
   description?: string;
-  status?: "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  statusId?: string;
+  priorityId?: string;
   dueDate?: string;
+  projectId?: string;
+  assigneeId?: string;
 }
 
 export interface UpdateTaskData {
   title?: string;
   description?: string;
-  status?: "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  statusId?: string;
+  priorityId?: string;
   dueDate?: string | null;
+  assigneeId?: string;
+  projectId?: string;
 }
 
 export interface TaskFilters {
-  status?: string;
-  priority?: string;
+  statusId?: string;
+  priorityId?: string;
   page?: number;
   limit?: number;
 }

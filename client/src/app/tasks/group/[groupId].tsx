@@ -13,66 +13,54 @@ import { Ionicons } from "@expo/vector-icons";
 import { ProtectedRoute } from "../../../components/ProtectedRoute";
 import { useAuth } from "../../../contexts/AuthContext";
 import { Task, getGroupTasks } from "../../../services/taskService";
+import { getAllStatuses } from "../../../services/statusService";
 import { theme } from "../../../config/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-type TaskStatus = "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 export default function GroupTasksScreen() {
   const router = useRouter();
   const { groupId } = useLocalSearchParams();
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [statuses, setStatuses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterStatusId, setFilterStatusId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadTasks();
-  }, [filterStatus]);
+    loadData();
+  }, [filterStatusId]);
 
-  const loadTasks = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      // TODO: Implement getGroupTasks in taskService
-      const result = await getGroupTasks(groupId as string);
-      setTasks(result);
+      const [tasksResult, statusesData] = await Promise.all([
+        getGroupTasks(groupId as string),
+        getAllStatuses(),
+      ]);
+      setTasks(tasksResult);
+      setStatuses(statusesData);
     } catch (error) {
       Alert.alert(
         "Error",
-        error instanceof Error ? error.message : "Failed to load group tasks"
+        error instanceof Error ? error.message : "Failed to load data"
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const getPriorityColor = (priority: TaskPriority) => {
-    switch (priority) {
-      case "URGENT":
-        return "bg-red-500";
-      case "HIGH":
-        return "bg-orange-500";
-      case "MEDIUM":
-        return "bg-yellow-500";
-      case "LOW":
-        return "bg-green-500";
-      default:
-        return "bg-gray-500";
+  const getPriorityColor = (priority: Task["priority"]) => {
+    if (priority.color) {
+      return { backgroundColor: priority.color };
     }
+    return { backgroundColor: "#6B7280" };
   };
 
-  const getStatusColor = (status: TaskStatus) => {
-    switch (status) {
-      case "COMPLETED":
-        return "bg-green-500";
-      case "IN_PROGRESS":
-        return "bg-blue-500";
-      case "CANCELLED":
-        return "bg-gray-500";
-      default:
-        return "bg-yellow-500";
+  const getStatusColor = (status: Task["status"]) => {
+    if (status.color) {
+      return { backgroundColor: status.color };
     }
+    return { backgroundColor: "#6B7280" };
   };
 
   const formatDate = (dateString?: string) => {
@@ -96,17 +84,25 @@ export default function GroupTasksScreen() {
             </View>
 
             {/* Filter Buttons */}
-            <View className="flex-row gap-2">
-              {["all", "TODO", "IN_PROGRESS", "COMPLETED"].map((filter) => (
+            <View className="flex-row gap-2 flex-wrap">
+              <TouchableOpacity
+                onPress={() => setFilterStatusId(null)}
+                className={`px-4 py-2 rounded-lg ${
+                  filterStatusId === null ? "bg-blue-600" : "bg-gray-800"
+                }`}
+              >
+                <Text className="text-white text-sm font-medium">All</Text>
+              </TouchableOpacity>
+              {statuses.map((status) => (
                 <TouchableOpacity
-                  key={filter}
-                  onPress={() => setFilterStatus(filter)}
+                  key={status.id}
+                  onPress={() => setFilterStatusId(status.id)}
                   className={`px-4 py-2 rounded-lg ${
-                    filterStatus === filter ? "bg-blue-600" : "bg-gray-800"
+                    filterStatusId === status.id ? "bg-blue-600" : "bg-gray-800"
                   }`}
                 >
-                  <Text className="text-white text-sm font-medium capitalize">
-                    {filter === "all" ? "All" : filter.replace("_", " ")}
+                  <Text className="text-white text-sm font-medium">
+                    {status.name}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -148,7 +144,10 @@ export default function GroupTasksScreen() {
                         <View className="flex-row items-center gap-2 mb-1">
                           <Text
                             className={`text-lg font-semibold text-gray-200 flex-1 ${
-                              task.status === "COMPLETED"
+                              task.status.name
+                                .toLowerCase()
+                                .includes("complete") ||
+                              task.status.name.toLowerCase().includes("done")
                                 ? "line-through opacity-60"
                                 : ""
                             }`}
@@ -168,26 +167,24 @@ export default function GroupTasksScreen() {
                             color="#9CA3AF"
                           />
                           <Text className="text-gray-400 text-sm">
-                            {task.userId}
+                            {task.creatorId}
                           </Text>
                         </View>
                         <View className="flex-row items-center gap-2">
                           <View
-                            className={`px-2 py-1 rounded ${getPriorityColor(
-                              task.priority
-                            )}`}
+                            className="px-2 py-1 rounded"
+                            style={getPriorityColor(task.priority)}
                           >
                             <Text className="text-white text-xs font-medium">
-                              {task.priority}
+                              {task.priority.name}
                             </Text>
                           </View>
                           <View
-                            className={`px-2 py-1 rounded ${getStatusColor(
-                              task.status
-                            )}`}
+                            className="px-2 py-1 rounded"
+                            style={getStatusColor(task.status)}
                           >
                             <Text className="text-white text-xs font-medium">
-                              {task.status.replace("_", " ")}
+                              {task.status.name}
                             </Text>
                           </View>
                           {task.dueDate && (

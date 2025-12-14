@@ -106,7 +106,7 @@ export const authService = {
 
     if (!user) {
       throw new ApiError(
-        ERROR_MESSAGES.INVALID_CREDENTIALS,
+        ERROR_MESSAGES.USER_DOES_NOT_EXIST,
         HTTP_STATUS.UNAUTHORIZED
       );
     }

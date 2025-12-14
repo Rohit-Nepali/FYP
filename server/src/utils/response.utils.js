@@ -134,6 +134,7 @@ export const ERROR_MESSAGES = {
   VALIDATION_ERROR: "Validation failed",
   DUPLICATE_ENTRY: "Resource already exists",
   USER_ALREADY_EXISTS: "User with this email already exists",
+  USER_DOES_NOT_EXIST: "User with this email does not exist",
   INTERNAL_ERROR: "Internal server error",
   INVALID_TOKEN: "Invalid or expired token",
   EMAIL_NOT_VERIFIED: "Please verify your email address",

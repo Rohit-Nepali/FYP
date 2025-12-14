@@ -42,6 +42,13 @@ export default function ProfileScreen() {
       },
     },
     {
+      title: "Task Settings",
+      icon: "settings-outline",
+      onPress: () => {
+        router.push("/task-settings");
+      },
+    },
+    {
       title: "Notifications",
       icon: "notifications-outline",
       rightComponent: (

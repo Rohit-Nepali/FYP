@@ -4,34 +4,95 @@ import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
 
 export const taskService = {
   create: async (taskData, userId) => {
-    const { title, description, status, priority, dueDate, projectId, assigneeId } =
+    const { title, description, statusId, priorityId, dueDate, projectId, assigneeId } =
       taskData;
 
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      include: { members: { select: { userId: true } } },
-    });
+    // Get or create default status and priority if not provided
+    let finalStatusId = statusId;
+    let finalPriorityId = priorityId;
 
-    if (!project) {
-      throw new ApiError(ERROR_MESSAGES.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    if (!finalStatusId) {
+      // Get first status for user, or create a default one
+      let defaultStatus = await prisma.status.findFirst({
+        where: { userId },
+        orderBy: { order: "asc" },
+      });
+
+      if (!defaultStatus) {
+        defaultStatus = await prisma.status.create({
+          data: {
+            name: "TODO",
+            userId,
+            order: 0,
+          },
+        });
+      }
+      finalStatusId = defaultStatus.id;
+    } else {
+      // Verify status belongs to user
+      const status = await prisma.status.findFirst({
+        where: { id: finalStatusId, userId },
+      });
+      if (!status) {
+        throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);
+      }
     }
 
-    if (project.ownerId !== userId) {
-      throw new ApiError(
-        "Only the project owner can create tasks",
-        HTTP_STATUS.FORBIDDEN
-      );
+    if (!finalPriorityId) {
+      // Get first priority for user, or create a default one
+      let defaultPriority = await prisma.priority.findFirst({
+        where: { userId },
+        orderBy: { order: "asc" },
+      });
+
+      if (!defaultPriority) {
+        defaultPriority = await prisma.priority.create({
+          data: {
+            name: "MEDIUM",
+            userId,
+            order: 0,
+          },
+        });
+      }
+      finalPriorityId = defaultPriority.id;
+    } else {
+      // Verify priority belongs to user
+      const priority = await prisma.priority.findFirst({
+        where: { id: finalPriorityId, userId },
+      });
+      if (!priority) {
+        throw new ApiError("Priority not found", HTTP_STATUS.NOT_FOUND);
+      }
     }
 
-    if (assigneeId) {
-      const isMember =
-        assigneeId === project.ownerId ||
-        project.members.some((member) => member.userId === assigneeId);
-      if (!isMember) {
+    // If projectId is provided, validate project access
+    if (projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        include: { members: { select: { userId: true } } },
+      });
+
+      if (!project) {
+        throw new ApiError(ERROR_MESSAGES.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+      }
+
+      if (project.ownerId !== userId) {
         throw new ApiError(
-          "Assignee must be a member of the project",
-          HTTP_STATUS.BAD_REQUEST
+          "Only the project owner can create tasks",
+          HTTP_STATUS.FORBIDDEN
         );
+      }
+
+      if (assigneeId) {
+        const isMember =
+          assigneeId === project.ownerId ||
+          project.members.some((member) => member.userId === assigneeId);
+        if (!isMember) {
+          throw new ApiError(
+            "Assignee must be a member of the project",
+            HTTP_STATUS.BAD_REQUEST
+          );
+        }
       }
     }
 
@@ -39,13 +100,16 @@ export const taskService = {
       data: {
         title,
         description,
-        status: status || "TODO",
-        priority: priority || "MEDIUM",
+        statusId: finalStatusId,
+        priorityId: finalPriorityId,
         dueDate: dueDate ? new Date(dueDate) : null,
-        projectId,
+        projectId: projectId || null,
+        creatorId: userId,
         assigneeId: assigneeId || null,
       },
       include: {
+        status: true,
+        priority: true,
         assignee: {
           select: { id: true, name: true, email: true, profileImage: true },
         },
@@ -59,9 +123,10 @@ export const taskService = {
   },
 
   getAll: async (userId, filters = {}) => {
-    const { status, priority, page = 1, limit = 10 } = filters;
+    const { statusId, priorityId, page = 1, limit = 10 } = filters;
     const skip = (page - 1) * limit;
 
+    // Get tasks created by user or tasks in projects where user is a member
     const projects = await prisma.project.findMany({
       where: {
         OR: [
@@ -73,17 +138,14 @@ export const taskService = {
     });
 
     const projectIds = projects.map((p) => p.id);
-    if (projectIds.length === 0) {
-      return {
-        tasks: [],
-        pagination: { page: parseInt(page), limit: parseInt(limit), total: 0, totalPages: 0 },
-      };
-    }
 
     const where = {
-      projectId: { in: projectIds },
-      ...(status && { status }),
-      ...(priority && { priority }),
+      OR: [
+        { creatorId: userId },
+        ...(projectIds.length > 0 ? [{ projectId: { in: projectIds } }] : []),
+      ],
+      ...(statusId && { statusId }),
+      ...(priorityId && { priorityId }),
     };
 
     const [tasks, total] = await Promise.all([
@@ -91,8 +153,10 @@ export const taskService = {
         where,
         skip,
         take: parseInt(limit),
-        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }],
         include: {
+          status: true,
+          priority: true,
           assignee: {
             select: { id: true, name: true, email: true, profileImage: true },
           },
@@ -119,14 +183,21 @@ export const taskService = {
     const task = await prisma.task.findFirst({
       where: {
         id: taskId,
-        project: {
-          OR: [
-            { ownerId: userId },
-            { members: { some: { userId } } },
-          ],
-        },
+        OR: [
+          { creatorId: userId },
+          {
+            project: {
+              OR: [
+                { ownerId: userId },
+                { members: { some: { userId } } },
+              ],
+            },
+          },
+        ],
       },
       include: {
+        status: true,
+        priority: true,
         assignee: {
           select: { id: true, name: true, email: true, profileImage: true },
         },
@@ -147,12 +218,17 @@ export const taskService = {
     const existingTask = await prisma.task.findFirst({
       where: {
         id: taskId,
-        project: {
-          OR: [
-            { ownerId: userId },
-            { members: { some: { userId } } },
-          ],
-        },
+        OR: [
+          { creatorId: userId },
+          {
+            project: {
+              OR: [
+                { ownerId: userId },
+                { members: { some: { userId } } },
+              ],
+            },
+          },
+        ],
       },
       include: {
         project: { select: { id: true, ownerId: true, members: { select: { userId: true } } } },
@@ -163,12 +239,13 @@ export const taskService = {
       throw new ApiError(ERROR_MESSAGES.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
     }
 
-    const isOwner = existingTask.project.ownerId === userId;
+    const isCreator = existingTask.creatorId === userId;
+    const isOwner = existingTask.project?.ownerId === userId;
     const isAssignee = existingTask.assigneeId === userId;
 
-    if (!isOwner && !isAssignee) {
+    if (!isCreator && !isOwner && !isAssignee) {
       throw new ApiError(
-        "Only the project owner or assignee can update this task",
+        "Only the task creator, project owner, or assignee can update this task",
         HTTP_STATUS.FORBIDDEN
       );
     }
@@ -176,22 +253,43 @@ export const taskService = {
     const {
       title,
       description,
-      status,
-      priority,
+      statusId,
+      priorityId,
       dueDate,
       assigneeId,
     } = updateData;
 
     const data = {};
 
-    if (isOwner) {
+    if (isCreator || isOwner) {
       if (title !== undefined) data.title = title;
       if (description !== undefined) data.description = description;
-      if (status !== undefined) data.status = status;
-      if (priority !== undefined) data.priority = priority;
+
+      if (statusId !== undefined) {
+        // Verify status belongs to user
+        const status = await prisma.status.findFirst({
+          where: { id: statusId, userId },
+        });
+        if (!status) {
+          throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);
+        }
+        data.statusId = statusId;
+      }
+
+      if (priorityId !== undefined) {
+        // Verify priority belongs to user
+        const priority = await prisma.priority.findFirst({
+          where: { id: priorityId, userId },
+        });
+        if (!priority) {
+          throw new ApiError("Priority not found", HTTP_STATUS.NOT_FOUND);
+        }
+        data.priorityId = priorityId;
+      }
+
       if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
 
-      if (assigneeId !== undefined) {
+      if (assigneeId !== undefined && existingTask.project) {
         if (assigneeId === null) {
           data.assigneeId = null;
         } else {
@@ -209,7 +307,16 @@ export const taskService = {
       }
     } else if (isAssignee) {
       if (title !== undefined) data.title = title;
-      if (status !== undefined) data.status = status;
+      if (statusId !== undefined) {
+        // Verify status belongs to user
+        const status = await prisma.status.findFirst({
+          where: { id: statusId, userId },
+        });
+        if (!status) {
+          throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);
+        }
+        data.statusId = statusId;
+      }
       // Assignees cannot change other fields
     }
 
@@ -217,6 +324,8 @@ export const taskService = {
       where: { id: taskId },
       data,
       include: {
+        status: true,
+        priority: true,
         assignee: {
           select: { id: true, name: true, email: true, profileImage: true },
         },
@@ -233,15 +342,20 @@ export const taskService = {
     const existingTask = await prisma.task.findFirst({
       where: {
         id: taskId,
-        project: {
-          ownerId: userId,
-        },
+        OR: [
+          { creatorId: userId },
+          {
+            project: {
+              ownerId: userId,
+            },
+          },
+        ],
       },
     });
 
     if (!existingTask) {
       throw new ApiError(
-        "Only the project owner can delete this task",
+        "Only the task creator or project owner can delete this task",
         HTTP_STATUS.FORBIDDEN
       );
     }
@@ -272,6 +386,8 @@ export const taskService = {
     const tasks = await prisma.task.findMany({
       where: { projectId },
       include: {
+        status: true,
+        priority: true,
         assignee: {
           select: { id: true, name: true, email: true, profileImage: true },
         },

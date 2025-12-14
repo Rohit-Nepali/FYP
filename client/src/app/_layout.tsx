@@ -6,6 +6,7 @@ import { BottomNavigation } from "../components/BottomNavigation";
 import { View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "../config/theme";
+import { ProtectedRoute } from "../components/ProtectedRoute";
 
 // Wrapper component to conditionally show bottom nav
 function AppLayout() {
@@ -25,12 +26,16 @@ function AppLayout() {
           animationDuration: 100,
         }}
       >
+        {/* public routes */}
         <Stack.Screen name="splash" />
+        <Stack.Screen name="(auth)/login" />
+        <Stack.Screen name="(auth)/signup" />
+
+        {/* protected routes */}
         <Stack.Screen name="index" />
         <Stack.Screen name="chatbot" />
         <Stack.Screen name="profile" />
-        <Stack.Screen name="(auth)/login" />
-        <Stack.Screen name="(auth)/signup" />
+        <Stack.Screen name="task-settings" />
         <Stack.Screen name="tasks/tasks" />
         <Stack.Screen name="groups/index" />
         <Stack.Screen name="groups/[id]" />
@@ -45,7 +50,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppLayout />
+        {/* <ProtectedRoute> */}
+          <AppLayout />
+        {/* </ProtectedRoute> */}
       </AuthProvider>
     </SafeAreaProvider>
   );

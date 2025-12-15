@@ -126,7 +126,7 @@ export const forgotPasswordController = async (req, res, next) => {
 
     // Send password reset email
     const { emailService } = await import("../services/email.service.js");
-    await emailService.sendPasswordResetEmail(email, result.resetToken, req);
+    await emailService.sendPasswordResetEmail(email, result.resetToken,"Taskora");
 
     return ApiResponse.sendSuccessResponse(
       res,

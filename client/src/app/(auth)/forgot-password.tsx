@@ -118,7 +118,7 @@ export default function ForgotPasswordScreen() {
   );
 
   const submitButtonText = useMemo(
-    () => (isSubmitDisabled ? "Sending..." : "Send Reset Link"),
+    () => (isSubmitDisabled ? "Sending..." : "Send OTP"),
     [isSubmitDisabled]
   );
 
@@ -146,8 +146,7 @@ export default function ForgotPasswordScreen() {
               Forgot Password?
             </Text>
             <Text className="text-base text-gray-400 text-center">
-              No worries! Enter your email and we'll send you a link to reset
-              your password.
+              No worries! Enter your email and we'll send you a one-time code (OTP) to reset your password.
             </Text>
           </View>
 

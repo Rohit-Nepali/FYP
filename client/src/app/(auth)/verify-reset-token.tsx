@@ -52,9 +52,9 @@ export default function VerifyResetTokenScreen() {
     const newErrors: { token?: string } = {};
 
     if (!token.trim()) {
-      newErrors.token = "Reset token is required";
-    } else if (token.length < 10) {
-      newErrors.token = "Invalid token format";
+      newErrors.token = "OTP is required";
+    } else if (!/^\d{6}$/.test(token)) {
+      newErrors.token = "Enter a valid 6-digit code";
     }
 
     setErrors(newErrors);
@@ -115,7 +115,7 @@ export default function VerifyResetTokenScreen() {
   const isSubmitDisabled = useMemo(() => isSubmitting, [isSubmitting]);
 
   const submitButtonText = useMemo(
-    () => (isSubmitDisabled ? "Verifying..." : "Verify Token"),
+    () => (isSubmitDisabled ? "Verifying..." : "Verify OTP"),
     [isSubmitDisabled]
   );
 
@@ -153,7 +153,7 @@ export default function VerifyResetTokenScreen() {
           <View className="mb-8">
             <FormInput
               icon="key-outline"
-              placeholder="Enter reset token"
+              placeholder="Enter OTP"
               value={token}
               onChangeText={handleTokenChange}
               error={errors.token}

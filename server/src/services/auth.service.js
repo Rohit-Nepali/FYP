@@ -298,4 +298,148 @@ export const authService = {
 
     return user;
   },
+
+  /**
+   * Initiate forgot password process
+   * @param {string} email - User email
+   * @returns {Promise<Object>} Reset token (only for testing, not sent in production)
+   */
+  forgotPassword: async (email) => {
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new ApiError(
+        ERROR_MESSAGES.USER_DOES_NOT_EXIST,
+        HTTP_STATUS.NOT_FOUND
+      );
+    }
+
+    // Generate numeric OTP (6 digits)
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Calculate expiration time (10 minutes from now)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    // Save password reset record
+    await prisma.passwordReset.create({
+      data: {
+        userId: user.id,
+        token: resetToken,
+        expiresAt,
+      },
+    });
+
+    return {
+      resetToken,
+      email: user.email,
+      message: "Password reset email has been sent",
+    };
+  },
+
+  /**
+   * Verify reset token
+   * @param {string} token - Reset token
+   * @returns {Promise<Object>} Token validity information
+   */
+  verifyResetToken: async (token) => {
+    // Find password reset record
+    const resetRecord = await prisma.passwordReset.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!resetRecord) {
+      throw new ApiError(
+        "Invalid or expired reset token",
+        HTTP_STATUS.UNAUTHORIZED
+      );
+    }
+
+    // Check if token has expired
+    if (resetRecord.expiresAt < new Date()) {
+      // Delete expired token
+      await prisma.passwordReset.delete({
+        where: { id: resetRecord.id },
+      });
+      throw new ApiError(
+        "Password reset token has expired",
+        HTTP_STATUS.UNAUTHORIZED
+      );
+    }
+
+    return {
+      valid: true,
+      userId: resetRecord.userId,
+      email: resetRecord.user.email,
+    };
+  },
+
+  /**
+   * Reset password with token
+   * @param {string} token - Reset token
+   * @param {string} newPassword - New password
+   * @returns {Promise<Object>} Success message
+   */
+  resetPassword: async (token, newPassword) => {
+    // Verify token first
+    const resetRecord = await prisma.passwordReset.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!resetRecord) {
+      throw new ApiError(
+        "Invalid or expired reset token",
+        HTTP_STATUS.UNAUTHORIZED
+      );
+    }
+
+    // Check if token has expired
+    if (resetRecord.expiresAt < new Date()) {
+      // Delete expired token
+      await prisma.passwordReset.delete({
+        where: { id: resetRecord.id },
+      });
+      throw new ApiError(
+        "Password reset token has expired",
+        HTTP_STATUS.UNAUTHORIZED
+      );
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update user password
+    const user = await prisma.user.update({
+      where: { id: resetRecord.userId },
+      data: {
+        passwordHash,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
+
+    // Delete the password reset record
+    await prisma.passwordReset.delete({
+      where: { id: resetRecord.id },
+    });
+
+    // Delete all user sessions (force re-login)
+    await prisma.userSession.deleteMany({
+      where: { userId: user.id },
+    });
+
+    return {
+      success: true,
+      message: "Password has been reset successfully",
+      user,
+    };
+  },
 };

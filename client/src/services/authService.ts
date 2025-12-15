@@ -183,6 +183,50 @@ export async function getUserByEmail(
   );
 }
 
+export async function forgotPassword(email: string): Promise<{
+  message: string;
+  email: string;
+}> {
+  return makeRequest<{ message: string; email: string }>(
+    "/auth/forgot-password",
+    {
+      method: "POST",
+      data: { email },
+    }
+  );
+}
+
+export async function verifyResetToken(token: string): Promise<{
+  valid: boolean;
+  userId: string;
+  email: string;
+}> {
+  return makeRequest<{
+    valid: boolean;
+    userId: string;
+    email: string;
+  }>("/auth/verify-reset-token", {
+    method: "POST",
+    data: { token },
+  });
+}
+
+export async function resetPassword(
+  token: string,
+  password: string
+): Promise<{
+  message: string;
+  user: LoginResponse["user"];
+}> {
+  return makeRequest<{
+    message: string;
+    user: LoginResponse["user"];
+  }>("/auth/reset-password", {
+    method: "POST",
+    data: { token, password },
+  });
+}
+
 export async function storeTokens(
   accessToken: string,
   refreshToken: string
@@ -221,3 +265,18 @@ export async function clearTokens(): Promise<void> {
     console.error("Error clearing tokens:", error);
   }
 }
+// Export object-based API for convenience
+export const authService = {
+  login,
+  register,
+  logout,
+  refreshToken,
+  getProfile,
+  getUserByEmail,
+  forgotPassword,
+  verifyResetToken,
+  resetPassword,
+  storeTokens,
+  getStoredTokens,
+  clearTokens,
+};

@@ -10,7 +10,6 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Progress from "react-native-progress";
 import { Task, getAllTasks } from "../services/taskService";
 import { getAllProjects, Project } from "../services/projectService";
 
@@ -220,32 +219,24 @@ export default function Index() {
             </View>
           ) : (
             projects.slice(0, 2).map((project) => (
-              <View key={project.id} className="bg-gray-800 rounded-xl p-4 mb-2">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white font-semibold flex-1">
-                    {project.name}
-                  </Text>
-                  <View
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: project.color }}
-                  />
+              <TouchableOpacity
+                key={project.id}
+                className="bg-gray-800 rounded-xl p-4 flex-row items-start gap-3 mb-2"
+                onPress={() => router.push(`/projects/${project.id}`)}
+              >
+                <View className="mt-1">
+                  <Ionicons name="folder" size={22} color={project.color || "#9CA3AF"} />
                 </View>
-                <Progress.Bar
-                  progress={project.progress / 100}
-                  width={null}
-                  color={project.color}
-                  unfilledColor="#374151"
-                  borderWidth={0}
-                  height={6}
-                />
-                <Text className="text-gray-400 text-xs mt-2">
-                  {project.progress}% Complete
-                </Text>
-              </View>
+
+                <View className="flex-1">
+                  <Text className="text-white font-semibold">{project.title || project.name}</Text>
+                </View>
+
+                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              </TouchableOpacity>
             ))
           )}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );

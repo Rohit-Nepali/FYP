@@ -28,15 +28,16 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions           UserSession[]
-  groupsOwned        Group[]           @relation("ownerGroups")
-  memberships        GroupMember[]
-  projectsOwned      Project[]         @relation("ownerProjects")
-  projectMemberships ProjectMember[]
-  assignedTasks      Task[]            @relation("assignedTasks")
-  groupInvites       GroupInvite[]
-  createdTasks       Task[]            @relation("createdTasks")
-  statuses           Status[]
+  sessions            UserSession[]
+  passwordResets      PasswordReset[]
+  groupsOwned         Group[]           @relation("ownerGroups")
+  memberships         GroupMember[]
+  projectsOwned       Project[]         @relation("ownerProjects")
+  projectMemberships  ProjectMember[]
+  assignedTasks       Task[]            @relation("assignedTasks")
+  groupInvites        GroupInvite[]
+  createdTasks        Task[]            @relation("createdTasks")
+  statuses            Status[]
   priorities          Priority[]
 }
 
@@ -51,6 +52,18 @@ model UserSession {
   expiresAt    DateTime
 
   @@index([userId])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
 }
 
 model Group {

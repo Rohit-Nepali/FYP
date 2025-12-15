@@ -7,6 +7,9 @@ import {
   logoutController,
   getProfileController,
   getUserByEmailController,
+  forgotPasswordController,
+  verifyResetTokenController,
+  resetPasswordController,
 } from "../controllers/auth.controller.js";
 
 import { validate } from "../middleware/validation.middleware.js";
@@ -14,6 +17,9 @@ import {
   signUpSchema,
   signInSchema,
   refreshTokenSchema,
+  forgotPasswordSchema,
+  verifyResetTokenSchema,
+  resetPasswordSchema,
 } from "../validator/auth.validator.js";
 
 const authRouter = Router();
@@ -25,6 +31,21 @@ authRouter.post(
   "/refresh-token",
   validate(refreshTokenSchema),
   refreshTokenController
+);
+authRouter.post(
+  "/forgot-password",
+  validate(forgotPasswordSchema),
+  forgotPasswordController
+);
+authRouter.post(
+  "/verify-reset-token",
+  validate(verifyResetTokenSchema),
+  verifyResetTokenController
+);
+authRouter.post(
+  "/reset-password",
+  validate(resetPasswordSchema),
+  resetPasswordController
 );
 
 // Protected routes

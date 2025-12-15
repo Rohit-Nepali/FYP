@@ -117,3 +117,68 @@ export const getUserByEmailController = async (req, res, next) => {
     next(error);
   }
 };
+
+export const forgotPasswordController = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const result = await authService.forgotPassword(email);
+
+    // Send password reset email
+    const { emailService } = await import("../services/email.service.js");
+    await emailService.sendPasswordResetEmail(email, result.resetToken, req);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.PASSWORD_RESET,
+      {
+        message: "Password reset email has been sent to your email address",
+        email: email,
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyResetTokenController = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    const result = await authService.verifyResetToken(token);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Reset token is valid",
+      result
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPasswordController = async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+
+    const result = await authService.resetPassword(token, password);
+
+    // Send password reset confirmation email
+    const { emailService } = await import("../services/email.service.js");
+    await emailService.sendPasswordResetConfirmationEmail(result.user.email);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.PASSWORD_RESET,
+      {
+        message: "Password has been reset successfully",
+        user: result.user,
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+};

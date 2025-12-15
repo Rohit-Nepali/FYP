@@ -9,10 +9,11 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secre
 /**
  * Generate access token
  * @param {Object} payload - User data to encode
+ * @param {string} expiresIn - Token expiration time (default: '45m')
  * @returns {string} JWT access token
  */
-export const generateAccessToken = (payload) => {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: '45m' });
+export const generateAccessToken = (payload, expiresIn = '45m') => {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn });
 };
 
 /**

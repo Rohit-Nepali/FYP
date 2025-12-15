@@ -5,8 +5,9 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Modal,
   ActivityIndicator,
+  Alert,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,10 +21,10 @@ import {
   updateTask,
   deleteTask,
 } from "../services/taskService";
-import { Status, getAllStatuses } from "../services/statusService";
-import { Priority, getAllPriorities } from "../services/priorityService";
-import { theme } from "../config/theme";
+import { Status, getAllStatuses, createStatus } from "../services/statusService";
+import { Priority, getAllPriorities, createPriority } from "../services/priorityService";
 import { SafeAreaView } from "react-native-safe-area-context";
+import TaskModal from "../components/UI/TaskModal";
 
 export default function TasksScreen() {
   const router = useRouter();
@@ -54,6 +55,11 @@ export default function TasksScreen() {
       style?: "default" | "destructive";
     }>;
   } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [priorityModalVisible, setPriorityModalVisible] = useState(false);
+  const [newStatusName, setNewStatusName] = useState("");
+  const [newPriorityName, setNewPriorityName] = useState("");
 
   useEffect(() => {
     loadData();
@@ -90,21 +96,22 @@ export default function TasksScreen() {
 
   const handleCreateTask = async () => {
     if (!title.trim()) {
-      showCustomAlert("Error", "Please enter a task title");
+      Alert.alert("Validation", "Please enter a task title");
       return;
     }
 
     if (!statusId) {
-      showCustomAlert("Error", "Please select a status");
+      Alert.alert("Validation", "Please select a status");
       return;
     }
 
     if (!priorityId) {
-      showCustomAlert("Error", "Please select a priority");
+      Alert.alert("Validation", "Please select a priority");
       return;
     }
 
     try {
+      setSaving(true);
       if (editingTask) {
         await updateTask(editingTask.id, {
           title,
@@ -113,7 +120,7 @@ export default function TasksScreen() {
           priorityId,
           dueDate: dueDate || undefined,
         });
-        showCustomAlert("Success", "Task updated successfully");
+        Alert.alert("Success", "Task updated successfully");
       } else {
         await createTask({
           title,
@@ -122,16 +129,18 @@ export default function TasksScreen() {
           priorityId,
           dueDate: dueDate || undefined,
         });
-        showCustomAlert("Success", "Task created successfully");
+        Alert.alert("Success", "Task created successfully");
       }
       resetForm();
       setModalVisible(false);
       loadData();
     } catch (error) {
-      showCustomAlert(
+      Alert.alert(
         "Error",
         error instanceof Error ? error.message : "Failed to save task"
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -156,9 +165,10 @@ export default function TasksScreen() {
           style: "destructive",
           onPress: async () => {
             try {
+              // Remove task from list immediately for better UX
+              setTasks((prev) => prev.filter((t) => t.id !== taskId));
               await deleteTask(taskId);
               showCustomAlert("Success", "Task deleted successfully");
-              loadTasks();
             } catch (error) {
               showCustomAlert(
                 "Error",
@@ -195,6 +205,40 @@ export default function TasksScreen() {
     if (statuses.length > 0) setStatusId(statuses[0].id);
     if (priorities.length > 0) setPriorityId(priorities[0].id);
     setDueDate("");
+  };
+
+  const handleCreateStatus = async () => {
+    if (!newStatusName.trim()) {
+      Alert.alert("Error", "Status name is required");
+      return;
+    }
+    try {
+      const newStatus = await createStatus({ name: newStatusName.trim() });
+      setStatuses((prev) => [...prev, newStatus]);
+      setStatusId(newStatus.id);
+      setStatusModalVisible(false);
+      setNewStatusName("");
+      Alert.alert("Success", "Status added!");
+    } catch (err) {
+      Alert.alert("Error", "Failed to create status");
+    }
+  };
+
+  const handleCreatePriority = async () => {
+    if (!newPriorityName.trim()) {
+      Alert.alert("Error", "Priority name is required");
+      return;
+    }
+    try {
+      const newPriority = await createPriority({ name: newPriorityName.trim() });
+      setPriorities((prev) => [...prev, newPriority]);
+      setPriorityId(newPriority.id);
+      setPriorityModalVisible(false);
+      setNewPriorityName("");
+      Alert.alert("Success", "Priority added!");
+    } catch (err) {
+      Alert.alert("Error", "Failed to create priority");
+    }
   };
 
   const getPriorityColor = (priority: Priority) => {
@@ -237,324 +281,225 @@ export default function TasksScreen() {
     <ProtectedRoute>
       <SafeAreaView className="flex-1 bg-gray-900">
         {/* <LinearGradient colors={theme.background.gradient} className="flex-1"> */}
-          {/* Header */}
-          <View className="pt-6 pb-4 px-6 bg-gray-900/50">
-            <View className="flex-row items-center justify-between mb-4">
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name="arrow-back" size={24} color="#fff" />
-              </TouchableOpacity>
-              <Text className="text-xl font-bold text-white">My Tasks</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  resetForm();
-                  setModalVisible(true);
-                }}
-              >
-                <Ionicons name="add-circle" size={28} color="#60A5FA" />
-              </TouchableOpacity>
-            </View>
-
-          </View>
-
-          {/* Tasks List */}
-          {loading ? (
-            <View className="flex-1 justify-center items-center">
-              <ActivityIndicator size="large" color="#60A5FA" />
-            </View>
-          ) : (
-            <ScrollView
-              className="flex-1 px-4 py-4"
-              contentContainerStyle={{ paddingBottom: 80 }}
+        {/* Header */}
+        <View className="pt-6 pb-4 px-6 bg-gray-900/50">
+          <View className="flex-row items-center justify-between mb-4">
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text className="text-xl font-bold text-white">My Tasks</Text>
+            <TouchableOpacity
+              onPress={() => {
+                resetForm();
+                setModalVisible(true);
+              }}
             >
-              {tasks.length === 0 ? (
-                <View className="flex-1 justify-center items-center py-20">
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={64}
-                    color="#6B7280"
-                  />
-                  <Text className="text-gray-400 text-lg mt-4">
-                    No tasks found
-                  </Text>
-                  <Text className="text-gray-500 text-sm mt-2">
-                    Create a new task to get started
-                  </Text>
-                </View>
-              ) : (
-                tasks.map((task) => (
-                  <View
-                    key={task.id}
-                    className="bg-gray-800 rounded-xl px-4 py-3 mb-2"
-                  >
-                    {/* Top row */}
-                    <View className="flex-row items-start justify-between">
-                      <View className="flex-row flex-1 items-start">
-                        {/* Status toggle */}
-                        <TouchableOpacity
-                          onPress={() => handleToggleStatus(task)}
-                          className="mt-1 mr-3"
+              <Ionicons name="add-circle" size={28} color="#60A5FA" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Tasks List */}
+        {loading ? (
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#60A5FA" />
+          </View>
+        ) : (
+          <ScrollView
+            className="flex-1 px-4 py-4"
+            contentContainerStyle={{ paddingBottom: 80 }}
+          >
+            {tasks.length === 0 ? (
+              <View className="flex-1 justify-center items-center py-20">
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={64}
+                  color="#6B7280"
+                />
+                <Text className="text-gray-400 text-lg mt-4">
+                  No tasks found
+                </Text>
+                <Text className="text-gray-500 text-sm mt-2">
+                  Create a new task to get started
+                </Text>
+              </View>
+            ) : (
+              tasks.map((task) => (
+                <View
+                  key={task.id}
+                  className="bg-gray-800 rounded-xl px-4 py-3 mb-2"
+                >
+                  {/* Top row */}
+                  <View className="flex-row items-start justify-between">
+                    <View className="flex-row flex-1 items-start">
+                      {/* Status toggle */}
+                      <TouchableOpacity
+                        onPress={() => handleToggleStatus(task)}
+                        className="mt-1 mr-3"
+                      >
+                        <Ionicons
+                          name={
+                            task.status.name.toLowerCase().includes("complete") ||
+                              task.status.name.toLowerCase().includes("done")
+                              ? "checkmark-circle"
+                              : "ellipse-outline"
+                          }
+                          size={22}
+                          color={
+                            task.status.name.toLowerCase().includes("complete") ||
+                              task.status.name.toLowerCase().includes("done")
+                              ? "#10B981"
+                              : "#6B7280"
+                          }
+                        />
+                      </TouchableOpacity>
+
+                      {/* Title + meta */}
+                      <View className="flex-1">
+                        <Text
+                          className={`text-base text-gray-200 ${task.status.name.toLowerCase().includes("complete") ||
+                            task.status.name.toLowerCase().includes("done")
+                            ? "line-through opacity-50"
+                            : ""
+                            }`}
                         >
-                          <Ionicons
-                            name={
-                              task.status.name.toLowerCase().includes("complete") ||
-                                task.status.name.toLowerCase().includes("done")
-                                ? "checkmark-circle"
-                                : "ellipse-outline"
-                            }
-                            size={22}
-                            color={
-                              task.status.name.toLowerCase().includes("complete") ||
-                                task.status.name.toLowerCase().includes("done")
-                                ? "#10B981"
-                                : "#6B7280"
-                            }
-                          />
-                        </TouchableOpacity>
+                          {task.title}
+                        </Text>
 
-                        {/* Title + meta */}
-                        <View className="flex-1">
-                          <Text
-                            className={`text-base text-gray-200 ${task.status.name.toLowerCase().includes("complete") ||
-                                task.status.name.toLowerCase().includes("done")
-                                ? "line-through opacity-50"
-                                : ""
-                              }`}
-                          >
-                            {task.title}
+                        {task.description && (
+                          <Text className="text-gray-500 text-xs mt-1">
+                            {task.description}
                           </Text>
+                        )}
 
-                          {task.description && (
-                            <Text className="text-gray-500 text-xs mt-1">
-                              {task.description}
+                        {/* Meta row */}
+                        <View className="flex-row items-center gap-2 mt-2">
+                          <View
+                            className="px-2 py-0.5 rounded"
+                            style={getPriorityColor(task.priority)}
+                          >
+                            <Text className="text-white text-[10px] font-medium">
+                              {task.priority.name}
                             </Text>
-                          )}
+                          </View>
 
-                          {/* Meta row */}
-                          <View className="flex-row items-center gap-2 mt-2">
-                            <View
-                              className="px-2 py-0.5 rounded"
-                              style={getPriorityColor(task.priority)}
-                            >
-                              <Text className="text-white text-[10px] font-medium">
-                                {task.priority.name}
+                          {task.dueDate && (
+                            <View className="flex-row items-center">
+                              <Ionicons
+                                name="calendar-outline"
+                                size={12}
+                                color="#6B7280"
+                              />
+                              <Text className="text-gray-500 text-[10px] ml-1">
+                                {formatDate(task.dueDate)}
                               </Text>
                             </View>
-
-                            {task.dueDate && (
-                              <View className="flex-row items-center">
-                                <Ionicons
-                                  name="calendar-outline"
-                                  size={12}
-                                  color="#6B7280"
-                                />
-                                <Text className="text-gray-500 text-[10px] ml-1">
-                                  {formatDate(task.dueDate)}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
+                          )}
                         </View>
                       </View>
+                    </View>
 
-                      {/* Action icons */}
-                      <View className="flex-row items-center gap-3 ml-2">
-                        <TouchableOpacity onPress={() => handleEditTask(task)}>
-                          <Ionicons name="pencil-outline" size={18} color="#9CA3AF" />
-                        </TouchableOpacity>
+                    {/* Action icons */}
+                    <View className="flex-row items-center gap-3 ml-2">
+                      <TouchableOpacity onPress={() => handleEditTask(task)}>
+                        <Ionicons name="pencil-outline" size={18} color="#9CA3AF" />
+                      </TouchableOpacity>
 
-                        <TouchableOpacity onPress={() => handleDeleteTask(task.id)}>
-                          <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
+                      <TouchableOpacity onPress={() => handleDeleteTask(task.id)}>
+                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                      </TouchableOpacity>
                     </View>
                   </View>
-                ))
-              )}
-            </ScrollView>
-          )}
-
-          {/* Create/Edit Task Modal */}
-          <Modal
-            visible={modalVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => {
-              setModalVisible(false);
-              resetForm();
-            }}
-          >
-            <View className="flex-1 justify-end bg-black/50">
-              <LinearGradient
-                colors={["#1F2937", "#111827"]}
-                className="rounded-t-3xl p-6 max-h-[90%]"
-              >
-                <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-2xl font-bold text-white">
-                    {editingTask ? "Edit Task" : "New Task"}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setModalVisible(false);
-                      resetForm();
-                    }}
-                  >
-                    <Ionicons name="close-circle" size={28} color="#9CA3AF" />
-                  </TouchableOpacity>
                 </View>
+              ))
+            )}
+          </ScrollView>
+        )}
 
-                <ScrollView>
-                  <View className="mb-4">
-                    <Text className="text-gray-300 mb-2 font-medium">
-                      Title *
-                    </Text>
-                    <TextInput
-                      className="bg-gray-800 rounded-xl px-4 py-3 text-gray-200 border border-gray-700"
-                      placeholder="Enter task title"
-                      placeholderTextColor="#6B7280"
-                      value={title}
-                      onChangeText={setTitle}
-                    />
-                  </View>
+        {/* Create/Edit Task Modal */}
+        <TaskModal
+          visible={modalVisible}
+          onClose={() => {
+            setModalVisible(false);
+            resetForm();
+          }}
+          onSave={async (payload) => {
+            if (editingTask) {
+              await updateTask(editingTask.id, payload);
+              Alert.alert("Success", "Task updated successfully");
+            } else {
+              await createTask(payload);
+              Alert.alert("Success", "Task created successfully");
+            }
+            resetForm();
+            setModalVisible(false);
+            loadData();
+          }}
+          initialValues={{
+            title: title,
+            description: description,
+            statusId: statusId,
+            priorityId: priorityId,
+            dueDate: dueDate,
+          }}
+          statuses={statuses}
+          setStatuses={setStatuses}
+          priorities={priorities}
+          setPriorities={setPriorities}
+        />
 
-                  <View className="mb-4">
-                    <Text className="text-gray-300 mb-2 font-medium">
-                      Description
-                    </Text>
-                    <TextInput
-                      className="bg-gray-800 rounded-xl px-4 py-3 text-gray-200 border border-gray-700 min-h-[100px]"
-                      placeholder="Enter task description"
-                      placeholderTextColor="#6B7280"
-                      value={description}
-                      onChangeText={setDescription}
-                      multiline
-                      textAlignVertical="top"
-                    />
-                  </View>
+        {/* Custom Alert Modal */}
+        {customAlert && (
+          <Modal
+            visible={customAlert.visible}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={hideCustomAlert}
+          >
+            <View className="flex-1 bg-black/50 justify-center items-center px-6">
+              <View className="bg-gray-800 rounded-xl p-6 w-full max-w-sm">
+                <Text className="text-white text-xl font-bold mb-2 text-center">
+                  {customAlert.title}
+                </Text>
+                <Text className="text-gray-300 text-center mb-6">
+                  {customAlert.message}
+                </Text>
 
-                  <View className="mb-4">
-                    <Text className="text-gray-300 mb-2 font-medium">
-                      Status
-                    </Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {statuses.map((s) => (
-                        <TouchableOpacity
-                          key={s.id}
-                          onPress={() => setStatusId(s.id)}
-                          className={`px-4 py-2 rounded-lg ${statusId === s.id ? "bg-blue-600" : "bg-gray-800"
-                            }`}
-                          style={
-                            statusId === s.id && s.color
-                              ? { backgroundColor: s.color }
-                              : undefined
-                          }
-                        >
-                          <Text className="text-white text-sm">{s.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-
-                  <View className="mb-4">
-                    <Text className="text-gray-300 mb-2 font-medium">
-                      Priority
-                    </Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {priorities.map((p) => (
-                        <TouchableOpacity
-                          key={p.id}
-                          onPress={() => setPriorityId(p.id)}
-                          className={`px-4 py-2 rounded-lg ${priorityId === p.id ? "bg-blue-600" : "bg-gray-800"
-                            }`}
-                          style={
-                            priorityId === p.id && p.color
-                              ? { backgroundColor: p.color }
-                              : undefined
-                          }
-                        >
-                          <Text className="text-white text-sm">{p.name}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-
-                  <View className="mb-6">
-                    <Text className="text-gray-300 mb-2 font-medium">
-                      Due Date
-                    </Text>
-                    <TextInput
-                      className="bg-gray-800 rounded-xl px-4 py-3 text-gray-200 border border-gray-700"
-                      placeholder="YYYY-MM-DD (optional)"
-                      placeholderTextColor="#6B7280"
-                      value={dueDate}
-                      onChangeText={setDueDate}
-                    />
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={handleCreateTask}
-                    className="bg-blue-600 rounded-xl py-4 items-center mb-4"
-                  >
-                    <Text className="text-white font-bold text-lg">
-                      {editingTask ? "Update Task" : "Create Task"}
-                    </Text>
-                  </TouchableOpacity>
-                </ScrollView>
-              </LinearGradient>
-            </View>
-          </Modal>
-
-          {/* Custom Alert Modal */}
-          {customAlert && (
-            <Modal
-              visible={customAlert.visible}
-              animationType="fade"
-              transparent={true}
-              onRequestClose={hideCustomAlert}
-            >
-              <View className="flex-1 bg-black/50 justify-center items-center px-6">
-                <View className="bg-gray-800 rounded-xl p-6 w-full max-w-sm">
-                  <Text className="text-white text-xl font-bold mb-2 text-center">
-                    {customAlert.title}
-                  </Text>
-                  <Text className="text-gray-300 text-center mb-6">
-                    {customAlert.message}
-                  </Text>
-
-                  <View className="flex-row gap-3">
-                    {customAlert.buttons?.map((button, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        onPress={() => {
-                          hideCustomAlert();
-                          button.onPress?.();
-                        }}
-                        className={`flex-1 rounded-xl py-3 items-center ${button.style === "destructive"
-                            ? "bg-red-600"
-                            : "bg-gray-700"
+                <View className="flex-row gap-3">
+                  {customAlert.buttons?.map((button, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => {
+                        hideCustomAlert();
+                        button.onPress?.();
+                      }}
+                      className={`flex-1 rounded-xl py-3 items-center ${button.style === "destructive"
+                        ? "bg-red-600"
+                        : "bg-gray-700"
+                        }`}
+                    >
+                      <Text
+                        className={`font-medium ${button.style === "destructive"
+                          ? "text-white"
+                          : "text-gray-200"
                           }`}
                       >
-                        <Text
-                          className={`font-medium ${button.style === "destructive"
-                              ? "text-white"
-                              : "text-gray-200"
-                            }`}
-                        >
-                          {button.text}
-                        </Text>
+                        {button.text}
+                      </Text>
+                    </TouchableOpacity>
+                  )) || (
+                      <TouchableOpacity
+                        onPress={hideCustomAlert}
+                        className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
+                      >
+                        <Text className="text-white font-medium">OK</Text>
                       </TouchableOpacity>
-                    )) || (
-                        <TouchableOpacity
-                          onPress={hideCustomAlert}
-                          className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
-                        >
-                          <Text className="text-white font-medium">OK</Text>
-                        </TouchableOpacity>
-                      )}
-                  </View>
+                    )}
                 </View>
               </View>
-            </Modal>
-          )}
+            </View>
+          </Modal>
+        )}
         {/* </LinearGradient> */}
       </SafeAreaView>
     </ProtectedRoute>

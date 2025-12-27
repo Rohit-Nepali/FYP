@@ -42,9 +42,6 @@ export default function TasksScreen() {
   const [statusId, setStatusId] = useState<string>("");
   const [priorityId, setPriorityId] = useState<string>("");
   const [dueDate, setDueDate] = useState("");
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [customAlert, setCustomAlert] = useState<{
     visible: boolean;
     title: string;
@@ -280,7 +277,6 @@ export default function TasksScreen() {
   return (
     <ProtectedRoute>
       <SafeAreaView className="flex-1 bg-gray-900">
-        {/* <LinearGradient colors={theme.background.gradient} className="flex-1"> */}
         {/* Header */}
         <View className="pt-6 pb-4 px-6 bg-gray-900/50">
           <View className="flex-row items-center justify-between mb-4">
@@ -325,9 +321,10 @@ export default function TasksScreen() {
               </View>
             ) : (
               tasks.map((task) => (
-                <View
+                <TouchableOpacity
                   key={task.id}
                   className="bg-gray-800 rounded-xl px-4 py-3 mb-2"
+                  onPress={() => router.push(`/tasks/${task.id}`)}
                 >
                   {/* Top row */}
                   <View className="flex-row items-start justify-between">
@@ -410,7 +407,7 @@ export default function TasksScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))
             )}
           </ScrollView>
@@ -500,7 +497,6 @@ export default function TasksScreen() {
             </View>
           </Modal>
         )}
-        {/* </LinearGradient> */}
       </SafeAreaView>
     </ProtectedRoute>
   );

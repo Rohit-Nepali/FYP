@@ -11,7 +11,6 @@ import {
   verifyResetTokenController,
   resetPasswordController,
 } from "../controllers/auth.controller.js";
-
 import { validate } from "../middleware/validation.middleware.js";
 import {
   signUpSchema,

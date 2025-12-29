@@ -3,6 +3,7 @@ import "../../global.css";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BottomNavigation } from "../components/BottomNavigation";
+import { ProtectedRoute } from "../components/ProtectedRoute";
 
 // Wrapper component to conditionally show bottom nav
 function AppLayout() {
@@ -44,9 +45,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        {/* <ProtectedRoute> */}
+        <ProtectedRoute>
           <AppLayout />
-        {/* </ProtectedRoute> */}
+        </ProtectedRoute>
       </AuthProvider>
     </SafeAreaProvider>
   );

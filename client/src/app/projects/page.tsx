@@ -351,7 +351,7 @@ export default function Projects() {
                   <TouchableOpacity
                     key={opt.key}
                     onPress={() => setStatusFilter(opt.key as StatusFilter)}
-                    className={`px-3 py-1 rounded-full mr-2 border ${
+                    className={`px-3 py-1 rounded-full mr-2 border  ${
                       active
                         ? "bg-blue-600 border-blue-400"
                         : "bg-gray-800 border-gray-700"

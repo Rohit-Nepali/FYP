@@ -99,4 +99,25 @@ export const emailService = {
       throw error;
     }
   },
+
+  sendProjectInviteEmail: async (email, projectName, inviteLink, invitedBy) => {
+    const transporter = await createTransporter();
+ 
+    const mailOptions = {
+      from: `"Taskora" <no-reply@taskora.com>`,
+      to: email,
+      subject: `You're invited to join ${projectName}`,
+      html: `
+      <h2>Project Invitation</h2>
+      <p>${invitedBy} has invited you to join <strong>${projectName}</strong>.</p>
+      <p>Click the link below to accept the invitation:</p>
+      <a href="${inviteLink}">${inviteLink}</a>
+      <p>This invite will expire soon.</p>
+    `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Invite preview:", nodemailer.getTestMessageUrl(info));
+  }
+
 };

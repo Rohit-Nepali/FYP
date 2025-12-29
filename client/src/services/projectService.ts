@@ -72,7 +72,7 @@ export async function getAllProjects(): Promise<Project[]> {
   throw new Error("Failed to fetch projects");
 }
 
-export async function getProjectById(projectId: string): Promise<Project & { tasks?: any[] }>{
+export async function getProjectById(projectId: string): Promise<Project & { tasks?: any[] }> {
   const response = await axiosInstance.get<ApiResponse<any>>(`/projects/${projectId}`);
   if (response.data && (response.data as ApiSuccess<any>).success) {
     return (response.data as ApiSuccess<any>).data;
@@ -80,10 +80,17 @@ export async function getProjectById(projectId: string): Promise<Project & { tas
   throw new Error("Failed to fetch project");
 }
 
-export async function createProject(payload: { title: string; description?: string; }) : Promise<Project> {
+export async function createProject(payload: { title: string; description?: string; }): Promise<Project> {
   const response = await axiosInstance.post<ApiResponse<Project>>("/projects", payload);
   if (response.data && (response.data as ApiSuccess<Project>).success) {
     return (response.data as ApiSuccess<Project>).data;
   }
   throw new Error("Failed to create project");
+}
+
+export async function inviteProjectMember(projectId: string, memberId: string, role: string = "member"): Promise<Project> {
+const response = await axiosInstance.post<ApiResponse<Project>>(`/projects/${projectId}/invite`, { memberId, role });
+  if (response.data && (response.data as ApiSuccess<Project>).success) {
+    return (response.data as ApiSuccess<Project>).data;
+  }
 }

@@ -2,11 +2,14 @@ import { Router } from "express";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validation.middleware.js";
 import {
+    acceptProjectInviteController,
     addProjectMemberController,
     createProjectController,
+    createProjectInviteController,
     deleteProjectController,
     getAllProjectsController,
     getProjectByIdController,
+    getProjectInvitesController,
     removeProjectMemberController,
     updateProjectController,
 } from "../controllers/project.controller.js";
@@ -32,6 +35,12 @@ projectRouter.post(
     addProjectMemberController
 );
 projectRouter.delete("/:id/members/:memberId", removeProjectMemberController);
+
+// Invite management routes
+projectRouter.post("/:id/invites", createProjectInviteController);
+projectRouter.get("/:id/invites", acceptProjectInviteController);
+projectRouter.post("/invites/:token/accept", getProjectInvitesController);
+    
 
 export default projectRouter;
 

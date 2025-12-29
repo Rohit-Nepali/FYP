@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/error.utils.js";
 import { ERROR_MESSAGES, HTTP_STATUS } from "../utils/response.utils.js";
+import crypto from "crypto";
 
 export const projectService = {
     create: async (projectData, ownerId) => {
@@ -25,7 +26,7 @@ export const projectService = {
 
     getAll: async (userId) => {
         const projects = await prisma.project.findMany({
-            where:{
+            where: {
                 ownerId: userId
             }
             // where: {
@@ -198,5 +199,165 @@ export const projectService = {
 
         return projectService.getById(projectId, userId);
     },
+
+    createInvite: async (projectId, userId, email, role = "member") => {
+        // Only project owner can invite (you can loosen this to project admins later)
+        const project = await prisma.project.findFirst({
+            where: { id: projectId, ownerId: userId },
+        });
+
+
+        if (!project) {
+            throw new ApiError(
+                "Only the project owner can create invites",
+                HTTP_STATUS.FORBIDDEN
+            );
+        }
+
+        // If user already exists, add as member directly
+        const existingUser = await prisma.user.findUnique({
+            where: { email },
+        });
+
+        if (existingUser) {
+            return await projectService.addMember(
+                projectId,
+                userId,
+                existingUser.id,
+                role
+            );
+        }
+
+        // Check for existing invite for this email
+        const existingInvite = await prisma.projectInvite.findFirst({
+            where: {
+                projectId,
+                email,
+            },
+        });
+
+        if (existingInvite) {
+            throw new ApiError(
+                "An invite for this email already exists",
+                HTTP_STATUS.BAD_REQUEST
+            );
+        }
+
+        // Generate token
+        const token = crypto.randomBytes(32).toString("hex");
+
+        // Expires in 7 days
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+
+        const invite = await prisma.projectInvite.create({
+            data: {
+                email,
+                projectId,
+                role,
+                token,
+                invitedById: userId,
+                expiresAt,
+            },
+            include: {
+                project: {
+                    select: {
+                        id: true,
+                        title: true,
+                    },
+                },
+                invitedBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
+        });
+
+        sendProjectInviteEmail(email, project.title, inviteLink, invitedBy);
+
+        return invite;
+
+    },
+
+    acceptInvite: async (token, userId) => {
+        const invite = await prisma.projectInvite.findUnique({
+            where: { token },
+            include: {
+                project: true,
+            },
+        });
+
+        if (!invite) {
+            throw new ApiError("Invalid invite token", HTTP_STATUS.NOT_FOUND);
+        }
+
+        if (invite.expiresAt < new Date()) {
+            throw new ApiError("Invite has expired", HTTP_STATUS.BAD_REQUEST);
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user || user.email !== invite.email) {
+            throw new ApiError(
+                "This invite is not for your email address",
+                HTTP_STATUS.FORBIDDEN
+            );
+        }
+
+        // Add user to project (owner / inviter is invite.invitedById)
+        await projectService.addMember(
+            invite.projectId,
+            invite.invitedById,
+            userId,
+            invite.role
+        );
+
+        // Delete the invite
+        await prisma.projectInvite.delete({
+            where: { id: invite.id },
+        });
+
+        // Return updated project
+        return await projectService.getById(invite.projectId, userId);
+    },
+
+    getInvites: async (projectId, userId) => {
+        // Only owner can view invites (adjust as needed)
+        const project = await prisma.project.findFirst({
+            where: {
+                id: projectId,
+                ownerId: userId,
+            },
+        });
+
+        if (!project) {
+            throw new ApiError(
+                "Only the project owner can view invites",
+                HTTP_STATUS.FORBIDDEN
+            );
+        }
+
+        const invites = await prisma.projectInvite.findMany({
+            where: { projectId },
+            include: {
+                invitedBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        return invites;
+    },
+
 };
 

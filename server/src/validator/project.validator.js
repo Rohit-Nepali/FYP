@@ -11,7 +11,7 @@ export const updateProjectSchema = joi.object({
 });
 
 export const addProjectMemberSchema = joi.object({
-    memberId: joi.string().uuid().required(),
+    memberId: joi.string().required(),
     role: joi.string().valid("member").optional(),
 });
 

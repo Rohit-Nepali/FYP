@@ -1,6 +1,3 @@
-// import dotenv from "dotenv";
-// import { defineConfig } from "@prisma/config";
-
 import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 

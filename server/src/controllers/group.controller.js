@@ -6,6 +6,7 @@ import {
 import { groupService } from "../services/group.service.js";
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/error.utils.js";
+import { projectService } from "../services/project.service.js";
 
 export const createGroupController = async (req, res, next) => {
   try {
@@ -154,7 +155,7 @@ export const createInviteController = async (req, res, next) => {
     const { id } = req.params;
     const { email, role } = req.body;
 
-    const result = await groupService.createInvite(id, userId, email, role);
+    const result = await projectService.createInvite(id, userId, email, role);
 
     // If it's a direct member addition (user exists)
     if (result.members) {

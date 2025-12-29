@@ -97,6 +97,7 @@ export const addProjectMemberController = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const { id } = req.params;
+        console.log("Id : ",id )
         const { memberId, role } = req.body;
 
         const project = await projectService.addMember(id, userId, memberId, role);
@@ -130,3 +131,70 @@ export const removeProjectMemberController = async (req, res, next) => {
     }
 };
 
+export const createProjectInviteController = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params; // projectId
+    const { email, role } = req.body;
+
+    console.log("From userId " + userId + " to email " + email + "on project " + id);
+
+    const result = await projectService.createInvite(id, userId, email, role);
+
+    // If result has members, it means user existed and was added
+    if (result.members) {
+      return ApiResponse.sendSuccessResponse(
+        res,
+        HTTP_STATUS.OK,
+        "Member added successfully",
+        result
+      );
+    }
+
+    // Otherwise, invite created
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.CREATED,
+      "Invite created successfully",
+      result
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const acceptProjectInviteController = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { token } = req.params;
+
+    const project = await projectService.acceptInvite(token, userId);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Invite accepted successfully",
+      project
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProjectInvitesController = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const invites = await projectService.getInvites(id, userId);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Invites retrieved successfully",
+      invites
+    );
+  } catch (error) {
+    next(error);
+  }
+};

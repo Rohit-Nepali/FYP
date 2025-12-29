@@ -39,6 +39,7 @@ model User {
   createdTasks        Task[]            @relation("createdTasks")
   statuses            Status[]
   priorities          Priority[]
+  sentProjectInvites  ProjectInvite[] @relation("UserProjectInvites")
 }
 
 model UserSession {
@@ -168,7 +169,7 @@ model Task {
   @@index([priorityId])
 }
 
-model Project {
+model   Project {
   id          String    @id @default(uuid())
   title       String
   description String?
@@ -178,6 +179,7 @@ model Project {
 
   members ProjectMember[]
   tasks   Task[]
+  invites ProjectInvite[] @relation("projectInvites")
 
   @@index([ownerId])
 }
@@ -194,4 +196,19 @@ model ProjectMember {
   @@unique([projectId, userId])
   @@index([projectId])
   @@index([userId])
+}
+
+model ProjectInvite {
+  id          String   @id @default(uuid())
+  email       String
+  role        String   @default("member")
+  token       String   @unique
+  projectId   String
+  invitedById String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project   Project @relation("projectInvites",fields: [projectId], references: [id])
+  invitedBy User    @relation("UserProjectInvites",fields: [invitedById], references: [id])
 }

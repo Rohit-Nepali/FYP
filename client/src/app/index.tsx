@@ -6,6 +6,7 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -17,6 +18,7 @@ export default function Index() {
   const router = useRouter();
   const { user } = useAuth();
 
+  const [refreshing, setRefreshing] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [loadingProjects, setLoadingProjects] = useState(true);
@@ -73,9 +75,25 @@ export default function Index() {
     return date.toLocaleDateString();
   };
 
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await Promise.all([loadProjects(), loadTasks()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
-    <SafeAreaView className="flex-1 bg-gray-900">
-      <ScrollView className="flex-1 px-4 ">
+    <SafeAreaView className="flex-1 bg-gray-900" >
+      <ScrollView className="flex-1 px-4 " refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={["#8b5cf6"]}
+          tintColor="#8b5cf6"
+        />
+      }>
         {/* Greeting */}
         <Text className="text-white font-bold text-xl mt-4">
           Hi <Text className="font-bold text-2xl">{user?.name?.split(' ')[0] || "there"}</Text> !
@@ -124,8 +142,8 @@ export default function Index() {
                   </Text>
                 </View>
               ) : (
-                tasks.slice(0, 4).map((task) => (
-                  <TouchableOpacity
+                tasks.slice(0, 4).map((task, index) => (
+                  < TouchableOpacity
                     key={task.id}
                     className="bg-gray-800 rounded-xl p-4 flex-row items-start gap-3 mb-2"
                     onPress={() => router.push(`/tasks/${task.id}`)}
@@ -286,6 +304,6 @@ export default function Index() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }

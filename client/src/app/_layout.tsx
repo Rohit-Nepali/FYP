@@ -33,9 +33,6 @@ function AppLayout() {
         <Stack.Screen name="profile" />
         <Stack.Screen name="task-settings" />
         <Stack.Screen name="tasks/tasks" />
-        <Stack.Screen name="groups/index" />
-        <Stack.Screen name="groups/[id]" />
-        <Stack.Screen name="tasks/group/[groupId]" />
         <Stack.Screen name="projects/page" />
       </Stack>
       {showBottomNav && <BottomNavigation />}

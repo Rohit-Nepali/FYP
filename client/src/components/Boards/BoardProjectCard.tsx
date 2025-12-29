@@ -17,7 +17,7 @@ export default function BoardProjectCard({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.85}
-      className="bg-gray-800 rounded-2xl p-4 shadow-md"
+      className="bg-gray-800 rounded-2xl p-4 shadow-md mb-4"
     >
       <Text className="text-white font-semibold text-base mb-1">
         {title}

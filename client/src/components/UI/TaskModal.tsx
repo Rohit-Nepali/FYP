@@ -12,6 +12,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Status, createStatus } from "../../services/statusService";
 import { Priority, createPriority } from "../../services/priorityService";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Platform } from "react-native";
 
 interface InitialValues {
   title?: string;
@@ -54,7 +56,11 @@ export default function TaskModal({
   const [description, setDescription] = useState(initialValues?.description || "");
   const [statusId, setStatusId] = useState<string>(initialValues?.statusId || "");
   const [priorityId, setPriorityId] = useState<string>(initialValues?.priorityId || "");
-  const [dueDate, setDueDate] = useState(initialValues?.dueDate || "");
+  const [dueDate, setDueDate] = useState<Date | null>(
+    initialValues?.dueDate ? new Date(initialValues.dueDate) : null
+  );
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
 
   const [saving, setSaving] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
@@ -67,7 +73,8 @@ export default function TaskModal({
     setDescription(initialValues?.description || "");
     setStatusId(initialValues?.statusId || (statuses[0]?.id ?? ""));
     setPriorityId(initialValues?.priorityId || (priorities[0]?.id ?? ""));
-    setDueDate(initialValues?.dueDate || "");
+    setDueDate(initialValues?.dueDate ? new Date(initialValues.dueDate) : null);
+
   }, [initialValues, visible, statuses, priorities]);
 
   const handleSubmit = async () => {
@@ -91,7 +98,7 @@ export default function TaskModal({
         description: description?.trim() || undefined,
         statusId,
         priorityId,
-        dueDate: dueDate || undefined,
+        dueDate: dueDate ? dueDate.toISOString() : undefined,
       });
     } catch (err) {
       Alert.alert("Error", err instanceof Error ? err.message : String(err));
@@ -191,9 +198,8 @@ export default function TaskModal({
                   <TouchableOpacity
                     key={status.id}
                     onPress={() => setStatusId(status.id)}
-                    className={`px-4 py-2 rounded-lg border-2 ${
-                      statusId === status.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
-                    }`}
+                    className={`px-4 py-2 rounded-lg border-2 ${statusId === status.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
+                      }`}
                   >
                     <Text className={`text-sm font-medium ${statusId === status.id ? "text-white" : "text-gray-300"}`}>
                       {status.name}
@@ -218,9 +224,8 @@ export default function TaskModal({
                   <TouchableOpacity
                     key={priority.id}
                     onPress={() => setPriorityId(priority.id)}
-                    className={`px-4 py-2 rounded-lg border-2 ${
-                      priorityId === priority.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
-                    }`}
+                    className={`px-4 py-2 rounded-lg border-2 ${priorityId === priority.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
+                      }`}
                   >
                     <Text className={`text-sm font-medium ${priorityId === priority.id ? "text-white" : "text-gray-300"}`}>
                       {priority.name}
@@ -236,15 +241,33 @@ export default function TaskModal({
 
               <View className="mb-4">
                 <Text className="text-gray-300 mb-2 font-medium">Due Date</Text>
-                <TextInput
-                  className="bg-gray-800 rounded-xl px-4 py-3 text-gray-200 border border-gray-700"
-                  placeholder="YYYY-MM-DD (optional)"
-                  placeholderTextColor="#6B7280"
-                  value={dueDate}
-                  onChangeText={setDueDate}
-                  editable={!saving}
-                />
+
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700 flex-row items-center justify-between"
+                  disabled={saving}
+                >
+                  <Text className="text-gray-200">
+                    {dueDate ? dueDate.toISOString().split("T")[0] : "Select a date (optional)"}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={dueDate ?? new Date()}
+                    mode="date"
+                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    onChange={(event, selectedDate) => {
+                      setShowDatePicker(false);
+                      if (selectedDate) {
+                        setDueDate(selectedDate);
+                      }
+                    }}
+                  />
+                )}
               </View>
+
 
               <View className="flex-row gap-3 mb-4">
                 <TouchableOpacity onPress={handleSubmit} disabled={saving} className="flex-1 bg-blue-600 rounded-lg py-3 items-center flex-row justify-center gap-2">

@@ -26,7 +26,7 @@ export default function Index() {
   const [projectError, setProjectError] = useState<string | null>(null);
 
   const [projects, setProjects] = useState<
-    { id: string; name: string; progress: number; color: string }[]
+    { id: string; title: string; progress: number; color: string }[]
   >([]);
 
   const colors = ["#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4"];
@@ -103,7 +103,7 @@ export default function Index() {
           What's on your plate?
         </Text>
 
-        {/* Tasks on Home */}
+        {/* Tasks on Home */} 
         <View className="flex-row justify-between items-center mb-4">
           <Text className="text-white text-lg font-semibold">My tasks</Text>
         </View>
@@ -271,7 +271,7 @@ export default function Index() {
 
                     <View className="flex-1">
                       <Text className="text-white font-semibold">
-                        {project.title || project.name}
+                        {project.title}
                       </Text>
                     </View>
 

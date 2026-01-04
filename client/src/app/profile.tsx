@@ -37,7 +37,7 @@ export default function ProfileScreen() {
       icon: "person-outline",
       onPress: () => {
         // Navigate to account settings
-        Alert.alert("Coming Soon", "Account settings will be available soon!");
+        router.push("/settings/AccountSettings");
       },
     },
     {
@@ -75,25 +75,21 @@ export default function ProfileScreen() {
       title: "Privacy & Security",
       icon: "shield-checkmark-outline",
       onPress: () => {
-        Alert.alert("Coming Soon", "Privacy settings will be available soon!");
+        router.push("/settings/PrivacySecurity");
       },
     },
     {
       title: "Help & Support",
       icon: "help-circle-outline",
       onPress: () => {
-        Alert.alert("Coming Soon", "Help & Support will be available soon!");
+        router.push("/settings/HelpSupport");
       },
     },
     {
       title: "About",
       icon: "information-circle-outline",
       onPress: () => {
-        Alert.alert(
-          "About Taskora",
-          "Taskora v1.0.0\nA productivity app for managing tasks and collaborating with teams.",
-          [{ text: "OK" }]
-        );
+        router.push("/settings/About");
       },
     },
   ];
@@ -126,21 +122,11 @@ export default function ProfileScreen() {
               <Text className="text-gray-400 text-sm">
                 {user?.email || "user@example.com"}
               </Text>
-              <View className="flex-row items-center mt-2">
-                <View className="bg-blue-600 px-3 py-1 rounded-full">
-                  <Text className="text-white text-xs font-medium capitalize">
-                    {user?.role || "user"}
-                  </Text>
-                </View>
-              </View>
             </View>
 
             <TouchableOpacity
               onPress={() => {
-                Alert.alert(
-                  "Coming Soon",
-                  "Edit profile will be available soon!"
-                );
+                router.push("/settings/EditProfile");
               }}
               className="bg-blue-600 rounded-xl py-3 items-center"
             >

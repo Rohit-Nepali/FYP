@@ -2,15 +2,15 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Alert,
   Modal,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   Task,
   createTask,
@@ -18,13 +18,21 @@ import {
   updateTask,
   deleteTask,
 } from "../services/taskService";
-import { Status, getAllStatuses, createStatus } from "../services/statusService";
-import { Priority, getAllPriorities, createPriority } from "../services/priorityService";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Status,
+  getAllStatuses,
+  createStatus,
+} from "../services/statusService";
+import {
+  Priority,
+  getAllPriorities,
+  createPriority,
+} from "../services/priorityService";
 import TaskModal from "../components/UI/TaskModal";
 
 export default function TasksScreen() {
   const router = useRouter();
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [priorities, setPriorities] = useState<Priority[]>([]);
@@ -32,13 +40,6 @@ export default function TasksScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filterStatusId, setFilterStatusId] = useState<string | null>(null);
-
-  // Form state
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [statusId, setStatusId] = useState<string>("");
-  const [priorityId, setPriorityId] = useState<string>("");
-  const [dueDate, setDueDate] = useState("");
   const [customAlert, setCustomAlert] = useState<{
     visible: boolean;
     title: string;
@@ -49,11 +50,13 @@ export default function TasksScreen() {
       style?: "default" | "destructive";
     }>;
   } | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [statusModalVisible, setStatusModalVisible] = useState(false);
-  const [priorityModalVisible, setPriorityModalVisible] = useState(false);
-  const [newStatusName, setNewStatusName] = useState("");
-  const [newPriorityName, setNewPriorityName] = useState("");
+
+  // Form state
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [statusId, setStatusId] = useState<string>("");
+  const [priorityId, setPriorityId] = useState<string>("");
+  const [dueDate, setDueDate] = useState("");
 
   useEffect(() => {
     loadData();
@@ -70,125 +73,13 @@ export default function TasksScreen() {
       setTasks(tasksResult.tasks);
       setStatuses(statusesData);
       setPriorities(prioritiesData);
-
-      // Set default status and priority if not set
-      if (statusesData.length > 0 && !statusId) {
-        setStatusId(statusesData[0].id);
-      }
-      if (prioritiesData.length > 0 && !priorityId) {
+      if (statusesData.length > 0 && !statusId) setStatusId(statusesData[0].id);
+      if (prioritiesData.length > 0 && !priorityId)
         setPriorityId(prioritiesData[0].id);
-      }
-    } catch (error) {
-      showCustomAlert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to load data"
-      );
+    } catch (e) {
+      showAlert("Error", "Failed to load tasks");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreateTask = async () => {
-    if (!title.trim()) {
-      Alert.alert("Validation", "Please enter a task title");
-      return;
-    }
-
-    if (!statusId) {
-      Alert.alert("Validation", "Please select a status");
-      return;
-    }
-
-    if (!priorityId) {
-      Alert.alert("Validation", "Please select a priority");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      if (editingTask) {
-        await updateTask(editingTask.id, {
-          title,
-          description: description || undefined,
-          statusId,
-          priorityId,
-          dueDate: dueDate || undefined,
-        });
-        Alert.alert("Success", "Task updated successfully");
-      } else {
-        await createTask({
-          title,
-          description: description || undefined,
-          statusId,
-          priorityId,
-          dueDate: dueDate || undefined,
-        });
-        Alert.alert("Success", "Task created successfully");
-      }
-      resetForm();
-      setModalVisible(false);
-      loadData();
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to save task"
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleEditTask = (task: Task) => {
-    setEditingTask(task);
-    setTitle(task.title);
-    setDescription(task.description || "");
-    setStatusId(task.statusId);
-    setPriorityId(task.priorityId);
-    setDueDate(task.dueDate || "");
-    setModalVisible(true);
-  };
-
-  const handleDeleteTask = (taskId: string) => {
-    showCustomAlert(
-      "Delete Task",
-      "Are you sure you want to delete this task?",
-      [
-        { text: "Cancel", style: "default" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              // Remove task from list immediately for better UX
-              setTasks((prev) => prev.filter((t) => t.id !== taskId));
-              await deleteTask(taskId);
-              showCustomAlert("Success", "Task deleted successfully");
-            } catch (error) {
-              showCustomAlert(
-                "Error",
-                error instanceof Error ? error.message : "Failed to delete task"
-              );
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleToggleStatus = async (task: Task) => {
-    // Cycle to next status
-    const currentIndex = statuses.findIndex((s) => s.id === task.statusId);
-    const nextIndex = (currentIndex + 1) % statuses.length;
-    const newStatusId = statuses[nextIndex].id;
-
-    try {
-      await updateTask(task.id, { statusId: newStatusId });
-      loadData();
-    } catch (error) {
-      showCustomAlert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to update task"
-      );
     }
   };
 
@@ -200,216 +91,200 @@ export default function TasksScreen() {
     if (priorities.length > 0) setPriorityId(priorities[0].id);
     setDueDate("");
   };
-
-  const handleCreateStatus = async () => {
-    if (!newStatusName.trim()) {
-      Alert.alert("Error", "Status name is required");
-      return;
-    }
-    try {
-      const newStatus = await createStatus({ name: newStatusName.trim() });
-      setStatuses((prev) => [...prev, newStatus]);
-      setStatusId(newStatus.id);
-      setStatusModalVisible(false);
-      setNewStatusName("");
-      Alert.alert("Success", "Status added!");
-    } catch (err) {
-      Alert.alert("Error", "Failed to create status");
-    }
-  };
-
-  const handleCreatePriority = async () => {
-    if (!newPriorityName.trim()) {
-      Alert.alert("Error", "Priority name is required");
-      return;
-    }
-    try {
-      const newPriority = await createPriority({ name: newPriorityName.trim() });
-      setPriorities((prev) => [...prev, newPriority]);
-      setPriorityId(newPriority.id);
-      setPriorityModalVisible(false);
-      setNewPriorityName("");
-      Alert.alert("Success", "Priority added!");
-    } catch (err) {
-      Alert.alert("Error", "Failed to create priority");
-    }
-  };
-
-  const getPriorityColor = (priority: Priority) => {
-    if (priority.color) {
-      return { backgroundColor: priority.color };
-    }
-    return { backgroundColor: "#6B7280" };
-  };
-
-  const getStatusColor = (status: Status) => {
-    if (status.color) {
-      return { backgroundColor: status.color };
-    }
-    return { backgroundColor: "#6B7280" };
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
-  const showCustomAlert = (
+  
+  const showAlert = (
     title: string,
     message: string,
-    buttons?: Array<{
-      text: string;
-      onPress?: () => void;
-      style?: "default" | "destructive";
-    }>
-  ) => {
-    setCustomAlert({ visible: true, title, message, buttons });
+    buttons?: Array<{ text: string; onPress?: () => void; style?: "default" | "destructive" }>
+  ) => setCustomAlert({ visible: true, title, message, buttons });
+
+  const hideAlert = () => setCustomAlert(null);
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setTitle(task.title);
+    setDescription(task.description || "");
+    setStatusId(task.statusId);
+    setPriorityId(task.priorityId);
+    setDueDate(task.dueDate || "");
+    setModalVisible(true);
   };
 
-  const hideCustomAlert = () => {
-    setCustomAlert(null);
+  const handleDeleteTask = (id: string) =>
+    showAlert("Delete Task", "Delete this task permanently?", [
+      { text: "Cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await deleteTask(id);
+          setTasks((prev) => prev.filter((t) => t.id !== id));
+        },
+      },
+    ]);
+
+  const handleToggleStatus = async (task: Task) => {
+    const idx = statuses.findIndex((s) => s.id === task.statusId);
+    const next = (idx + 1) % statuses.length;
+    await updateTask(task.id, { statusId: statuses[next].id });
+    loadData();
   };
+
+  const formatDate = (d?: string) =>
+    d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+
+  // monochrome fallback
+  const getChip = (name: string, color?: string) => ({
+    name,
+    color: color || "#52525B",
+  });
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
-      {/* Header */}
-      <View className="pt-6 pb-4 px-6 bg-gray-900/50">
-        <View className="flex-row items-center justify-between mb-4">
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text className="text-xl font-bold text-white">My Tasks</Text>
-          <TouchableOpacity
-            onPress={() => {
-              resetForm();
-              setModalVisible(true);
-            }}
-          >
-            <Ionicons name="add-circle" size={28} color="#60A5FA" />
-          </TouchableOpacity>
-        </View>
+      {/* HEADER */}
+      <View className="flex-row items-center justify-between px-6 pt-5 pb-3">
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text className="text-lg font-semibold text-white">Tasks</Text>
+        <View style={{ width: 24 }} />{/* placeholder for symmetry */}
       </View>
 
-      {/* Tasks List */}
+      {/* CONTENT */}
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#60A5FA" />
+          <ActivityIndicator size="large" color="#8B5CF6" />
         </View>
       ) : (
         <ScrollView
-          className="flex-1 px-4 py-4"
-          contentContainerStyle={{ paddingBottom: 80 }}
+          className="flex-1 px-4"
+          contentContainerStyle={{ paddingBottom: 100 }}
         >
           {tasks.length === 0 ? (
-            <View className="flex-1 justify-center items-center py-20">
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={64}
-                color="#6B7280"
-              />
-              <Text className="text-gray-400 text-lg mt-4">
-                No tasks found
+            <View className="items-center py-24">
+              <Ionicons name="sparkles-outline" size={56} color="#52525B" />
+              <Text className="text-gray-400 mt-4 text-base">
+                No tasks yet
               </Text>
-              <Text className="text-gray-500 text-sm mt-2">
-                Create a new task to get started
+              <Text className="text-gray-600 text-sm mt-1">
+                Tap “＋” below to add one
               </Text>
             </View>
           ) : (
-            tasks.map((task) => (
-              <TouchableOpacity
-                key={task.id}
-                className="bg-gray-800 rounded-xl px-4 py-3 mb-2"
-                onPress={() => router.push(`/tasks/${task.id}`)}
-              >
-                {/* Top row */}
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-row flex-1 items-start">
-                    {/* Status toggle */}
-                    <TouchableOpacity
-                      onPress={() => handleToggleStatus(task)}
-                      className="mt-1 mr-3"
-                    >
-                      <Ionicons
-                        name={
-                          task.status.name.toLowerCase().includes("complete") ||
-                            task.status.name.toLowerCase().includes("done")
-                            ? "checkmark-circle"
-                            : "ellipse-outline"
-                        }
-                        size={22}
-                        color={
-                          task.status.name.toLowerCase().includes("complete") ||
-                            task.status.name.toLowerCase().includes("done")
-                            ? "#10B981"
-                            : "#6B7280"
-                        }
-                      />
-                    </TouchableOpacity>
-
-                    {/* Title + meta */}
-                    <View className="flex-1">
+            tasks.map((t) => {
+              const pr = getChip(t.priority.name, t.priority.color);
+              const st = getChip(t.status.name, t.status.color);
+              const isDone =
+                t.status.name.toLowerCase().includes("done") ||
+                t.status.name.toLowerCase().includes("complete");
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  onPress={() => handleEditTask(t)}
+                  className="bg-gray-800 rounded-xl p-4 mb-3 active:opacity-90"
+                >
+                  <View className="flex-row justify-between items-start">
+                    <View className="flex-1 pr-4">
                       <Text
-                        className={`text-base text-gray-200 ${task.status.name.toLowerCase().includes("complete") ||
-                          task.status.name.toLowerCase().includes("done")
-                          ? "line-through opacity-50"
-                          : ""
-                          }`}
+                        className={`text-gray-100 font-medium tracking-tight ${
+                          isDone ? "line-through text-gray-500" : ""
+                        }`}
+                        numberOfLines={1}
                       >
-                        {task.title}
+                        {t.title}
                       </Text>
-
-                      {task.description && (
-                        <Text className="text-gray-500 text-xs mt-1">
-                          {task.description}
+                      {!!t.description && (
+                        <Text
+                          numberOfLines={2}
+                          className="text-gray-500 text-xs mt-1"
+                        >
+                          {t.description}
                         </Text>
                       )}
-
-                      {/* Meta row */}
-                      <View className="flex-row items-center gap-2 mt-2">
+                      <View className="flex-row items-center mt-2 space-x-2">
                         <View
-                          className="px-2 py-0.5 rounded"
-                          style={getPriorityColor(task.priority)}
+                          className="px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: pr.color }}
                         >
-                          <Text className="text-white text-[10px] font-medium">
-                            {task.priority.name}
+                          <Text className="text-[10px] text-white">
+                            {pr.name}
                           </Text>
                         </View>
-
-                        {task.dueDate && (
-                          <View className="flex-row items-center">
+                        <View
+                          className="px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: st.color }}
+                        >
+                          <Text className="text-[10px] text-white">
+                            {st.name}
+                          </Text>
+                        </View>
+                        {t.dueDate && (
+                          <View className="flex-row items-center space-x-1">
                             <Ionicons
                               name="calendar-outline"
                               size={12}
-                              color="#6B7280"
+                              color="#a1a1aa"
                             />
-                            <Text className="text-gray-500 text-[10px] ml-1">
-                              {formatDate(task.dueDate)}
+                            <Text className="text-[10px] text-gray-400">
+                              {formatDate(t.dueDate)}
                             </Text>
                           </View>
                         )}
                       </View>
                     </View>
-                  </View>
 
-                  {/* Action icons */}
-                  <View className="flex-row items-center gap-3 ml-2">
-                    <TouchableOpacity onPress={() => handleEditTask(task)}>
-                      <Ionicons name="pencil-outline" size={18} color="#9CA3AF" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={() => handleDeleteTask(task.id)}>
-                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                    </TouchableOpacity>
+                    <View className="items-end">
+                      <TouchableOpacity
+                        onPress={() => handleToggleStatus(t)}
+                        className="mb-3"
+                      >
+                        <Ionicons
+                          name={
+                            isDone
+                              ? "checkmark-circle"
+                              : "ellipse-outline"
+                          }
+                          size={22}
+                          color={isDone ? "#10B981" : "#8B5CF6"}
+                        />
+                      </TouchableOpacity>
+                      <View className="flex-row space-x-3">
+                        <TouchableOpacity onPress={() => handleEditTask(t)}>
+                          <Ionicons
+                            name="create-outline"
+                            size={18}
+                            color="#9ca3af"
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeleteTask(t.id)}>
+                          <Ionicons
+                            name="trash-outline"
+                            size={18}
+                            color="#ef4444"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))
+                </TouchableOpacity>
+              );
+            })
           )}
         </ScrollView>
       )}
 
-      {/* Create/Edit Task Modal */}
+      {/* FLOATING ADD BUTTON */}
+      <TouchableOpacity
+        onPress={() => {
+          resetForm();
+          setModalVisible(true);
+        }}
+        className="absolute bottom-8 right-6 bg-[#8B5CF6] p-4 rounded-full shadow-lg active:opacity-90"
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
+
+      {/* TASK MODAL */}
       <TaskModal
         visible={modalVisible}
         onClose={() => {
@@ -419,21 +294,18 @@ export default function TasksScreen() {
         onSave={async (payload) => {
           if (editingTask) {
             await updateTask(editingTask.id, payload);
-            Alert.alert("Success", "Task updated successfully");
           } else {
             await createTask(payload);
-            Alert.alert("Success", "Task created successfully");
           }
-          resetForm();
           setModalVisible(false);
           loadData();
         }}
         initialValues={{
-          title: title,
-          description: description,
-          statusId: statusId,
-          priorityId: priorityId,
-          dueDate: dueDate,
+          title,
+          description,
+          statusId,
+          priorityId,
+          dueDate,
         }}
         statuses={statuses}
         setStatuses={setStatuses}
@@ -441,53 +313,47 @@ export default function TasksScreen() {
         setPriorities={setPriorities}
       />
 
-      {/* Custom Alert Modal */}
+      {/* ALERT */}
       {customAlert && (
-        <Modal
-          visible={customAlert.visible}
-          animationType="fade"
-          transparent={true}
-          onRequestClose={hideCustomAlert}
-        >
-          <View className="flex-1 bg-black/50 justify-center items-center px-6">
-            <View className="bg-gray-800 rounded-xl p-6 w-full max-w-sm">
-              <Text className="text-white text-xl font-bold mb-2 text-center">
+        <Modal visible transparent animationType="fade" onRequestClose={hideAlert}>
+          <View className="flex-1 bg-black/60 justify-center items-center px-6">
+            <View className="bg-gray-900 rounded-xl p-6 w-full max-w-sm">
+              <Text className="text-white text-lg font-semibold mb-2 text-center">
                 {customAlert.title}
               </Text>
-              <Text className="text-gray-300 text-center mb-6">
+              <Text className="text-gray-400 text-center mb-6">
                 {customAlert.message}
               </Text>
-
-              <View className="flex-row gap-3">
-                {customAlert.buttons?.map((button, index) => (
+              <View className="flex-row space-x-3">
+                {customAlert.buttons?.map((b, i) => (
                   <TouchableOpacity
-                    key={index}
+                    key={i}
                     onPress={() => {
-                      hideCustomAlert();
-                      button.onPress?.();
+                      hideAlert();
+                      b.onPress?.();
                     }}
-                    className={`flex-1 rounded-xl py-3 items-center ${button.style === "destructive"
-                      ? "bg-red-600"
-                      : "bg-gray-700"
-                      }`}
+                    className={`flex-1 py-3 rounded-xl items-center ${
+                      b.style === "destructive" ? "bg-red-600" : "bg-gray-700"
+                    }`}
                   >
                     <Text
-                      className={`font-medium ${button.style === "destructive"
-                        ? "text-white"
-                        : "text-gray-200"
-                        }`}
+                      className={`font-medium ${
+                        b.style === "destructive"
+                          ? "text-white"
+                          : "text-gray-100"
+                      }`}
                     >
-                      {button.text}
+                      {b.text}
                     </Text>
                   </TouchableOpacity>
                 )) || (
-                    <TouchableOpacity
-                      onPress={hideCustomAlert}
-                      className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
-                    >
-                      <Text className="text-white font-medium">OK</Text>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    onPress={hideAlert}
+                    className="flex-1 py-3 bg-[#8B5CF6] rounded-xl items-center"
+                  >
+                    <Text className="text-white font-medium">OK</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>

@@ -116,6 +116,7 @@ export const taskService = {
         project: {
           select: { id: true, title: true, ownerId: true },
         },
+        attachments: true,
       },
     });
 

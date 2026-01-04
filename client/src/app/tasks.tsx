@@ -299,6 +299,7 @@ export default function TasksScreen() {
           }
           setModalVisible(false);
           loadData();
+          return editingTask as Task;
         }}
         initialValues={{
           title,

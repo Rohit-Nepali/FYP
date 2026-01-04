@@ -117,16 +117,23 @@ async function makeRequest<T>(
     method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
     data?: any;
     params?: any;
+    isMultipart?: boolean;
   } = {}
 ): Promise<T> {
   try {
-    const { method = "GET", data, params } = options;
+    const { method = "GET", data, params, isMultipart = false } = options;
+
+    const headers: Record<string, string> = {};
+    if (isMultipart) {
+      headers["Content-Type"] = "multipart/form-data";
+    }
 
     const response = await axiosInstance.request<ApiResponse<T>>({
       url: endpoint,
       method,
       data,
       params,
+      headers,
     });
 
     if (!response) throw new Error("No response from server");
@@ -134,7 +141,8 @@ async function makeRequest<T>(
     if (response.data.success) {
       return response.data.data;
     }
-    return response.data as unknown as T;
+    // return response.data as unknown as T;
+    throw new Error(response.data.error?.message || "Unknown API error");
   } catch (error) {
     if (error instanceof Error) {
       throw error;
@@ -205,4 +213,29 @@ export async function getGroupTasks(groupId: string): Promise<Task[]> {
   return makeRequest<Task[]>(`/tasks/group/${groupId}`, {
     method: "GET",
   });
+}
+
+export async function uploadAttachments(
+  taskId: string,
+  files: {
+    uri: string;
+    name: string;
+    mimeType?: string;
+  }[]
+): Promise<void> {
+  for (const file of files) {
+    const formData = new FormData();
+    
+    formData.append("file", {
+      uri: file.uri,
+      name: file.name,
+      type: file.mimeType || "application/octet-stream",
+    } as any);
+
+    await makeRequest<void>(`/tasks/${taskId}/attachments`, {
+      method: "POST",
+      data: formData,
+      isMultipart: true,
+    });
+  }
 }

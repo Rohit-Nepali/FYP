@@ -21,7 +21,7 @@ import { handleAuthError, getAuthErrorMessage } from "../../utils/errorHandler";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, isLoading } = useAuth();
+  const { login, isAuthChecking } = useAuth();
 
   // Alert state
   const [alertVisible, setAlertVisible] = useState(false);
@@ -143,8 +143,8 @@ export default function LoginScreen() {
 
   // Memoized computed values
   const isSubmitDisabled = useMemo(
-    () => isLoading || isSubmitting,
-    [isLoading, isSubmitting]
+    () => isAuthChecking || isSubmitting,
+    [isAuthChecking, isSubmitting]
   );
 
   const submitButtonText = useMemo(

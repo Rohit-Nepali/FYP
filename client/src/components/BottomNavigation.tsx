@@ -39,7 +39,9 @@ export function BottomNavigation() {
               key={tab.name}
               className="items-center justify-center py-2 flex-1"
               onPress={() => {
-                router.push(tab.route);
+                if (pathname !== tab.route) {
+                  router.replace(tab.route);
+                }
               }}
             >
               <Ionicons
@@ -48,9 +50,8 @@ export function BottomNavigation() {
                 color={isActive ? "#8b5cf6" : "#6b7280"}
               />
               <Text
-                className={`text-xs mt-1 ${
-                  isActive ? "text-purple-400" : "text-gray-500"
-                }`}
+                className={`text-xs mt-1 ${isActive ? "text-purple-400" : "text-gray-500"
+                  }`}
               >
                 {tab.name}
               </Text>

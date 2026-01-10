@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 const PUBLIC_PATHS = ["/login", "/signup", "/splash", "/verify-email", "/forgot-password", "/verify-reset-token"] as const;
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isAuthChecking } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -19,7 +19,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }, [pathname]);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isAuthChecking) return;
 
     if (!isAuthenticated && !isPublicPath) {
       router.replace("/login");
@@ -30,9 +30,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       router.replace("/");
       return;
     }
-  }, [isAuthenticated, isLoading, router, pathname]);
+  }, [isAuthenticated, isAuthChecking, router, pathname]);
 
-  if (isLoading) {
+  if (isAuthChecking) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#667eea" />

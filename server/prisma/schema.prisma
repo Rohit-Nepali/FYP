@@ -42,6 +42,7 @@ model User {
   sentProjectInvites  ProjectInvite[] @relation("UserProjectInvites")
 
   uploadedAttachments Attachment[]
+  comments            Comment[]
 
 }
 
@@ -155,15 +156,16 @@ model Task {
 
   creatorId   String
   creator     User     @relation("createdTasks",fields: [creatorId], references: [id], onDelete: Cascade)
-  
+
   projectId   String?
   project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
+
   assigneeId  String?
   assignee    User?    @relation("assignedTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
 
   attachments Attachment[]
-  
+  comments    Comment[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -216,6 +218,20 @@ model ProjectInvite {
 
   project   Project @relation("projectInvites",fields: [projectId], references: [id])
   invitedBy User    @relation("UserProjectInvites",fields: [invitedById], references: [id])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+  @@index([authorId])
 }
 
 model Attachment {

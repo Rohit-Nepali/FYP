@@ -14,6 +14,7 @@ import {
   storeTokens,
   getStoredTokens,
   clearTokens,
+  LoginResponse,
 } from "../services/authService";
 
 interface User {
@@ -27,7 +28,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
+  isAuthChecking: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -43,7 +44,8 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // const [isLoading, setIsLoading] = useState(true);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   const isAuthenticated = !!user;
 
@@ -64,57 +66,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clear any invalid tokens
       await clearTokens();
     } finally {
-      setIsLoading(false);
+      setIsAuthChecking(false);
     }
   };
 
   const login = async (email: string, password: string) => {
-    try {
-      setIsLoading(true);
-      const response = await authLogin(email, password);
 
-      // Store tokens
-      await storeTokens(response.accessToken, response.refreshToken);
-
-      // Set user
-      setUser(response.user);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
+    const response: LoginResponse | null = await authLogin(email, password);
+    if (!response) {
+      throw new Error("INVALID_CREDENTIALS");
     }
+
+    await storeTokens(response.accessToken, response.refreshToken);
+    setUser(response.user);
   };
 
   const register = async (name: string, email: string, password: string) => {
-    try {
-      setIsLoading(true);
-      const response = await authRegister(name, email, password);
+    const response = await authRegister(name, email, password);
 
-      // Store tokens
-      await storeTokens(response.accessToken, response.refreshToken);
+    await storeTokens(response.accessToken, response.refreshToken);
 
-      // Set user
-      setUser(response.user);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+    setUser(response.user);
   };
 
   const logout = async () => {
-    try {
-      setIsLoading(true);
-      await authLogout();
-    } catch (error) {
-      console.log("Logout error:", error);
-    } finally {
-      // Clear local state regardless of API call success
-      await clearTokens();
-      setUser(null);
-      setIsLoading(false);
-    }
-  };
+
+    await authLogout();
+
+    // Clear local state regardless of API call success
+    await clearTokens();
+    setUser(null);
+  }
 
   const refreshToken = async () => {
     try {
@@ -132,7 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     user,
-    isLoading,
+    isAuthChecking,
     isAuthenticated,
     login,
     register,

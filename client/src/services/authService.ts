@@ -4,7 +4,7 @@ import { config } from "../config/environment";
 
 const API_BASE_URL = config.API_BASE_URL;
 
-interface LoginResponse {
+export interface LoginResponse {
   user: {
     id: string;
     email: string;

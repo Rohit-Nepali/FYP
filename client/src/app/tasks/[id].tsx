@@ -6,12 +6,26 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Task, getTaskById } from "../../services/taskService";
+import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
+
+interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string;
+    profileImage?: string;
+  };
+}
 
 export default function TaskDetail() {
   const router = useRouter();
@@ -21,6 +35,10 @@ export default function TaskDetail() {
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'status'>('details');
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
 
   useEffect(() => {
     if (!taskId) return;
@@ -40,13 +58,46 @@ export default function TaskDetail() {
       }
     };
 
+    const loadComments = async () => {
+      try {
+        const commentsData = await getCommentsByTask(taskId);
+        setComments(commentsData);
+      } catch (err) {
+        console.error("Failed to load comments", err);
+      }
+    };
+
     loadTask();
+    loadComments();
   }, [taskId]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleDateString();
+  };
+
+  const handlePostComment = async () => {
+    if (!newComment.trim()) return;
+
+    try {
+      setPostingComment(true);
+      await createComment({
+        taskId,
+        content: newComment.trim(),
+      });
+      setNewComment('');
+      // Reload comments
+      const commentsData = await getCommentsByTask(taskId);
+      setComments(commentsData);
+    } catch (err) {
+      Alert.alert(
+        "Error",
+        err instanceof Error ? err.message : "Failed to post comment"
+      );
+    } finally {
+      setPostingComment(false);
+    }
   };
 
   if (!taskId) {
@@ -95,6 +146,34 @@ export default function TaskDetail() {
         </View>
       </View>
 
+      {/* Tab Navigation */}
+      <View className="flex-row bg-gray-800 mx-4 mt-4 rounded-xl p-1">
+        <TouchableOpacity
+          onPress={() => setActiveTab('details')}
+          className={`flex-1 py-2 px-4 rounded-lg ${activeTab === 'details' ? 'bg-gray-700' : ''}`}
+        >
+          <Text className={`text-center font-medium ${activeTab === 'details' ? 'text-white' : 'text-gray-400'}`}>
+            Details
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setActiveTab('comments')}
+          className={`flex-1 py-2 px-4 rounded-lg ${activeTab === 'comments' ? 'bg-gray-700' : ''}`}
+        >
+          <Text className={`text-center font-medium ${activeTab === 'comments' ? 'text-white' : 'text-gray-400'}`}>
+            Comments ({comments.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setActiveTab('status')}
+          className={`flex-1 py-2 px-4 rounded-lg ${activeTab === 'status' ? 'bg-gray-700' : ''}`}
+        >
+          <Text className={`text-center font-medium ${activeTab === 'status' ? 'text-white' : 'text-gray-400'}`}>
+            Status
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         className="flex-1 px-4 py-4"
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -129,100 +208,198 @@ export default function TaskDetail() {
           </View>
         ) : (
           <View className="space-y-4">
-            {/* Main card: title + status icon + short meta */}
-            <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-              <View className="flex-row items-center mb-3">
-                <View className="mr-3">
-                  <Ionicons
-                    name={isDone ? "checkmark-circle" : "ellipse-outline"}
-                    size={28}
-                    color={isDone ? "#10B981" : "#9CA3AF"}
-                  />
-                </View>
+            {activeTab === 'details' && (
+              <>
+                {/* Main card: title + status icon + short meta */}
+                <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
+                  <View className="flex-row items-center mb-3">
+                    <View className="mr-3">
+                      <Ionicons
+                        name={isDone ? "checkmark-circle" : "ellipse-outline"}
+                        size={28}
+                        color={isDone ? "#10B981" : "#9CA3AF"}
+                      />
+                    </View>
 
-                <View className="flex-1">
-                  <Text
-                    className="text-white font-semibold text-lg"
-                    numberOfLines={2}
-                  >
-                    {task.title}
-                  </Text>
-                  {task.status?.name ? (
-                    <Text className="text-gray-400 text-xs mt-1">
-                      {task.status.name}
+                    <View className="flex-1 ">
+                      <Text
+                        className="text-white font-semibold text-lg"
+                        numberOfLines={2}
+                      >
+                        {task.title}
+                      </Text>
+                      {task.status?.name ? (
+                        <Text className="text-gray-400 text-xs mt-1">
+                          {task.status.name}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+
+                  {description ? (
+                    <Text className="text-gray-300 text-sm mt-1">
+                      {description}
                     </Text>
                   ) : null}
                 </View>
-              </View>
 
-              {description ? (
-                <Text className="text-gray-300 text-sm mt-1">
-                  {description}
-                </Text>
-              ) : null}
-            </View>
+                {/* Due date */}
+                {task.dueDate && (
+                  <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700 flex-row items-center justify-between">
+                    <View className="flex-row items-center">
+                      <Ionicons
+                        name="calendar-outline"
+                        size={18}
+                        color="#9CA3AF"
+                      />
+                      <Text className="text-gray-300 font-medium ml-2">
+                        Due date
+                      </Text>
+                    </View>
+                    <Text className="text-gray-100 text-sm">
+                      {formatDate(task.dueDate)}
+                    </Text>
+                  </View>
+                )}
 
-            {/* Status */}
-            <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700 flex-row items-center justify-between">
-              <View className="flex-row items-center">
-                <Ionicons name="flag-outline" size={18} color="#FBBF24" />
-                <Text className="text-gray-300 font-medium ml-2">
-                  Status
-                </Text>
-              </View>
-              <Text className="text-gray-100 text-sm">
-                {task.status?.name ?? "-"}
-              </Text>
-            </View>
+                {/* Project link (if available) */}
+                {projectTitle && (
+                  <TouchableOpacity
+                    className="bg-gray-800 rounded-2xl p-4 border border-gray-700 flex-row items-center justify-between"
+                    onPress={() =>
+                      projectId && router.push(`/projects/${projectId}`)
+                    }
+                  >
+                    <View className="flex-row items-center">
+                      <Ionicons
+                        name="folder-outline"
+                        size={18}
+                        color="#60A5FA"
+                      />
+                      <Text className="text-gray-300 font-medium ml-2">
+                        Project
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <Text className="text-blue-400 text-sm mr-1">
+                        {projectTitle}
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={14}
+                        color="#9CA3AF"
+                      />
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
 
-            {/* Due date */}
-            {task.dueDate && (
-              <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700 flex-row items-center justify-between">
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name="calendar-outline"
-                    size={18}
-                    color="#9CA3AF"
+            {activeTab === 'comments' && (
+              <View className="space-y-4">
+                {/* Add Comment */}
+                <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
+                  <Text className="text-white font-semibold mb-3">Add Comment</Text>
+                  <TextInput
+                    className="bg-gray-700 rounded-xl px-4 py-3 text-white min-h-[80px] mb-3"
+                    placeholder="Write a comment..."
+                    placeholderTextColor="#6B7280"
+                    value={newComment}
+                    onChangeText={setNewComment}
+                    multiline
+                    textAlignVertical="top"
                   />
-                  <Text className="text-gray-300 font-medium ml-2">
-                    Due date
-                  </Text>
+                  <TouchableOpacity
+                    onPress={handlePostComment}
+                    disabled={!newComment.trim() || postingComment}
+                    className={`rounded-xl py-3 items-center ${newComment.trim() && !postingComment ? 'bg-blue-600' : 'bg-gray-600'}`}
+                  >
+                    {postingComment ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text className="text-white font-medium">Post Comment</Text>
+                    )}
+                  </TouchableOpacity>
                 </View>
-                <Text className="text-gray-100 text-sm">
-                  {formatDate(task.dueDate)}
-                </Text>
+
+                {/* Comments List */}
+                {comments.length === 0 ? (
+                  <View className="items-center py-8">
+                    <Ionicons name="chatbubble-outline" size={40} color="#6B7280" />
+                    <Text className="text-gray-400 text-sm mt-2">
+                      No comments yet
+                    </Text>
+                  </View>
+                ) : (
+                  comments.map((comment) => (
+                    <View key={comment.id} className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
+                      <View className="flex-row items-start">
+                        <View className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center mr-3">
+                          <Text className="text-white font-semibold text-sm">
+                            {comment.author.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View className="flex-1">
+                          <View className="flex-row items-center mb-2">
+                            <Text className="text-white font-medium text-sm">
+                              {comment.author.name}
+                            </Text>
+                            <Text className="text-gray-400 text-xs ml-2">
+                              {formatDate(comment.createdAt)}
+                            </Text>
+                          </View>
+                          <Text className="text-gray-300 text-sm">
+                            {comment.content}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))
+                )}
               </View>
             )}
 
-            {/* Project link (if available) */}
-            {projectTitle && (
-              <TouchableOpacity
-                className="bg-gray-800 rounded-2xl p-4 border border-gray-700 flex-row items-center justify-between"
-                onPress={() =>
-                  projectId && router.push(`/projects/${projectId}`)
-                }
-              >
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name="folder-outline"
-                    size={18}
-                    color="#60A5FA"
-                  />
-                  <Text className="text-gray-300 font-medium ml-2">
-                    Project
+            {activeTab === 'status' && (
+              <View className="space-y-4">
+                {/* Status */}
+                <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700 flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <Ionicons name="flag-outline" size={18} color="#FBBF24" />
+                    <Text className="text-gray-300 font-medium ml-2">
+                      Status
+                    </Text>
+                  </View>
+                  <Text className="text-gray-100 text-sm">
+                    {task.status?.name ?? "-"}
                   </Text>
                 </View>
-                <View className="flex-row items-center">
-                  <Text className="text-blue-400 text-sm mr-1">
-                    {projectTitle}
+
+                {/* Priority */}
+                <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700 flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                    <Text className="text-gray-300 font-medium ml-2">
+                      Priority
+                    </Text>
+                  </View>
+                  <Text className="text-gray-100 text-sm">
+                    {task.priority?.name ?? "-"}
                   </Text>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={14}
-                    color="#9CA3AF"
-                  />
                 </View>
-              </TouchableOpacity>
+
+                {/* Created */}
+                <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700 flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <Ionicons name="time-outline" size={18} color="#9CA3AF" />
+                    <Text className="text-gray-300 font-medium ml-2">
+                      Created
+                    </Text>
+                  </View>
+                  <Text className="text-gray-100 text-sm">
+                    {formatDate(task.createdAt)}
+                  </Text>
+                </View>
+              </View>
             )}
           </View>
         )}

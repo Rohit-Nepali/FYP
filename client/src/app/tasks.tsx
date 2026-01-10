@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -57,6 +58,7 @@ export default function TasksScreen() {
   const [statusId, setStatusId] = useState<string>("");
   const [priorityId, setPriorityId] = useState<string>("");
   const [dueDate, setDueDate] = useState("");
+   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -91,7 +93,7 @@ export default function TasksScreen() {
     if (priorities.length > 0) setPriorityId(priorities[0].id);
     setDueDate("");
   };
-  
+
   const showAlert = (
     title: string,
     message: string,
@@ -139,227 +141,243 @@ export default function TasksScreen() {
     color: color || "#52525B",
   });
 
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await Promise.all([loadData()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
-      {/* HEADER */}
-      <View className="flex-row items-center justify-between px-6 pt-5 pb-3">
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text className="text-lg font-semibold text-white">Tasks</Text>
-        <View style={{ width: 24 }} />{/* placeholder for symmetry */}
-      </View>
-
-      {/* CONTENT */}
-      {loading ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#8B5CF6" />
+      <ScrollView className="flex-1 " refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={["#8b5cf6"]}
+          tintColor="#8b5cf6"
+        />
+      }>
+        {/* HEADER */}
+        <View className="flex-row items-center justify-between px-6 pt-5 pb-3">
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text className="text-lg font-semibold text-white">Tasks</Text>
+          <View style={{ width: 24 }} />{/* placeholder for symmetry */}
         </View>
-      ) : (
-        <ScrollView
-          className="flex-1 px-4"
-          contentContainerStyle={{ paddingBottom: 100 }}
-        >
-          {tasks.length === 0 ? (
-            <View className="items-center py-24">
-              <Ionicons name="sparkles-outline" size={56} color="#52525B" />
-              <Text className="text-gray-400 mt-4 text-base">
-                No tasks yet
-              </Text>
-              <Text className="text-gray-600 text-sm mt-1">
-                Tap “＋” below to add one
-              </Text>
-            </View>
-          ) : (
-            tasks.map((t) => {
-              const pr = getChip(t.priority.name, t.priority.color);
-              const st = getChip(t.status.name, t.status.color);
-              const isDone =
-                t.status.name.toLowerCase().includes("done") ||
-                t.status.name.toLowerCase().includes("complete");
-              return (
-                <TouchableOpacity
-                  key={t.id}
-                  onPress={() => handleEditTask(t)}
-                  className="bg-gray-800 rounded-xl p-4 mb-3 active:opacity-90"
-                >
-                  <View className="flex-row justify-between items-start">
-                    <View className="flex-1 pr-4">
-                      <Text
-                        className={`text-gray-100 font-medium tracking-tight ${
-                          isDone ? "line-through text-gray-500" : ""
-                        }`}
-                        numberOfLines={1}
-                      >
-                        {t.title}
-                      </Text>
-                      {!!t.description && (
+
+        {/* CONTENT */}
+        {loading ? (
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#8B5CF6" />
+          </View>
+        ) : (
+          <ScrollView
+            className="flex-1 px-4"
+            contentContainerStyle={{ paddingBottom: 100 }}
+          >
+            {tasks.length === 0 ? (
+              <View className="items-center py-24">
+                <Ionicons name="sparkles-outline" size={56} color="#52525B" />
+                <Text className="text-gray-400 mt-4 text-base">
+                  No tasks yet
+                </Text>
+                <Text className="text-gray-600 text-sm mt-1">
+                  Tap “＋” below to add one
+                </Text>
+              </View>
+            ) : (
+              tasks.map((t) => {
+                const pr = getChip(t.priority.name, t.priority.color);
+                const st = getChip(t.status.name, t.status.color);
+                const isDone =
+                  t.status.name.toLowerCase().includes("done") ||
+                  t.status.name.toLowerCase().includes("complete");
+                return (
+                  <TouchableOpacity
+                    key={t.id}
+                    onPress={() => handleEditTask(t)}
+                    className="bg-gray-800 rounded-xl p-4 mb-3 active:opacity-90"
+                  >
+                    <View className="flex-row justify-between items-start">
+                      <View className="flex-1 pr-4">
                         <Text
-                          numberOfLines={2}
-                          className="text-gray-500 text-xs mt-1"
+                          className={`text-gray-100 font-medium tracking-tight ${isDone ? "line-through text-gray-500" : ""
+                            }`}
+                          numberOfLines={1}
                         >
-                          {t.description}
+                          {t.title}
                         </Text>
-                      )}
-                      <View className="flex-row items-center mt-2 space-x-2">
-                        <View
-                          className="px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: pr.color }}
-                        >
-                          <Text className="text-[10px] text-white">
-                            {pr.name}
+                        {!!t.description && (
+                          <Text
+                            numberOfLines={2}
+                            className="text-gray-500 text-xs mt-1"
+                          >
+                            {t.description}
                           </Text>
-                        </View>
-                        <View
-                          className="px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: st.color }}
-                        >
-                          <Text className="text-[10px] text-white">
-                            {st.name}
-                          </Text>
-                        </View>
-                        {t.dueDate && (
-                          <View className="flex-row items-center space-x-1">
-                            <Ionicons
-                              name="calendar-outline"
-                              size={12}
-                              color="#a1a1aa"
-                            />
-                            <Text className="text-[10px] text-gray-400">
-                              {formatDate(t.dueDate)}
+                        )}
+                        <View className="flex-row items-center mt-2 space-x-2">
+                          <View
+                            className="px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: pr.color }}
+                          >
+                            <Text className="text-[10px] text-white">
+                              {pr.name}
                             </Text>
                           </View>
-                        )}
+                          <View
+                            className="px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: st.color }}
+                          >
+                            <Text className="text-[10px] text-white">
+                              {st.name}
+                            </Text>
+                          </View>
+                          {t.dueDate && (
+                            <View className="flex-row items-center space-x-1">
+                              <Ionicons
+                                name="calendar-outline"
+                                size={12}
+                                color="#a1a1aa"
+                              />
+                              <Text className="text-[10px] text-gray-400">
+                                {formatDate(t.dueDate)}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
-                    </View>
 
-                    <View className="items-end">
-                      <TouchableOpacity
-                        onPress={() => handleToggleStatus(t)}
-                        className="mb-3"
-                      >
-                        <Ionicons
-                          name={
-                            isDone
-                              ? "checkmark-circle"
-                              : "ellipse-outline"
-                          }
-                          size={22}
-                          color={isDone ? "#10B981" : "#8B5CF6"}
-                        />
-                      </TouchableOpacity>
-                      <View className="flex-row space-x-3">
-                        <TouchableOpacity onPress={() => handleEditTask(t)}>
+                      <View className="items-end">
+                        <TouchableOpacity
+                          onPress={() => handleToggleStatus(t)}
+                          className="mb-3"
+                        >
                           <Ionicons
-                            name="create-outline"
-                            size={18}
-                            color="#9ca3af"
+                            name={
+                              isDone
+                                ? "checkmark-circle"
+                                : "ellipse-outline"
+                            }
+                            size={22}
+                            color={isDone ? "#10B981" : "#8B5CF6"}
                           />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleDeleteTask(t.id)}>
-                          <Ionicons
-                            name="trash-outline"
-                            size={18}
-                            color="#ef4444"
-                          />
-                        </TouchableOpacity>
+                        <View className="flex-row space-x-3">
+                          <TouchableOpacity onPress={() => handleEditTask(t)}>
+                            <Ionicons
+                              name="create-outline"
+                              size={18}
+                              color="#9ca3af"
+                            />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleDeleteTask(t.id)}>
+                            <Ionicons
+                              name="trash-outline"
+                              size={18}
+                              color="#ef4444"
+                            />
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </ScrollView>
-      )}
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </ScrollView>
+        )}
 
-      {/* FLOATING ADD BUTTON */}
-      <TouchableOpacity
-        onPress={() => {
-          resetForm();
-          setModalVisible(true);
-        }}
-        className="absolute bottom-8 right-6 bg-[#8B5CF6] p-4 rounded-full shadow-lg active:opacity-90"
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+        {/* FLOATING ADD BUTTON */}
+        <TouchableOpacity
+          onPress={() => {
+            resetForm();
+            setModalVisible(true);
+          }}
+          className="absolute bottom-8 right-6 bg-[#8B5CF6] p-4 rounded-full shadow-lg active:opacity-90"
+        >
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
 
-      {/* TASK MODAL */}
-      <TaskModal
-        visible={modalVisible}
-        onClose={() => {
-          setModalVisible(false);
-          resetForm();
-        }}
-        onSave={async (payload) => {
-          if (editingTask) {
-            await updateTask(editingTask.id, payload);
-          } else {
-            await createTask(payload);
-          }
-          setModalVisible(false);
-          loadData();
-          return editingTask as Task;
-        }}
-        initialValues={{
-          title,
-          description,
-          statusId,
-          priorityId,
-          dueDate,
-        }}
-        statuses={statuses}
-        setStatuses={setStatuses}
-        priorities={priorities}
-        setPriorities={setPriorities}
-      />
+        {/* TASK MODAL */}
+        <TaskModal
+          visible={modalVisible}
+          onClose={() => {
+            setModalVisible(false);
+            resetForm();
+          }}
+          onSave={async (payload) => {
+            if (editingTask) {
+              await updateTask(editingTask.id, payload);
+            } else {
+              await createTask(payload);
+            }
+            setModalVisible(false);
+            loadData();
+            return editingTask as Task;
+          }}
+          initialValues={{
+            title,
+            description,
+            statusId,
+            priorityId,
+            dueDate,
+          }}
+          statuses={statuses}
+          setStatuses={setStatuses}
+          priorities={priorities}
+          setPriorities={setPriorities}
+        />
 
-      {/* ALERT */}
-      {customAlert && (
-        <Modal visible transparent animationType="fade" onRequestClose={hideAlert}>
-          <View className="flex-1 bg-black/60 justify-center items-center px-6">
-            <View className="bg-gray-900 rounded-xl p-6 w-full max-w-sm">
-              <Text className="text-white text-lg font-semibold mb-2 text-center">
-                {customAlert.title}
-              </Text>
-              <Text className="text-gray-400 text-center mb-6">
-                {customAlert.message}
-              </Text>
-              <View className="flex-row space-x-3">
-                {customAlert.buttons?.map((b, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    onPress={() => {
-                      hideAlert();
-                      b.onPress?.();
-                    }}
-                    className={`flex-1 py-3 rounded-xl items-center ${
-                      b.style === "destructive" ? "bg-red-600" : "bg-gray-700"
-                    }`}
-                  >
-                    <Text
-                      className={`font-medium ${
-                        b.style === "destructive"
-                          ? "text-white"
-                          : "text-gray-100"
-                      }`}
+        {/* ALERT */}
+        {customAlert && (
+          <Modal visible transparent animationType="fade" onRequestClose={hideAlert}>
+            <View className="flex-1 bg-black/60 justify-center items-center px-6">
+              <View className="bg-gray-900 rounded-xl p-6 w-full max-w-sm">
+                <Text className="text-white text-lg font-semibold mb-2 text-center">
+                  {customAlert.title}
+                </Text>
+                <Text className="text-gray-400 text-center mb-6">
+                  {customAlert.message}
+                </Text>
+                <View className="flex-row space-x-3">
+                  {customAlert.buttons?.map((b, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => {
+                        hideAlert();
+                        b.onPress?.();
+                      }}
+                      className={`flex-1 py-3 rounded-xl items-center ${b.style === "destructive" ? "bg-red-600" : "bg-gray-700"
+                        }`}
                     >
-                      {b.text}
-                    </Text>
-                  </TouchableOpacity>
-                )) || (
-                  <TouchableOpacity
-                    onPress={hideAlert}
-                    className="flex-1 py-3 bg-[#8B5CF6] rounded-xl items-center"
-                  >
-                    <Text className="text-white font-medium">OK</Text>
-                  </TouchableOpacity>
-                )}
+                      <Text
+                        className={`font-medium ${b.style === "destructive"
+                            ? "text-white"
+                            : "text-gray-100"
+                          }`}
+                      >
+                        {b.text}
+                      </Text>
+                    </TouchableOpacity>
+                  )) || (
+                      <TouchableOpacity
+                        onPress={hideAlert}
+                        className="flex-1 py-3 bg-[#8B5CF6] rounded-xl items-center"
+                      >
+                        <Text className="text-white font-medium">OK</Text>
+                      </TouchableOpacity>
+                    )}
+                </View>
               </View>
             </View>
-          </View>
-        </Modal>
-      )}
+          </Modal>
+        )}
+
+      </ScrollView>
     </SafeAreaView>
   );
 }

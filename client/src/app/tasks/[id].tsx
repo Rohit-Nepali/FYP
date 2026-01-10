@@ -12,8 +12,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-
 import { Task, getTaskById } from "../../services/taskService";
+import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+
 import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
 
 interface Comment {
@@ -147,31 +148,59 @@ export default function TaskDetail() {
       </View>
 
       {/* Tab Navigation */}
-      <View className="flex-row bg-gray-800 mx-4 mt-4 rounded-xl p-1">
-        <TouchableOpacity
-          onPress={() => setActiveTab('details')}
-          className={`flex-1 py-2 px-4 rounded-lg ${activeTab === 'details' ? 'bg-gray-700' : ''}`}
-        >
-          <Text className={`text-center font-medium ${activeTab === 'details' ? 'text-white' : 'text-gray-400'}`}>
-            Details
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setActiveTab('comments')}
-          className={`flex-1 py-2 px-4 rounded-lg ${activeTab === 'comments' ? 'bg-gray-700' : ''}`}
-        >
-          <Text className={`text-center font-medium ${activeTab === 'comments' ? 'text-white' : 'text-gray-400'}`}>
-            Comments ({comments.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setActiveTab('status')}
-          className={`flex-1 py-2 px-4 rounded-lg ${activeTab === 'status' ? 'bg-gray-700' : ''}`}
-        >
-          <Text className={`text-center font-medium ${activeTab === 'status' ? 'text-white' : 'text-gray-400'}`}>
-            Status
-          </Text>
-        </TouchableOpacity>
+      <View className="mx-4 ">
+        <View className="flex-row ">
+          {/* Details Tab */}
+          <TouchableOpacity
+            onPress={() => setActiveTab('details')}
+            className="flex-1 py-3 items-center"
+          >
+            <Text
+              className={`font-medium ${activeTab === 'details' ? 'text-white' : 'text-gray-400'
+                }`}
+            >
+              Details
+            </Text>
+
+            {activeTab === 'details' && (
+              <View className="mt-2 h-0.5 w-8 bg-white rounded-full" />
+            )}
+          </TouchableOpacity>
+
+          {/* Comments Tab */}
+          {/* <TouchableOpacity
+            onPress={() => setActiveTab('comments')}
+            className="flex-1 py-3 items-center"
+          >
+            <Text
+              className={`font-medium ${activeTab === 'comments' ? 'text-white' : 'text-gray-400'
+                }`}
+            >
+              Comments ({comments.length})
+            </Text>
+
+            {activeTab === 'comments' && (
+              <View className="mt-2 h-0.5 w-10 bg-white rounded-full" />
+            )}
+          </TouchableOpacity> */}
+
+          {/* Status Tab */}
+          <TouchableOpacity
+            onPress={() => setActiveTab('status')}
+            className="flex-1 py-3 items-center"
+          >
+            <Text
+              className={`font-medium ${activeTab === 'status' ? 'text-white' : 'text-gray-400'
+                }`}
+            >
+              Status
+            </Text>
+
+            {activeTab === 'status' && (
+              <View className="mt-2 h-0.5 w-8 bg-white rounded-full" />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -210,37 +239,27 @@ export default function TaskDetail() {
           <View className="space-y-4">
             {activeTab === 'details' && (
               <>
-                {/* Main card: title + status icon + short meta */}
-                <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-                  <View className="flex-row items-center mb-3">
-                    <View className="mr-3">
-                      <Ionicons
-                        name={isDone ? "checkmark-circle" : "ellipse-outline"}
-                        size={28}
-                        color={isDone ? "#10B981" : "#9CA3AF"}
-                      />
-                    </View>
+                <View className="bg-gray-800/90 rounded-3xl p-5">
+                  <View className="flex-row items-start">
+                    <Ionicons
+                      name={isDone ? "checkmark-circle" : "ellipse-outline"}
+                      size={26}
+                      color={isDone ? "#10B981" : "#9CA3AF"}
+                      style={{ marginTop: 2 }}
+                    />
 
-                    <View className="flex-1 ">
-                      <Text
-                        className="text-white font-semibold text-lg"
-                        numberOfLines={2}
-                      >
+                    <View className="flex-1 ml-4">
+                      <Text className="text-white font-semibold text-xl leading-snug">
                         {task.title}
                       </Text>
-                      {task.status?.name ? (
-                        <Text className="text-gray-400 text-xs mt-1">
-                          {task.status.name}
-                        </Text>
-                      ) : null}
                     </View>
                   </View>
 
-                  {description ? (
-                    <Text className="text-gray-300 text-sm mt-1">
+                  {description && (
+                    <Text className="text-gray-300 text-sm mt-4 leading-relaxed">
                       {description}
                     </Text>
-                  ) : null}
+                  )}
                 </View>
 
                 {/* Due date */}

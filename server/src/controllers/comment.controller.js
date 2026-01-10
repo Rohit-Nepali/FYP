@@ -1,7 +1,7 @@
+import { ApiResponse, HTTP_STATUS, SUCCESS_MESSAGES } from '#utils/response.utils.js';
 import commentService from '../services/comment.service.js';
 
-
-const createComment = async (req, res) => {
+const createComment = async (req, res, next) => {
   try {
     const { taskId, content } = req.body;
     const authorId = req.user.id;
@@ -12,44 +12,64 @@ const createComment = async (req, res) => {
       authorId,
     });
 
-    responseUtils.success(res, 'Comment created successfully', comment, 201);
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.CREATED,
+      SUCCESS_MESSAGES.CREATED,
+      comment
+    );
+
   } catch (error) {
-    responseUtils.error(res, error.message);
+    next(error);
   }
 };
 
-const getCommentsByTask = async (req, res) => {
+const getCommentsByTask = async (req, res, next) => {
   try {
     const { taskId } = req.params;
     const comments = await commentService.getCommentsByTask(taskId);
-    responseUtils.success(res, 'Comments retrieved successfully', comments);
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.RETRIEVED,
+      comments
+    );
   } catch (error) {
-    responseUtils.error(res, error.message);
+    next(error);
   }
 };
 
-const updateComment = async (req, res) => {
+const updateComment = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { content } = req.body;
     const userId = req.user.id;
 
     const comment = await commentService.updateComment(id, content, userId);
-    responseUtils.success(res, 'Comment updated successfully', comment);
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.UPDATED,
+      comment
+    );
   } catch (error) {
-    responseUtils.error(res, error.message);
+    next(error);
   }
 };
 
-const deleteComment = async (req, res) => {
+const deleteComment = async (req, res, next) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
     await commentService.deleteComment(id, userId);
-    responseUtils.success(res, 'Comment deleted successfully');
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.DELETED
+    );
   } catch (error) {
-    responseUtils.error(res, error.message);
+    next(error);
   }
 };
 

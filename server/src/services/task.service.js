@@ -4,8 +4,7 @@ import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
 
 export const taskService = {
   create: async (taskData, userId) => {
-    const { title, description, statusId, priorityId, dueDate, projectId, assigneeId } =
-      taskData;
+    const { title, description, statusId, priorityId, dueDate, projectId, assigneeId } = taskData;
 
     // Get or create default status and priority if not provided
     let finalStatusId = statusId;

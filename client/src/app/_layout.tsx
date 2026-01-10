@@ -20,12 +20,15 @@ function AppLayout() {
   const bottomInset = showBottomNav ? bottom + navHeight : bottom;
 
   return (
-    <View style={{ flex: 1, paddingBottom: bottomInset }}>
+    <View style={{ flex: 1, backgroundColor: "#111827", paddingBottom: bottomInset }}>
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: "slide_from_right",
+          animation: "fade",
           animationDuration: 100,
+          contentStyle: {
+            backgroundColor: "#111827",
+          },
         }}
       >
         {/* public routes */}

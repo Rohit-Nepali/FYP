@@ -29,6 +29,7 @@ projectRouter.get("/:id", getProjectByIdController);
 projectRouter.put("/:id", validate(updateProjectSchema), updateProjectController);
 projectRouter.delete("/:id", deleteProjectController);
 
+// Add Member to Project
 projectRouter.post(
     "/:id/members",
     validate(addProjectMemberSchema),
@@ -38,9 +39,9 @@ projectRouter.delete("/:id/members/:memberId", removeProjectMemberController);
 
 // Invite management routes
 projectRouter.post("/:id/invites", createProjectInviteController);
-projectRouter.get("/:id/invites", acceptProjectInviteController);
-projectRouter.post("/invites/:token/accept", getProjectInvitesController);
-    
+projectRouter.get("/:id/invites", getProjectInvitesController);
+projectRouter.post("/invites/:token/accept", acceptProjectInviteController);
+
 
 export default projectRouter;
 

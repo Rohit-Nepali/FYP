@@ -127,6 +127,13 @@ async function makeRequest<T>(
     if (isMultipart) {
       headers["Content-Type"] = "multipart/form-data";
     }
+    console.log("makeRequest:", {
+      baseURL: API_BASE_URL,
+      endpoint,
+      method,
+      params,
+      data,
+    });
 
     const response = await axiosInstance.request<ApiResponse<T>>({
       url: endpoint,
@@ -225,7 +232,7 @@ export async function uploadAttachments(
 ): Promise<void> {
   for (const file of files) {
     const formData = new FormData();
-    
+
     formData.append("file", {
       uri: file.uri,
       name: file.name,

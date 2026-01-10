@@ -7,10 +7,10 @@ import { theme } from "../config/theme";
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isAuthChecking } = useAuth();
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isAuthChecking) {
       const timer = setTimeout(() => {
         if (isAuthenticated) {
           router.replace("/");
@@ -21,7 +21,7 @@ export default function SplashScreen() {
 
       return () => clearTimeout(timer);
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isAuthChecking, isAuthenticated, router]);
 
   return (
     <LinearGradient

@@ -17,16 +17,7 @@ import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 
 import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
 
-interface Comment {
-  id: string;
-  content: string;
-  createdAt: string;
-  author: {
-    id: string;
-    name: string;
-    profileImage?: string;
-  };
-}
+
 
 export default function TaskDetail() {
   const router = useRouter();
@@ -168,7 +159,7 @@ export default function TaskDetail() {
           </TouchableOpacity>
 
           {/* Comments Tab */}
-          {/* <TouchableOpacity
+          <TouchableOpacity
             onPress={() => setActiveTab('comments')}
             className="flex-1 py-3 items-center"
           >
@@ -182,7 +173,7 @@ export default function TaskDetail() {
             {activeTab === 'comments' && (
               <View className="mt-2 h-0.5 w-10 bg-white rounded-full" />
             )}
-          </TouchableOpacity> */}
+          </TouchableOpacity>
 
           {/* Status Tab */}
           <TouchableOpacity

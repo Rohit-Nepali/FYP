@@ -6,23 +6,27 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { getProjectById, Project } from "../../services/projectService";
+import ProjectTasksList from "../../components/ProjectTasksList";
+import AddMembersModal from "../../components/UI/AddMembersModal";
 
-interface ProjectDetail extends Project {
+interface ProjectData extends Project {
   tasks?: any[];
 }
 
-export default function ProjectDashboard() {
+export default function ProjectDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [project, setProject] = useState<ProjectDetail | null>(null);
+  const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tasks'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'tasks'>('tasks');
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -87,6 +91,22 @@ export default function ProjectDashboard() {
   const taskCount = project.tasks?.length || 0;
   const memberCount = project.members?.length || 0;
 
+  const members = project.members || [];
+  const previewMembers = members.slice(0, 3);
+  const extraCount = memberCount - previewMembers.length;
+
+  const getInitials = (name?: string) => {
+    if (!name) return "?";
+    const parts = name.trim().split(" ");
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (
+      parts[0].charAt(0).toUpperCase() +
+      parts[parts.length - 1].charAt(0).toUpperCase()
+    );
+  };
+
+  const existingMemberIds = project?.members?.map((m: any) => m.userId || m.id) || [];
+
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
       {/* Header */}
@@ -103,16 +123,33 @@ export default function ProjectDashboard() {
             {project.title || "Project"}
           </Text>
 
-          <View style={{ width: 24 }} />
+          <View className="flex-row items-center gap-x-2 ">
+            {/* Contextual actions */}
+            <TouchableOpacity onPress={() => setInviteModalVisible(true)}>
+              <Ionicons name="person-add-outline" size={22} color="#fff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => {/* open settings modal */ }}>
+              <Ionicons name="ellipsis-vertical-outline" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
+
+      <AddMembersModal
+        visible={inviteModalVisible}
+        onClose={() => setInviteModalVisible(false)}
+        projectId={id as string}
+        onSuccess={() => loadProjectDetail(id as string)}
+        existingMemberIds={existingMemberIds}
+      />
 
       <ScrollView
         className="flex-1 px-4 py-4"
         contentContainerStyle={{ paddingBottom: 80 }}
       >
         {/* Project summary */}
-        <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700 mb-4">
+        <View className="bg-gray-800 rounded-2xl p-4 border mb-4">
           <View className="flex-row items-center">
             <View className="w-10 h-10 rounded-xl bg-blue-600 items-center justify-center mr-3">
               <Ionicons name="folder-outline" size={20} color="#fff" />
@@ -146,36 +183,64 @@ export default function ProjectDashboard() {
             </Text>
           </View>
         </View>
-
-        {/* Compact stats */}
         <View className="flex-row gap-3 mb-6">
-          <View className="flex-1 bg-gray-800 rounded-xl px-3 py-3 border border-gray-700 flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <Ionicons
-                name="people-outline"
-                size={18}
-                color="#60A5FA"
-              />
-              <Text className="text-gray-400 text-xs ml-2">Members</Text>
+          {/* Members card – now tappable */}
+          <TouchableOpacity
+            onPress={() => router.push(`/projects/${id}/members`)}
+            className="flex-1 bg-gray-800 rounded-xl px-3 py-3 border border-gray-700 flex-row items-center justify-between"
+            activeOpacity={0.8}
+          >
+            <View>
+              <View className="flex-row items-center">
+                <Ionicons name="people-outline" size={18} color="#60A5FA" />
+                <Text className="text-gray-400 text-xs ml-2">Members</Text>
+              </View>
+              <Text className="text-white font-semibold text-base mt-1">
+                {memberCount} member{memberCount === 1 ? "" : "s"}
+              </Text>
             </View>
-            <Text className="text-white font-semibold text-lg">
-              {memberCount}
-            </Text>
-          </View>
 
-          <View className="flex-1 bg-gray-800 rounded-xl px-3 py-3 border border-gray-700 flex-row items-center justify-between">
+            {/* Avatar group */}
             <View className="flex-row items-center">
-              <Ionicons
-                name="checkmark-done-outline"
-                size={18}
-                color="#10B981"
-              />
-              <Text className="text-gray-400 text-xs ml-2">Tasks</Text>
+              {previewMembers.map((member: any, index: number) => {
+                const name =
+                  member.name || member.fullName || member.username || "User";
+                const initials = getInitials(name);
+
+                const avatar = member.avatarUrl;
+
+                return (
+                  <View
+                    key={member.id ?? index}
+                    style={{ marginLeft: index === 0 ? 0 : -10 }}
+                  >
+                    {avatar ? (
+                      <Image
+                        source={{ uri: avatar }}
+                        className="w-8 h-8 rounded-full border-2 border-gray-900"
+                      />
+                    ) : (
+                      <View className="w-8 h-8 rounded-full bg-gray-700 border-2 border-gray-900 items-center justify-center">
+                        <Text className="text-xs text-white font-semibold">
+                          {initials}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+
+              {extraCount > 0 && (
+                <View
+                  className="w-8 h-8 rounded-full bg-gray-700 border-2 border-gray-900 items-center justify-center ml-1"
+                >
+                  <Text className="text-xs text-gray-200 font-semibold">
+                    +{extraCount}
+                  </Text>
+                </View>
+              )}
             </View>
-            <Text className="text-white font-semibold text-lg">
-              {taskCount}
-            </Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Navigation Tabs */}
@@ -189,7 +254,7 @@ export default function ProjectDashboard() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push(`/projects/${id}/tasks`)}
+            onPress={() => setActiveTab('tasks')}
             className={`flex-1 py-2 px-4 rounded-lg ${activeTab === 'tasks' ? 'bg-gray-700' : ''}`}
           >
             <Text className={`text-center font-medium ${activeTab === 'tasks' ? 'text-white' : 'text-gray-400'}`}>
@@ -201,30 +266,6 @@ export default function ProjectDashboard() {
         {/* Dashboard Content */}
         {activeTab === 'dashboard' && (
           <View className="space-y-4">
-            {/* Quick Actions */}
-            <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-              <Text className="text-white font-semibold text-base mb-3">
-                Quick Actions
-              </Text>
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={() => router.push(`/projects/${id}/tasks`)}
-                  className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
-                >
-                  <Ionicons name="add-outline" size={20} color="#fff" />
-                  <Text className="text-white font-medium text-sm mt-1">
-                    Add Task
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity className="flex-1 bg-gray-700 rounded-xl py-3 items-center">
-                  <Ionicons name="people-outline" size={20} color="#fff" />
-                  <Text className="text-white font-medium text-sm mt-1">
-                    Invite
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
             {/* Recent Activity Placeholder */}
             <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
               <Text className="text-white font-semibold text-base mb-3">
@@ -239,7 +280,13 @@ export default function ProjectDashboard() {
             </View>
           </View>
         )}
+
+        {/* Tasks Content - Embedded View */}
+        {activeTab === 'tasks' && id && typeof id === 'string' && (
+          <ProjectTasksList projectId={id} />
+        )}
+
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }

@@ -47,7 +47,6 @@ function AppLayout() {
         <Stack.Screen name="settings/HelpSupport" />
         <Stack.Screen name="settings/About" />
         <Stack.Screen name="settings/EditProfile" />
-
       </Stack>
 
       {showBottomNav && (<View style={{

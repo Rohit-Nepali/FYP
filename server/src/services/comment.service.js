@@ -1,4 +1,4 @@
-import prisma from '../generated/prisma/index.js';
+import { prisma } from "#config/db.js";
 
 const createComment = async ({ taskId, content, authorId }) => {
   // Verify task exists and user has access
@@ -47,6 +47,7 @@ const createComment = async ({ taskId, content, authorId }) => {
 };
 
 const getCommentsByTask = async (taskId) => {
+  console.log("task id ", taskId)
   const comments = await prisma.comment.findMany({
     where: { taskId },
     include: {

@@ -95,17 +95,40 @@ export const deleteProjectController = async (req, res, next) => {
 
 export const addProjectMemberController = async (req, res, next) => {
     try {
+
+        console.log("Adding members to project:", req.body);
+
         const userId = req.user.id;
         const { id } = req.params;
-        console.log("Id : ",id )
-        const { memberId, role } = req.body;
+        const { memberId, userIds, role } = req.body;
 
-        const project = await projectService.addMember(id, userId, memberId, role);
+        let project;
+
+        if (userIds && Array.isArray(userIds)) {
+             // Bulk add
+             for (const mId of userIds) {
+                 try {
+                     await projectService.addMember(id, userId, mId, role);
+                 } catch (err) {
+                     // specific error handling if needed, e.g. ignoring 'already member'
+                     // For now we continue to try adding others
+                     console.log(`Failed to add member ${mId}: ${err.message}`);
+                 }
+             }
+             // Get final state
+             project = await projectService.getById(id, userId);
+        } else if (memberId) {
+             project = await projectService.addMember(id, userId, memberId, role);
+        } else {
+            // Fallback or error
+            // If neither, maybe return current project or throw error
+             project = await projectService.getById(id, userId);
+        }
 
         return ApiResponse.sendSuccessResponse(
             res,
             HTTP_STATUS.OK,
-            "Member added successfully",
+            "Member(s) added successfully",
             project
         );
     } catch (error) {

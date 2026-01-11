@@ -6,8 +6,8 @@ export const createTaskSchema = joi.object({
     statusId: joi.string().optional(),
     priorityId: joi.string().optional(),
     dueDate: joi.date().iso().allow(null).optional(),
-    projectId: joi.string().uuid().allow(null).optional(),
-    assigneeId: joi.string().uuid().allow(null).optional(),
+    projectId: joi.string().allow(null).optional(),
+    assigneeId: joi.string().allow(null).optional(),
 });
 
 export const updateTaskSchema = joi.object({
@@ -16,7 +16,7 @@ export const updateTaskSchema = joi.object({
     statusId: joi.string().optional(),
     priorityId: joi.string().optional(),
     dueDate: joi.date().iso().allow(null).optional(),
-    assigneeId: joi.string().uuid().allow(null).optional(),
-    projectId: joi.string().uuid().optional(),
+    assigneeId: joi.string().allow(null).optional(),
+    projectId: joi.string().optional(),
 });
 

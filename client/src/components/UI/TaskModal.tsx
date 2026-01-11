@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   ScrollView,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,7 +19,6 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Platform } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Task, uploadAttachments } from "@/src/services/taskService";
-import { on } from "events";
 
 interface InitialValues {
   title?: string;
@@ -26,6 +26,7 @@ interface InitialValues {
   statusId?: string;
   priorityId?: string;
   dueDate?: string;
+  assigneeId?: string;
 }
 
 interface Props {
@@ -45,6 +46,12 @@ interface Props {
   priorities: Priority[];
   // setPriorities: (p: Priority[]) => void;
   setPriorities: React.Dispatch<React.SetStateAction<Priority[]>>;
+  projectMembers?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    profileImage?: string;
+  }>;
 }
 
 interface Attachment {
@@ -63,11 +70,13 @@ export default function TaskModal({
   setStatuses,
   priorities,
   setPriorities,
+  projectMembers = [],
 }: Props) {
   const [title, setTitle] = useState(initialValues?.title || "");
   const [description, setDescription] = useState(initialValues?.description || "");
   const [statusId, setStatusId] = useState<string>(initialValues?.statusId || "");
   const [priorityId, setPriorityId] = useState<string>(initialValues?.priorityId || "");
+  const [assigneeId, setAssigneeId] = useState<string | undefined>(initialValues?.assigneeId);
   const [dueDate, setDueDate] = useState<Date | null>(
     initialValues?.dueDate ? new Date(initialValues.dueDate) : null
   );
@@ -290,6 +299,62 @@ export default function TaskModal({
                     <Text className="text-sm text-gray-400 ml-1">Add New</Text>
                   </TouchableOpacity>
                 </View>
+
+                {/* Assignee Selection */}
+                {projectMembers && projectMembers.length > 0 && (
+                  <View className="mb-4">
+                    <View className="flex-row items-center gap-2 mb-2">
+                      <Ionicons name="person-outline" size={16} color="#60A5FA" />
+                      <Text className="text-gray-300 font-medium">Assignee</Text>
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
+                      {/* Unassigned Option */}
+                      <TouchableOpacity
+                        onPress={() => setAssigneeId(undefined)}
+                        className={`px-4 py-2 rounded-lg border-2 items-center justify-center min-w-[80px] ${
+                          !assigneeId ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
+                        }`}
+                      >
+                        <Ionicons name="person-remove-outline" size={20} color={!assigneeId ? "#fff" : "#9CA3AF"} />
+                        <Text className={`text-xs mt-1 ${!assigneeId ? "text-white" : "text-gray-400"}`}>
+                          Unassigned
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Project Members */}
+                      {projectMembers.map((member) => (
+                        <TouchableOpacity
+                          key={member.id}
+                          onPress={() => setAssigneeId(member.id)}
+                          className={`px-3 py-2 rounded-lg border-2 items-center min-w-[80px] ${
+                            assigneeId === member.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
+                          }`}
+                        >
+                          {member.profileImage ? (
+                            <Image
+                              source={{ uri: member.profileImage }}
+                              className="w-10 h-10 rounded-full mb-1"
+                            />
+                          ) : (
+                            <View className="w-10 h-10 rounded-full bg-gray-700 items-center justify-center mb-1">
+                              <Text className="text-white text-sm font-semibold">
+                                {member.name?.charAt(0)?.toUpperCase() || "?"}
+                              </Text>
+                            </View>
+                          )}
+                          <Text
+                            className={`text-xs text-center ${
+                              assigneeId === member.id ? "text-white" : "text-gray-300"
+                            }`}
+                            numberOfLines={1}
+                          >
+                            {member.name || member.email}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
 
                 <View className="mb-4">
                   <Text className="text-gray-300 mb-2 font-medium">Due Date</Text>

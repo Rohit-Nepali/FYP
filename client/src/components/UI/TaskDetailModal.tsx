@@ -10,19 +10,26 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Task, getTaskById } from "../../services/taskService";
+import { Task, getTaskById, updateTask } from "../../services/taskService";
 import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
 
 interface Props {
   visible: boolean;
   taskId: string | null;
   onClose: () => void;
+  projectMembers?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    profileImage?: string;
+  }>;
 }
 
-export default function TaskDetailModal({ visible, taskId, onClose }: Props) {
+export default function TaskDetailModal({ visible, taskId, onClose, projectMembers = [] }: Props) {
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +37,7 @@ export default function TaskDetailModal({ visible, taskId, onClose }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+  const [showAssigneePicker, setShowAssigneePicker] = useState(false);
 
   useEffect(() => {
 
@@ -84,6 +92,32 @@ export default function TaskDetailModal({ visible, taskId, onClose }: Props) {
       );
     } finally {
       setPostingComment(false);
+    }
+  };
+
+  const handleUpdateAssignee = async (memberId: string | undefined) => {
+    if (!task) return;
+    try {
+      // Optimistic update
+      const updatedTask = { ...task, assigneeId: memberId };
+       // We can't fully construct the assignee object here without lookup, 
+       // but we'll accept the prop update. Ideally we'd look it up from projectMembers.
+       const member = projectMembers.find(m => m.id === memberId);
+       if (member) {
+         updatedTask.assignee = member;
+       } else {
+         updatedTask.assignee = undefined;
+       }
+       setTask(updatedTask);
+       setShowAssigneePicker(false);
+
+      await updateTask(task.id, { assigneeId: memberId });
+      
+      // Reload to ensure consistency
+      loadTaskData();
+    } catch (err) {
+      Alert.alert("Error", "Failed to update assignee");
+      loadTaskData(); // Revert on error
     }
   };
 
@@ -207,6 +241,98 @@ export default function TaskDetailModal({ visible, taskId, onClose }: Props) {
                         </View>
                       </View>
                     )}
+
+                    {/* Assignee Section */}
+                    <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+                      <View className="flex-row items-center justify-between mb-3">
+                        <View className="flex-row items-center gap-2">
+                          <Ionicons name="person-outline" size={20} color="#60A5FA" />
+                          <Text className="text-gray-300 font-medium">Assignee</Text>
+                        </View>
+                        {projectMembers.length > 0 && (
+                          <TouchableOpacity 
+                            onPress={() => setShowAssigneePicker(!showAssigneePicker)}
+                            className="bg-gray-700 px-3 py-1 rounded-lg"
+                          >
+                            <Text className="text-blue-400 text-xs font-semibold">
+                              {showAssigneePicker ? "Cancel" : "Change"}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      {showAssigneePicker ? (
+                        <View className="flex-row flex-wrap gap-2 mt-2">
+                           <TouchableOpacity
+                            onPress={() => handleUpdateAssignee(undefined)}
+                            className={`px-3 py-2 rounded-lg border-2 items-center min-w-[70px] ${
+                              !task.assigneeId ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
+                            }`}
+                          >
+                            <Ionicons name="person-remove-outline" size={20} color={!task.assigneeId ? "#fff" : "#9CA3AF"} />
+                            <Text className={`text-xs mt-1 ${!task.assigneeId ? "text-white" : "text-gray-400"}`}>None</Text>
+                          </TouchableOpacity>
+                          
+                          {projectMembers.map((member) => (
+                            <TouchableOpacity
+                              key={member.id}
+                              onPress={() => handleUpdateAssignee(member.id)}
+                              className={`px-3 py-2 rounded-lg border-2 items-center min-w-[70px] ${
+                                task.assigneeId === member.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
+                              }`}
+                            >
+                               {member.profileImage ? (
+                                <Image
+                                  source={{ uri: member.profileImage }}
+                                  className="w-8 h-8 rounded-full mb-1"
+                                />
+                              ) : (
+                                <View className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center mb-1">
+                                  <Text className="text-white text-xs font-semibold">
+                                    {member.name?.charAt(0)?.toUpperCase() || "?"}
+                                  </Text>
+                                </View>
+                              )}
+                              <Text className={`text-xs text-center ${task.assigneeId === member.id ? "text-white" : "text-gray-400"}`} numberOfLines={1}>
+                                {member.name.split(' ')[0]}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      ) : (
+                        <View className="flex-row items-center">
+                          {task.assignee ? (
+                            <>
+                              {task.assignee.profileImage ? (
+                                <Image
+                                  source={{ uri: task.assignee.profileImage }}
+                                  className="w-10 h-10 rounded-full border-2 border-gray-700"
+                                />
+                              ) : (
+                                <View className="w-10 h-10 rounded-full bg-gray-700 items-center justify-center border-2 border-gray-700">
+                                  <Text className="text-white text-sm font-bold">
+                                    {task.assignee.name?.charAt(0)?.toUpperCase() || "?"}
+                                  </Text>
+                                </View>
+                              )}
+                              <View className="ml-3">
+                                <Text className="text-white font-medium">{task.assignee.name}</Text>
+                                <Text className="text-gray-500 text-xs">{task.assignee.email}</Text>
+                              </View>
+                            </>
+                          ) : (
+                            <View className="flex-row items-center">
+                              <View className="w-10 h-10 rounded-full bg-gray-700/50 items-center justify-center border-2 border-dashed border-gray-600">
+                                <Ionicons name="person-outline" size={20} color="#6B7280" />
+                              </View>
+                              <View className="ml-3">
+                                <Text className="text-gray-400 italic">Unassigned</Text>
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
                   </View>
                 )}
 

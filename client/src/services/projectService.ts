@@ -9,6 +9,12 @@ export interface Project {
   title: string;
   description?: string;
   ownerId: string;
+  owner?: {
+    id: string;
+    name: string;
+    email: string;
+    profileImage?: string;
+  };
   createdAt: string;
   members?: any[];
 }

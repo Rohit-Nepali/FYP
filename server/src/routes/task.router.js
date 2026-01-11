@@ -27,7 +27,7 @@ taskRouter.get("/", getAllTasksController);
 // Project-scoped tasks should be matched before :id
 taskRouter.get("/project/:projectId", getProjectTasksController);
 taskRouter.get("/:id", getTaskByIdController);
-taskRouter.put("/:id", validate(updateTaskSchema), updateTaskController);
+taskRouter.patch("/:id", validate(updateTaskSchema), updateTaskController);
 taskRouter.delete("/:id", deleteTaskController);
 
 taskRouter.post(

@@ -18,6 +18,12 @@ export interface Task {
   creatorId: string;
   projectId?: string;
   assigneeId?: string;
+  assignee?: {
+    id: string;
+    name: string;
+    email: string;
+    profileImage?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -205,7 +211,7 @@ export async function updateTask(
   updateData: UpdateTaskData
 ): Promise<Task> {
   return makeRequest<Task>(`/tasks/${taskId}`, {
-    method: "PUT",
+    method: "PATCH",
     data: updateData,
   });
 }

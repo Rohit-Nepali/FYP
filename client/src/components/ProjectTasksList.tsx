@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -136,6 +137,27 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
 
   const taskCount = project.tasks?.length || 0;
 
+  // Extract project members for assignee selection
+  const projectMembers = [
+    // Include project owner
+    ...(project.owner ? [{
+      id: project.owner.id,
+      name: project.owner.name,
+      email: project.owner.email,
+      profileImage: project.owner.profileImage,
+    }] : []),
+    // Include all members
+    ...(project.members?.map((m: any) => ({
+      id: m.user?.id || m.userId,
+      name: m.user?.name || m.name,
+      email: m.user?.email || m.email,
+      profileImage: m.user?.profileImage || m.profileImage,
+    })) || []),
+  ].filter((member, index, self) => 
+    // Remove duplicates by id
+    index === self.findIndex((m) => m.id === member.id)
+  );
+
   return (
     <View className="flex-1">
       {/* Tasks list */}
@@ -197,6 +219,27 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
                         <View className="px-2 py-0.5 rounded-full bg-gray-800 mr-2">
                           <Text className="text-gray-300 text-xs">
                             {task.priority.name}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Assignee Avatar */}
+                      {task.assignee && (
+                        <View className="flex-row items-center mr-2">
+                          {task.assignee.profileImage ? (
+                            <Image
+                              source={{ uri: task.assignee.profileImage }}
+                              className="w-5 h-5 rounded-full mr-1"
+                            />
+                          ) : (
+                            <View className="w-5 h-5 rounded-full bg-gray-700 items-center justify-center mr-1">
+                              <Text className="text-white text-[8px] font-semibold">
+                                {task.assignee.name?.charAt(0)?.toUpperCase() || "?"}
+                              </Text>
+                            </View>
+                          )}
+                          <Text className="text-gray-400 text-xs">
+                            {task.assignee.name}
                           </Text>
                         </View>
                       )}
@@ -273,6 +316,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
         setStatuses={setStatuses}
         priorities={priorities}
         setPriorities={setPriorities}
+        projectMembers={projectMembers}
       />
 
       {/* Task Detail Modal */}
@@ -280,6 +324,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
         visible={taskDetailModal.visible}
         taskId={taskDetailModal.taskId}
         onClose={handleCloseTaskDetail}
+        projectMembers={projectMembers}
       />
     </View>
   );

@@ -69,8 +69,6 @@ export default function AddMembersModal({
       }
     };
 
-
-
     loadUsers();
   }, [visible, debouncedSearch]);
 

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -15,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { getProjectById, Project } from "../../services/projectService";
 import ProjectTasksList from "../../components/ProjectTasksList";
 import AddMembersModal from "../../components/UI/AddMembersModal";
+import InviteMemberModal from "../../components/UI/InviteMemberModal";
 
 interface ProjectData extends Project {
   tasks?: any[];
@@ -26,7 +28,9 @@ export default function ProjectDetail() {
   const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'tasks'>('tasks');
-  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [addMembersModalVisible, setAddMembersModalVisible] = useState(false);
+  const [inviteEmailModalVisible, setInviteEmailModalVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -123,25 +127,66 @@ export default function ProjectDetail() {
             {project.title || "Project"}
           </Text>
 
-          <View className="flex-row items-center gap-x-2 ">
-            {/* Contextual actions */}
-            <TouchableOpacity onPress={() => setInviteModalVisible(true)}>
-              <Ionicons name="person-add-outline" size={22} color="#fff" />
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => {/* open settings modal */ }}>
-              <Ionicons name="ellipsis-vertical-outline" size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          {/* Contextual actions */}
+          <TouchableOpacity onPress={() => setMenuVisible(true)}>
+            <Ionicons name="ellipsis-vertical-outline" size={22} color="#fff" />
+          </TouchableOpacity>
         </View>
       </View>
 
+      {/* Menu Modal */}
+      <Modal
+        transparent
+        visible={menuVisible}
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View className="absolute top-16 right-6 bg-gray-800 rounded-xl border border-gray-700 p-1 shadow-xl w-56 z-50">
+            <TouchableOpacity
+              className="flex-row items-center p-3 rounded-lg active:bg-gray-700"
+              onPress={() => {
+                setMenuVisible(false);
+                setAddMembersModalVisible(true);
+              }}
+            >
+              <Ionicons name="person-add-outline" size={20} color="#fff" />
+              <Text className="text-white ml-3 font-medium">Add Members</Text>
+            </TouchableOpacity>
+            
+            <View className="h-px bg-gray-700 my-1" />
+            
+            <TouchableOpacity
+              className="flex-row items-center p-3 rounded-lg active:bg-gray-700"
+              onPress={() => {
+                setMenuVisible(false);
+                setInviteEmailModalVisible(true);
+              }}
+            >
+              <Ionicons name="mail-outline" size={20} color="#fff" />
+              <Text className="text-white ml-3 font-medium">Invite via Email</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <AddMembersModal
-        visible={inviteModalVisible}
-        onClose={() => setInviteModalVisible(false)}
+        visible={addMembersModalVisible}
+        onClose={() => setAddMembersModalVisible(false)}
         projectId={id as string}
         onSuccess={() => loadProjectDetail(id as string)}
         existingMemberIds={existingMemberIds}
+      />
+
+      <InviteMemberModal
+        visible={inviteEmailModalVisible}
+        onClose={() => setInviteEmailModalVisible(false)}
+        projectId={id as string}
+        onSuccess={() => loadProjectDetail(id as string)}
       />
 
       <ScrollView

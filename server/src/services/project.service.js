@@ -2,6 +2,7 @@ import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/error.utils.js";
 import { ERROR_MESSAGES, HTTP_STATUS } from "../utils/response.utils.js";
 import crypto from "crypto";
+import { emailService } from "./email.service.js";
 
 export const projectService = {
     create: async (projectData, ownerId) => {
@@ -275,7 +276,12 @@ export const projectService = {
             },
         });
 
-        sendProjectInviteEmail(email, project.title, inviteLink, invitedBy);
+        // Construct invite link (adjust the base URL as needed for your frontend)
+        const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:8081'}/invite/${token}`;
+        const invitedBy = invite.invitedBy.name || 'A team member';
+
+        // Send invite email
+        emailService.sendProjectInviteEmail(email, project.title, inviteLink, invitedBy);
 
         return invite;
 

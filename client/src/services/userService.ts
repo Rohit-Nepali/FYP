@@ -101,3 +101,13 @@ export async function addProjectMembers(
         throw error;
     }
 }
+
+export async function removeProjectMember(projectId: string, memberId: string): Promise<any> {
+    try {
+        console.log("Removing member from project:", projectId);
+        await axiosInstance.delete(`/projects/${projectId}/members/${memberId}`);
+        return true;
+    } catch (error) {
+        throw error;
+    }
+}

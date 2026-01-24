@@ -8,16 +8,14 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, getTaskById } from "../../services/taskService";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
-
 import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
-
-
 
 export default function TaskDetail() {
   const router = useRouter();

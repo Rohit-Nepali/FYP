@@ -3,14 +3,28 @@ import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
 
 export const priorityService = {
-  create: async (priorityData, userId) => {
+  create: async (priorityData, projectId, userId) => {
     const { name, color, order } = priorityData;
 
-    // Check if priority with same name already exists for this user
+    // Check if user has access to the project
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { members: { select: { userId: true } } },
+    });
+
+    if (!project) {
+      throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
+      throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+    }
+
+    // Check if priority with same name already exists for this project
     const existing = await prisma.priority.findUnique({
       where: {
-        userId_name: {
-          userId,
+        projectId_name: {
+          projectId,
           name: name.trim(),
         },
       },
@@ -18,7 +32,7 @@ export const priorityService = {
 
     if (existing) {
       throw new ApiError(
-        "Priority with this name already exists",
+        "Priority with this name already exists in this project",
         HTTP_STATUS.BAD_REQUEST
       );
     }
@@ -28,27 +42,55 @@ export const priorityService = {
         name: name.trim(),
         color: color || null,
         order: order || 0,
-        userId,
+        projectId,
       },
     });
 
     return priority;
   },
 
-  getAll: async (userId) => {
+  getAll: async (projectId, userId) => {
+    // Check if user has access to the project
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { members: { select: { userId: true } } },
+    });
+
+    if (!project) {
+      throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
+      throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+    }
+
     const priorities = await prisma.priority.findMany({
-      where: { userId },
+      where: { projectId },
       orderBy: [{ order: "asc" }, { name: "asc" }],
     });
 
     return priorities;
   },
 
-  getById: async (priorityId, userId) => {
+  getById: async (priorityId, projectId, userId) => {
+    // Check if user has access to the project
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { members: { select: { userId: true } } },
+    });
+
+    if (!project) {
+      throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
+      throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+    }
+
     const priority = await prisma.priority.findFirst({
       where: {
         id: priorityId,
-        userId,
+        projectId,
       },
     });
 
@@ -59,11 +101,25 @@ export const priorityService = {
     return priority;
   },
 
-  update: async (priorityId, userId, updateData) => {
+  update: async (priorityId, projectId, userId, updateData) => {
+    // Check if user has access to the project
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { members: { select: { userId: true } } },
+    });
+
+    if (!project) {
+      throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
+      throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+    }
+
     const existingPriority = await prisma.priority.findFirst({
       where: {
         id: priorityId,
-        userId,
+        projectId,
       },
     });
 
@@ -77,8 +133,8 @@ export const priorityService = {
     if (name && name.trim() !== existingPriority.name) {
       const duplicate = await prisma.priority.findUnique({
         where: {
-          userId_name: {
-            userId,
+          projectId_name: {
+            projectId,
             name: name.trim(),
           },
         },
@@ -86,7 +142,7 @@ export const priorityService = {
 
       if (duplicate) {
         throw new ApiError(
-          "Priority with this name already exists",
+          "Priority with this name already exists in this project",
           HTTP_STATUS.BAD_REQUEST
         );
       }
@@ -105,11 +161,25 @@ export const priorityService = {
     return priority;
   },
 
-  delete: async (priorityId, userId) => {
+  delete: async (priorityId, projectId, userId) => {
+    // Check if user has access to the project
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { members: { select: { userId: true } } },
+    });
+
+    if (!project) {
+      throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
+      throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+    }
+
     const priority = await prisma.priority.findFirst({
       where: {
         id: priorityId,
-        userId,
+        projectId,
       },
       include: {
         tasks: {

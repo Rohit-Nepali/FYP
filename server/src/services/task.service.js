@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
+import { sendPushNotification } from "./notification.service.js";
 
 export const taskService = {
   create: async (taskData, userId) => {
@@ -11,9 +12,9 @@ export const taskService = {
     let finalPriorityId = priorityId;
 
     if (!finalStatusId) {
-      // Get first status for user, or create a default one
+      // Get first status for project, or create a default one
       let defaultStatus = await prisma.status.findFirst({
-        where: { userId },
+        where: { projectId },
         orderBy: { order: "asc" },
       });
 
@@ -21,26 +22,26 @@ export const taskService = {
         defaultStatus = await prisma.status.create({
           data: {
             name: "TODO",
-            userId,
+            projectId,
             order: 0,
           },
         });
       }
       finalStatusId = defaultStatus.id;
     } else {
-      // Verify status belongs to user
+      // Verify status belongs to project
       const status = await prisma.status.findFirst({
-        where: { id: finalStatusId, userId },
+        where: { id: finalStatusId, projectId },
       });
       if (!status) {
-        throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);
+        throw new ApiError("Status not found or does not belong to this project", HTTP_STATUS.NOT_FOUND);
       }
     }
 
     if (!finalPriorityId) {
-      // Get first priority for user, or create a default one
+      // Get first priority for project, or create a default one
       let defaultPriority = await prisma.priority.findFirst({
-        where: { userId },
+        where: { projectId },
         orderBy: { order: "asc" },
       });
 
@@ -48,19 +49,19 @@ export const taskService = {
         defaultPriority = await prisma.priority.create({
           data: {
             name: "MEDIUM",
-            userId,
+            projectId,
             order: 0,
           },
         });
       }
       finalPriorityId = defaultPriority.id;
     } else {
-      // Verify priority belongs to user
+      // Verify priority belongs to project
       const priority = await prisma.priority.findFirst({
-        where: { id: finalPriorityId, userId },
+        where: { id: finalPriorityId, projectId },
       });
       if (!priority) {
-        throw new ApiError("Priority not found", HTTP_STATUS.NOT_FOUND);
+        throw new ApiError("Priority not found or does not belong to this project", HTTP_STATUS.NOT_FOUND);
       }
     }
 
@@ -334,6 +335,20 @@ export const taskService = {
         },
       },
     });
+
+    // Send notification if assignee was changed
+    if (assigneeId !== undefined && assigneeId !== existingTask.assigneeId && task.assignee && task.assignee.pushToken) {
+      try {
+        await sendPushNotification(
+          task.assignee.pushToken,
+          "Task Assigned",
+          `You have been assigned to task: ${task.title}`,
+          { taskId: task.id, type: "task_assigned" }
+        );
+      } catch (error) {
+        console.error("Failed to send assignment notification:", error);
+      }
+    }
 
     return task;
   },

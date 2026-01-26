@@ -48,9 +48,7 @@ export const getTaskByIdController = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const { id } = req.params;
-
-
-
+        
         const task = await taskService.getById(id, userId);
 
         return ApiResponse.sendSuccessResponse(

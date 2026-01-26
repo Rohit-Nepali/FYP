@@ -52,7 +52,7 @@ interface ApiSuccess<T> {
 type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
 // Create axios instance with default config
-const axiosInstance: AxiosInstance = axios.create({
+export const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",

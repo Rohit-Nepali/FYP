@@ -46,6 +46,7 @@ interface Props {
   priorities: Priority[];
   // setPriorities: (p: Priority[]) => void;
   setPriorities: React.Dispatch<React.SetStateAction<Priority[]>>;
+  projectId?: string;
   projectMembers?: Array<{
     id: string;
     name: string;
@@ -70,6 +71,7 @@ export default function TaskModal({
   setStatuses,
   priorities,
   setPriorities,
+  projectId,
   projectMembers = [],
 }: Props) {
   const [title, setTitle] = useState(initialValues?.title || "");
@@ -169,8 +171,12 @@ export default function TaskModal({
       Alert.alert("Error", "Status name is required");
       return;
     }
+    if (!projectId) {
+      Alert.alert("Error", "Project ID is required");
+      return;
+    }
     try {
-      const newStatus = await createStatus({ name: newStatusName.trim() });
+      const newStatus = await createStatus(projectId, { name: newStatusName.trim() });
       setStatuses((prev) => [...prev, newStatus]);
       setStatusId(newStatus.id);
       setStatusModalVisible(false);
@@ -186,8 +192,12 @@ export default function TaskModal({
       Alert.alert("Error", "Priority name is required");
       return;
     }
+    if (!projectId) {
+      Alert.alert("Error", "Project ID is required");
+      return;
+    }
     try {
-      const newPriority = await createPriority({ name: newPriorityName.trim() });
+      const newPriority = await createPriority(projectId, { name: newPriorityName.trim() });
       setPriorities((prev) => [...prev, newPriority]);
       setPriorityId(newPriority.id);
       setPriorityModalVisible(false);
@@ -203,7 +213,7 @@ export default function TaskModal({
       <View className="flex-1 justify-end bg-black/50">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          className="max-h-[80%] "
+          className="max-h-[80%]"
         >
           <LinearGradient colors={["#1F2937", "#111827"]} className="rounded-t-2xl  p-4">
             <View className="flex-row items-center justify-between mb-6">
@@ -311,9 +321,8 @@ export default function TaskModal({
                       {/* Unassigned Option */}
                       <TouchableOpacity
                         onPress={() => setAssigneeId(undefined)}
-                        className={`px-4 py-2 rounded-lg border-2 items-center justify-center min-w-[80px] ${
-                          !assigneeId ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
-                        }`}
+                        className={`px-4 py-2 rounded-lg border-2 items-center justify-center min-w-[80px] ${!assigneeId ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
+                          }`}
                       >
                         <Ionicons name="person-remove-outline" size={20} color={!assigneeId ? "#fff" : "#9CA3AF"} />
                         <Text className={`text-xs mt-1 ${!assigneeId ? "text-white" : "text-gray-400"}`}>
@@ -326,9 +335,8 @@ export default function TaskModal({
                         <TouchableOpacity
                           key={member.id}
                           onPress={() => setAssigneeId(member.id)}
-                          className={`px-3 py-2 rounded-lg border-2 items-center min-w-[80px] ${
-                            assigneeId === member.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
-                          }`}
+                          className={`px-3 py-2 rounded-lg border-2 items-center min-w-[80px] ${assigneeId === member.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
+                            }`}
                         >
                           {member.profileImage ? (
                             <Image
@@ -343,9 +351,8 @@ export default function TaskModal({
                             </View>
                           )}
                           <Text
-                            className={`text-xs text-center ${
-                              assigneeId === member.id ? "text-white" : "text-gray-300"
-                            }`}
+                            className={`text-xs text-center ${assigneeId === member.id ? "text-white" : "text-gray-300"
+                              }`}
                             numberOfLines={1}
                           >
                             {member.name || member.email}
@@ -444,27 +451,37 @@ export default function TaskModal({
         </View>
       </View>
 
-      {/* Mini-Modal for Adding Status */}
-      <Modal visible={statusModalVisible} animationType="slide" transparent={true} onRequestClose={() => setStatusModalVisible(false)}>
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-gray-800 rounded-t-2xl p-6">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-white">New Status</Text>
-              <TouchableOpacity onPress={() => setStatusModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#9CA3AF" />
+      Mini-Modal for Adding Status
+      {/* <Modal visible={statusModalVisible} animationType="slide" transparent={true} onRequestClose={() => setStatusModalVisible(false)}>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setStatusModalVisible(false)}
+          className="flex-1 justify-center items-center bg-black/60 px-6"
+        >
+          <TouchableOpacity activeOpacity={1} className="bg-gray-800 rounded-2xl p-6 w-full">
+
+            <View className="bg-gray-800 rounded-t-2xl p-6">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-xl font-bold text-white">New Status</Text>
+                <TouchableOpacity onPress={() => setStatusModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+              <TextInput className="bg-gray-700 rounded-lg px-4 py-3 text-white mb-4" placeholder="Enter status name (e.g., Blocked)" placeholderTextColor="#6B7280" value={newStatusName} onChangeText={setNewStatusName} />
+              <TouchableOpacity onPress={handleCreateStatus} className="bg-blue-600 rounded-lg py-3 items-center">
+                <Text className="text-white font-semibold">Create</Text>
               </TouchableOpacity>
             </View>
-            <TextInput className="bg-gray-700 rounded-lg px-4 py-3 text-white mb-4" placeholder="Enter status name (e.g., Blocked)" placeholderTextColor="#6B7280" value={newStatusName} onChangeText={setNewStatusName} />
-            <TouchableOpacity onPress={handleCreateStatus} className="bg-blue-600 rounded-lg py-3 items-center">
-              <Text className="text-white font-semibold">Create</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal> */}
 
       {/* Mini-Modal for Adding Priority */}
-      <Modal visible={priorityModalVisible} animationType="slide" transparent={true} onRequestClose={() => setPriorityModalVisible(false)}>
-        <View className="flex-1 justify-end bg-black/50">
+      {/* <Modal visible={priorityModalVisible} animationType="slide" transparent={true} onRequestClose={() => setPriorityModalVisible(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="flex-1 justify-end bg-black/50"
+        >
           <View className="bg-gray-800 rounded-t-2xl p-6">
             <View className="flex-row items-center justify-between mb-4">
               <Text className="text-xl font-bold text-white">New Priority</Text>
@@ -477,7 +494,84 @@ export default function TaskModal({
               <Text className="text-white font-semibold">Create</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
+      </Modal> */}
+      {/* Mini-Modal for Adding Status */}
+      <Modal
+        visible={statusModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setStatusModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setStatusModalVisible(false)}
+          className="flex-1 justify-center items-center bg-black/60 px-6"
+        >
+          <TouchableOpacity activeOpacity={1} className="bg-gray-800 rounded-2xl p-6 w-full">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-bold text-white">New Status</Text>
+              <TouchableOpacity onPress={() => setStatusModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              className="bg-gray-700 rounded-lg px-4 py-3 text-white mb-4"
+              placeholder="Enter status name (e.g., Blocked)"
+              placeholderTextColor="#6B7280"
+              value={newStatusName}
+              onChangeText={setNewStatusName}
+              autoFocus={true}
+            />
+
+            <TouchableOpacity
+              onPress={handleCreateStatus}
+              className="bg-blue-600 rounded-lg py-3 items-center"
+            >
+              <Text className="text-white font-semibold">Create Status</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Mini-Modal for Adding Priority */}
+      <Modal
+        visible={priorityModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setPriorityModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setPriorityModalVisible(false)}
+          className="flex-1 justify-center items-center bg-black/60 px-6"
+        >
+          <TouchableOpacity activeOpacity={1} className="bg-gray-800 rounded-2xl p-6 w-full">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-bold text-white">New Priority</Text>
+              <TouchableOpacity onPress={() => setPriorityModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              className="bg-gray-700 rounded-lg px-4 py-3 text-white mb-4"
+              placeholder="Enter priority name (e.g., Critical)"
+              placeholderTextColor="#6B7280"
+              value={newPriorityName}
+              onChangeText={setNewPriorityName}
+              autoFocus={true}
+            />
+
+            <TouchableOpacity
+              onPress={handleCreatePriority}
+              className="bg-blue-600 rounded-lg py-3 items-center"
+            >
+              <Text className="text-white font-semibold">Create Priority</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </Modal>
   );

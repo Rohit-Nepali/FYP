@@ -4,9 +4,10 @@ import { statusService } from "../services/status.service.js";
 export const createStatusController = async (req, res, next) => {
   try {
     const userId = req.user.id;
+    const { projectId } = req.params;
     const statusData = req.body;
 
-    const status = await statusService.create(statusData, userId);
+    const status = await statusService.create(statusData, projectId, userId);
 
     return ApiResponse.sendSuccessResponse(
       res,
@@ -22,8 +23,9 @@ export const createStatusController = async (req, res, next) => {
 export const getAllStatusesController = async (req, res, next) => {
   try {
     const userId = req.user.id;
+    const { projectId } = req.params;
 
-    const statuses = await statusService.getAll(userId);
+    const statuses = await statusService.getAll(projectId, userId);
 
     return ApiResponse.sendSuccessResponse(
       res,
@@ -39,9 +41,9 @@ export const getAllStatusesController = async (req, res, next) => {
 export const getStatusByIdController = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id } = req.params;
+    const { projectId, id } = req.params;
 
-    const status = await statusService.getById(id, userId);
+    const status = await statusService.getById(id, projectId, userId);
 
     return ApiResponse.sendSuccessResponse(
       res,
@@ -57,10 +59,10 @@ export const getStatusByIdController = async (req, res, next) => {
 export const updateStatusController = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id } = req.params;
+    const { projectId, id } = req.params;
     const updateData = req.body;
 
-    const status = await statusService.update(id, userId, updateData);
+    const status = await statusService.update(id, projectId, userId, updateData);
 
     return ApiResponse.sendSuccessResponse(
       res,
@@ -76,9 +78,9 @@ export const updateStatusController = async (req, res, next) => {
 export const deleteStatusController = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id } = req.params;
+    const { projectId, id } = req.params;
 
-    await statusService.delete(id, userId);
+    await statusService.delete(id, projectId, userId);
 
     return ApiResponse.sendSuccessResponse(
       res,

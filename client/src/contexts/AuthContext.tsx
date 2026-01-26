@@ -16,7 +16,6 @@ import {
   clearTokens,
   LoginResponse,
 } from "../services/authService";
-import { requestNotificationPermissions, getExpoPushToken, requestFirebasePermission, getFcmToken } from '../services/notificationService';
 import axios from 'axios';
 import { config } from '../config/environment';
 
@@ -65,8 +64,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userProfile);
       }
     } catch (error) {
-      console.log("Auth initialization failed:", error);
-      // Clear any invalid tokens
       await clearTokens();
     } finally {
       setIsAuthChecking(false);

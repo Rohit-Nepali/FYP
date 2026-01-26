@@ -34,14 +34,11 @@ model User {
   projectMemberships  ProjectMember[]
   assignedTasks       Task[]            @relation("assignedTasks")
   createdTasks        Task[]            @relation("createdTasks")
-  statuses            Status[]
-  priorities          Priority[]
   sentProjectInvites  ProjectInvite[] @relation("UserProjectInvites")
 
   uploadedAttachments Attachment[]
   comments            Comment[]
   pushToken           String?
-
 }
 
 model UserSession {
@@ -75,15 +72,15 @@ model Status {
   name      String
   color     String?  // Hex color code
   order     Int      @default(0)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tasks Task[]
 
-  @@unique([userId, name])
-  @@index([userId])
+  @@unique([projectId, name])
+  @@index([projectId])
 }
 
 model Priority {
@@ -91,15 +88,15 @@ model Priority {
   name      String
   color     String?  // Hex color code
   order     Int      @default(0)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tasks Task[]
 
-  @@unique([userId, name])
-  @@index([userId])
+  @@unique([projectId, name])
+  @@index([projectId])
 }
 
 model Task {
@@ -142,9 +139,11 @@ model   Project {
   owner       User      @relation("ownerProjects", fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
 
-  members ProjectMember[]
-  tasks   Task[]
-  invites ProjectInvite[] @relation("projectInvites")
+  members    ProjectMember[]
+  tasks      Task[]
+  invites    ProjectInvite[] @relation("projectInvites")
+  statuses   Status[]
+  priorities Priority[]
 
   @@index([ownerId])
 }

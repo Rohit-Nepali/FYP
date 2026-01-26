@@ -16,8 +16,8 @@ router.get("/api/", (req, res) => {
 router.use("/api/auth", authRouter);
 router.use("/api/tasks", taskRouter);
 router.use("/api/projects", projectRouter);
-router.use("/api/statuses", statusRouter);
-router.use("/api/priorities", priorityRouter);
+router.use("/api", statusRouter);
+router.use("/api", priorityRouter);
 router.use("/api/comments", commentRouter);
 router.use("/api/users", userRouter);
 

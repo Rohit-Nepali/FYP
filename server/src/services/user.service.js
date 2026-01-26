@@ -1,3 +1,4 @@
+import { HTTP_STATUS } from "#utils/response.utils.js";
 import { prisma } from "../config/db.js";
 
 export const userService = {
@@ -22,7 +23,34 @@ export const userService = {
 
         return users.map(user => ({
             ...user,
-            avatarUrl: user.profileImage 
+            avatarUrl: user.profileImage
         }));
     },
+
+    addPushToken: async (userId, pushToken) => {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select:{
+                id: true,
+                pushToken: true
+            }
+        });
+
+        if (!user) {
+            throw new ApiError("User not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        if (user.pushToken === pushToken) return user;
+
+        return await prisma.user.update({
+            where: { id: userId },
+            data: {
+                pushToken: pushToken,
+            },
+            select:{
+                id: true,
+                pushToken: true
+            }
+        });
+    }
 };

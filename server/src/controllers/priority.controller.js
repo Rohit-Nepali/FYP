@@ -4,9 +4,10 @@ import { priorityService } from "../services/priority.service.js";
 export const createPriorityController = async (req, res, next) => {
   try {
     const userId = req.user.id;
+    const { projectId } = req.params;
     const priorityData = req.body;
 
-    const priority = await priorityService.create(priorityData, userId);
+    const priority = await priorityService.create(priorityData, projectId, userId);
 
     return ApiResponse.sendSuccessResponse(
       res,
@@ -22,8 +23,9 @@ export const createPriorityController = async (req, res, next) => {
 export const getAllPrioritiesController = async (req, res, next) => {
   try {
     const userId = req.user.id;
+    const { projectId } = req.params;
 
-    const priorities = await priorityService.getAll(userId);
+    const priorities = await priorityService.getAll(projectId, userId);
 
     return ApiResponse.sendSuccessResponse(
       res,
@@ -39,9 +41,9 @@ export const getAllPrioritiesController = async (req, res, next) => {
 export const getPriorityByIdController = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id } = req.params;
+    const { projectId, id } = req.params;
 
-    const priority = await priorityService.getById(id, userId);
+    const priority = await priorityService.getById(id, projectId, userId);
 
     return ApiResponse.sendSuccessResponse(
       res,
@@ -57,10 +59,10 @@ export const getPriorityByIdController = async (req, res, next) => {
 export const updatePriorityController = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id } = req.params;
+    const { projectId, id } = req.params;
     const updateData = req.body;
 
-    const priority = await priorityService.update(id, userId, updateData);
+    const priority = await priorityService.update(id, projectId, userId, updateData);
 
     return ApiResponse.sendSuccessResponse(
       res,
@@ -76,9 +78,9 @@ export const updatePriorityController = async (req, res, next) => {
 export const deletePriorityController = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { id } = req.params;
+    const { projectId, id } = req.params;
 
-    await priorityService.delete(id, userId);
+    await priorityService.delete(id, projectId, userId);
 
     return ApiResponse.sendSuccessResponse(
       res,

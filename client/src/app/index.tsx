@@ -7,12 +7,15 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
+  Modal,
+  TextInput,
+  Alert,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Task, getAllTasks } from "../services/taskService";
-import { getAllProjects, Project } from "../services/projectService";
+import { getAllProjects, Project, createProject } from "../services/projectService";
 
 export default function Index() {
   const router = useRouter();
@@ -28,6 +31,12 @@ export default function Index() {
   const [projects, setProjects] = useState<
     { id: string; title: string; progress: number; color: string }[]
   >([]);
+
+  // Project creation modal state
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [projectTitle, setProjectTitle] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -82,6 +91,33 @@ export default function Index() {
     }
   }
 
+  const handleCreateProject = async () => {
+    if (!projectTitle.trim()) {
+      Alert.alert("Error", "Project title is required");
+      return;
+    }
+
+    try {
+      setCreating(true);
+      await createProject({
+        title: projectTitle.trim(),
+        description: projectDescription.trim(),
+      });
+
+      // Reset form
+      setProjectTitle("");
+      setProjectDescription("");
+      setCreateModalVisible(false);
+
+      // Reload projects
+      await loadProjects();
+    } catch (error) {
+      Alert.alert("Error", error instanceof Error ? error.message : "Failed to create project");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-gray-900" >
       <ScrollView className="flex-1 px-4 " refreshControl={
@@ -101,9 +137,105 @@ export default function Index() {
           What's on your plate?
         </Text>
 
-        {/* Tasks on Home */} 
+        {/* Projects */}
         <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-white text-lg font-semibold">My tasks</Text>
+          <Text className="text-white text-lg font-semibold">Projects</Text>
+        </View>
+
+        <View className="mb-6">
+          <View className="border border-gray-700 rounded-2xl p-4 bg-gray-900/60">
+            <View className="space-y-4">
+              {loadingProjects ? (
+                <View className="py-10 items-center justify-center">
+                  <ActivityIndicator size="large" color="#8b5cf6" />
+                </View>
+              ) : projectError ? (
+                <View className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                  <Text className="text-red-300 font-semibold mb-2">
+                    Unable to load projects
+                  </Text>
+                  <Text className="text-gray-400 text-sm mb-3">
+                    {projectError}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={loadProjects}
+                    className="bg-red-600 rounded-lg py-2 items-center"
+                  >
+                    <Text className="text-white font-medium">Retry</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : projects.length === 0 ? (
+                <View className="py-12 items-center justify-center bg-gray-800 rounded-xl">
+                  <Ionicons
+                    name="folder-open-outline"
+                    size={48}
+                    color="#6B7280"
+                  />
+                  <Text className="text-gray-300 font-semibold mt-3">
+                    No projects yet
+                  </Text>
+
+                  <Text className="text-gray-500 text-sm mt-1 text-center px-6">
+                    Create your first project to organize your tasks.
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={() => setCreateModalVisible(true)}
+                    className="mt-4 bg-purple-600 rounded-lg px-6 py-3"
+                  >
+                    <Text className="text-white font-medium">Create Project</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                projects.slice(0, 2).map((project, index) => (
+                  <TouchableOpacity
+                    key={`${project.id ?? "project"}-${index}`}
+                    className="bg-gray-800 rounded-xl p-4 flex-row items-start gap-3 mb-2"
+                    onPress={() => router.push(`/projects/${project.id}`)}
+                  >
+                    <View>
+                      <Ionicons
+                        name="folder"
+                        size={22}
+                        color={project.color || "#9CA3AF"}
+                      />
+                    </View>
+
+                    <View className="flex-1">
+                      <Text className="text-white font-semibold">
+                        {project.title}
+                      </Text>
+                    </View>
+
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color="#9CA3AF"
+                    />
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+
+            {/* See All tasks button linking to project page */}
+            {/* make this see ALL projects button full width of content */}
+            {!loadingProjects && !projectError && projects.length > 0 && (
+              <TouchableOpacity
+                onPress={() => router.push("/projects/page")}
+                className="mt-3 w-full flex-row items-center justify-center py-3 px-4 rounded-xl bg-purple-700"
+              >
+                <Text className="text-white text-sm font-semibold">
+                  See All Projects
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color="white" className="pl-2" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Tasks on Home */}
+        <View className="flex-row justify-between items-center mb-4">
+          <Text className="text-white text-lg font-semibold">Recent tasks</Text>
         </View>
         <View className="mb-2">
           <View className="border border-gray-700 rounded-2xl p-4 bg-gray-900/60">
@@ -196,112 +328,76 @@ export default function Index() {
             {!loadingTasks && !taskError && tasks.length > 0 && (
               <TouchableOpacity
                 onPress={() => router.push("/tasks")}
-                className="mt-3 self-end flex-row items-center"
+                className="mt-3 w-full flex-row items-center justify-center py-3 px-4 rounded-xl bg-purple-600"
               >
-                <Text className="text-purple-400 text-xs font-medium mr-1">
+                <Text className="text-white text-sm font-semibold">
                   See All Tasks
                 </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={14}
-                  color="#9CA3AF"
-                />
+                <Ionicons name="chevron-forward" size={18} color="white" className="pl-2" />
               </TouchableOpacity>
             )}
           </View>
         </View>
 
-        {/* Projects */}
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-white text-lg font-semibold">Projects</Text>
-        </View>
 
-        <View className="mb-6">
-          <View className="border border-gray-700 rounded-2xl p-4 bg-gray-900/60">
-            <View className="space-y-4">
-              {loadingProjects ? (
-                <View className="py-10 items-center justify-center">
-                  <ActivityIndicator size="large" color="#8b5cf6" />
-                </View>
-              ) : projectError ? (
-                <View className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-                  <Text className="text-red-300 font-semibold mb-2">
-                    Unable to load projects
-                  </Text>
-                  <Text className="text-gray-400 text-sm mb-3">
-                    {projectError}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={loadProjects}
-                    className="bg-red-600 rounded-lg py-2 items-center"
-                  >
-                    <Text className="text-white font-medium">Retry</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : projects.length === 0 ? (
-                <View className="py-12 items-center justify-center bg-gray-800 rounded-xl">
-                  <Ionicons
-                    name="folder-open-outline"
-                    size={48}
-                    color="#6B7280"
-                  />
-                  <Text className="text-gray-300 font-semibold mt-3">
-                    No projects yet
-                  </Text>
-                  <Text className="text-gray-500 text-sm mt-1 text-center px-6">
-                    Create your first project to organize your tasks.
-                  </Text>
-                </View>
-              ) : (
-                projects.slice(0, 2).map((project, index) => (
-                  <TouchableOpacity
-                    key={`${project.id ?? "project"}-${index}`}
-                    className="bg-gray-800 rounded-xl p-4 flex-row items-start gap-3 mb-2"
-                    onPress={() => router.push(`/projects/${project.id}`)}
-                  >
-                    <View>
-                      <Ionicons
-                        name="folder"
-                        size={22}
-                        color={project.color || "#9CA3AF"}
-                      />
-                    </View>
-
-                    <View className="flex-1">
-                      <Text className="text-white font-semibold">
-                        {project.title}
-                      </Text>
-                    </View>
-
-                    <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color="#9CA3AF"
-                    />
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-
-            {/* See All tasks button linking to project page */}
-            {!loadingProjects && !projectError && projects.length > 0 && (
-              <TouchableOpacity
-                onPress={() => router.push("/projects/page")}
-                className="mt-3 self-end flex-row items-center"
-              >
-                <Text className="text-purple-400 text-xs font-medium mr-1">
-                  See All Projects
-                </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={14}
-                  color="#9CA3AF"
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
       </ScrollView>
+
+      {/* Project Creation Modal */}
+      <Modal
+        visible={createModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setCreateModalVisible(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black/50">
+          <View className="bg-gray-800 rounded-2xl p-6 mx-4 w-full max-w-sm">
+            <Text className="text-white text-xl font-bold mb-4">
+              Create New Project
+            </Text>
+
+            <Text className="text-gray-400 text-sm mb-2">Project Title *</Text>
+            <TextInput
+              value={projectTitle}
+              onChangeText={setProjectTitle}
+              placeholder="Enter project title"
+              placeholderTextColor="#9CA3AF"
+              className="bg-gray-700 text-white rounded-lg px-4 py-3 mb-4"
+            />
+
+            <Text className="text-gray-400 text-sm mb-2">Description (Optional)</Text>
+            <TextInput
+              value={projectDescription}
+              onChangeText={setProjectDescription}
+              placeholder="Enter project description"
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={3}
+              className="bg-gray-700 text-white rounded-lg px-4 py-3 mb-6 h-20"
+            />
+
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setCreateModalVisible(false)}
+                className="flex-1 bg-gray-600 rounded-lg py-3 items-center"
+              >
+                <Text className="text-white font-medium">Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleCreateProject}
+                disabled={creating}
+                className="flex-1 bg-purple-600 rounded-lg py-3 items-center"
+              >
+                {creating ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-white font-medium">Create</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView >
   );
 }

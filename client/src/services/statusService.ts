@@ -9,7 +9,7 @@ export interface Status {
   name: string;
   color?: string;
   order: number;
-  userId: string;
+  projectId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,10 +36,10 @@ const getAuthHeaders = async () => {
   };
 };
 
-export const createStatus = async (data: CreateStatusData): Promise<Status> => {
+export const createStatus = async (projectId: string, data: CreateStatusData): Promise<Status> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE_URL}/statuses`, data, {
+    const response = await axios.post(`${API_BASE_URL}/projects/${projectId}/statuses`, data, {
       headers,
     });
     return response.data.data;
@@ -53,10 +53,10 @@ export const createStatus = async (data: CreateStatusData): Promise<Status> => {
   }
 };
 
-export const getAllStatuses = async (): Promise<Status[]> => {
+export const getAllStatuses = async (projectId: string): Promise<Status[]> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE_URL}/statuses`, {
+    const response = await axios.get(`${API_BASE_URL}/projects/${projectId}/statuses`, {
       headers,
     });
     return response.data.data || [];
@@ -70,10 +70,10 @@ export const getAllStatuses = async (): Promise<Status[]> => {
   }
 };
 
-export const getStatusById = async (id: string): Promise<Status> => {
+export const getStatusById = async (projectId: string, id: string): Promise<Status> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE_URL}/statuses/${id}`, {
+    const response = await axios.get(`${API_BASE_URL}/projects/${projectId}/statuses/${id}`, {
       headers,
     });
     return response.data.data;
@@ -86,12 +86,13 @@ export const getStatusById = async (id: string): Promise<Status> => {
 };
 
 export const updateStatus = async (
+  projectId: string,
   id: string,
   data: UpdateStatusData
 ): Promise<Status> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.put(`${API_BASE_URL}/statuses/${id}`, data, {
+    const response = await axios.put(`${API_BASE_URL}/projects/${projectId}/statuses/${id}`, data, {
       headers,
     });
     return response.data.data;
@@ -105,10 +106,10 @@ export const updateStatus = async (
   }
 };
 
-export const deleteStatus = async (id: string): Promise<void> => {
+export const deleteStatus = async (projectId: string, id: string): Promise<void> => {
   try {
     const headers = await getAuthHeaders();
-    await axios.delete(`${API_BASE_URL}/statuses/${id}`, {
+    await axios.delete(`${API_BASE_URL}/projects/${projectId}/statuses/${id}`, {
       headers,
     });
   } catch (error: any) {

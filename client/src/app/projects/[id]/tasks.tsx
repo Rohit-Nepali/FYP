@@ -60,10 +60,11 @@ export default function ProjectTasks() {
   };
 
   const loadStatusesAndPriorities = async () => {
+    if (!id || typeof id !== "string") return;
     try {
       const [statusesData, prioritiesData] = await Promise.all([
-        getAllStatuses(),
-        getAllPriorities(),
+        getAllStatuses(id),
+        getAllPriorities(id),
       ]);
       setStatuses(statusesData);
       setPriorities(prioritiesData);
@@ -258,15 +259,17 @@ export default function ProjectTasks() {
         onSave={async (payload) => {
           try {
             setSavingTask(true);
-            await createTask({ ...payload, projectId: id as string });
+            const task = await createTask({ ...payload, projectId: id as string });
             Alert.alert("Success", "Task created successfully");
             resetModal();
             loadProjectDetail(id as string);
+            return task;
           } catch (err) {
             Alert.alert(
               "Error",
               err instanceof Error ? err.message : "Failed to create task"
             );
+            throw err;
           } finally {
             setSavingTask(false);
           }
@@ -281,6 +284,7 @@ export default function ProjectTasks() {
         setStatuses={setStatuses}
         priorities={priorities}
         setPriorities={setPriorities}
+        projectId={id as string}
       />
     </SafeAreaView>
   );

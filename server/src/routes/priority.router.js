@@ -19,10 +19,10 @@ const priorityRouter = Router();
 priorityRouter.use(authenticateToken);
 
 // Priority routes
-priorityRouter.post("/", validate(createPrioritySchema), createPriorityController);
-priorityRouter.get("/", getAllPrioritiesController);
-priorityRouter.get("/:id", getPriorityByIdController);
-priorityRouter.put("/:id", validate(updatePrioritySchema), updatePriorityController);
-priorityRouter.delete("/:id", deletePriorityController);
+priorityRouter.post("/projects/:projectId/priorities", validate(createPrioritySchema), createPriorityController);
+priorityRouter.get("/projects/:projectId/priorities", getAllPrioritiesController);
+priorityRouter.get("/projects/:projectId/priorities/:id", getPriorityByIdController);
+priorityRouter.put("/projects/:projectId/priorities/:id", validate(updatePrioritySchema), updatePriorityController);
+priorityRouter.delete("/projects/:projectId/priorities/:id", deletePriorityController);
 
 export default priorityRouter;

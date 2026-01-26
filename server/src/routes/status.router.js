@@ -19,10 +19,10 @@ const statusRouter = Router();
 statusRouter.use(authenticateToken);
 
 // Status routes
-statusRouter.post("/", validate(createStatusSchema), createStatusController);
-statusRouter.get("/", getAllStatusesController);
-statusRouter.get("/:id", getStatusByIdController);
-statusRouter.put("/:id", validate(updateStatusSchema), updateStatusController);
-statusRouter.delete("/:id", deleteStatusController);
+statusRouter.post("/projects/:projectId/statuses", validate(createStatusSchema), createStatusController);
+statusRouter.get("/projects/:projectId/statuses", getAllStatusesController);
+statusRouter.get("/projects/:projectId/statuses/:id", getStatusByIdController);
+statusRouter.put("/projects/:projectId/statuses/:id", validate(updateStatusSchema), updateStatusController);
+statusRouter.delete("/projects/:projectId/statuses/:id", deleteStatusController);
 
 export default statusRouter;

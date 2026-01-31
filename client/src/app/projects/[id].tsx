@@ -23,6 +23,7 @@ import InviteMemberModal from "../../components/UI/InviteMemberModal";
 import AttachmentGrid from "../../components/UI/AttachmentGrid";
 import AttachmentPreviewModal from "../../components/UI/AttachmentPreviewModal";
 import UploadAttachmentModal from "../../components/UI/UploadAttachmentModal";
+import ActivitySection from "../../components/ActivitySection";
 
 interface ProjectData extends Project {
   tasks?: any[];
@@ -476,18 +477,8 @@ export default function ProjectDetail() {
         {/* Dashboard Content */}
         {activeTab === 'dashboard' && (
           <View className="space-y-4">
-            {/* Recent Activity Placeholder */}
-            <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-              <Text className="text-white font-semibold text-base mb-3">
-                Recent Activity
-              </Text>
-              <View className="items-center py-8">
-                <Ionicons name="time-outline" size={40} color="#6B7280" />
-                <Text className="text-gray-400 text-sm mt-2">
-                  No recent activity
-                </Text>
-              </View>
-            </View>
+            {/* Recent Activity */}
+            <ActivitySection projectId={id as string} />
 
             {/* Attachments Section */}
             <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">

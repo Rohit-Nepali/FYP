@@ -1,5 +1,6 @@
 import { ApiResponse, HTTP_STATUS, SUCCESS_MESSAGES } from '#utils/response.utils.js';
 import commentService from '../services/comment.service.js';
+import { logActivity } from '../services/activity.service.js';
 
 const createComment = async (req, res, next) => {
   try {
@@ -11,6 +12,27 @@ const createComment = async (req, res, next) => {
       content,
       authorId,
     });
+
+    // Log activity - need to get task to get projectId
+    const { prisma } = require('../config/prisma.config');
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      select: { id: true, title: true, projectId: true }
+    });
+
+    if (task && task.projectId) {
+      await logActivity({
+        type: 'COMMENT_ADDED',
+        projectId: task.projectId,
+        userId: authorId,
+        taskId: task.id,
+        commentId: comment.id,
+        metadata: {
+          taskTitle: task.title,
+          commentPreview: content.substring(0, 50)
+        }
+      });
+    }
 
     return ApiResponse.sendSuccessResponse(
       res,

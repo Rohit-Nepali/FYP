@@ -39,6 +39,7 @@ model User {
   uploadedAttachments Attachment[]
   comments            Comment[]
   pushToken           String?
+  activities          Activity[]
 }
 
 model UserSession {
@@ -119,6 +120,7 @@ model Task {
 
   attachments Attachment[]
   comments    Comment[]
+  activities  Activity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -144,6 +146,7 @@ model Project {
   statuses   Status[]
   priorities Priority[]
   attachments Attachment[]  // Direct attachments to the project
+  activities Activity[]
 
   @@index([ownerId])
 }
@@ -187,8 +190,30 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  activities Activity[]
+
   @@index([taskId])
   @@index([authorId])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  type      String   // "TASK_CREATED", "TASK_UPDATED", "COMMENT_ADDED"
+  projectId String
+  userId    String
+  taskId    String?
+  commentId String?
+  metadata  Json?    // Additional data like task title, comment preview, changes, etc.
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([createdAt])
+  @@index([userId])
 }
 
 model Attachment {

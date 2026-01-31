@@ -1,6 +1,7 @@
 import { ApiResponse, HTTP_STATUS, SUCCESS_MESSAGES } from "../utils/response.utils.js";
 import { taskService } from "../services/task.service.js";
 import { CLIENT_RENEG_LIMIT } from "tls";
+import { logActivity } from "../services/activity.service.js";
 
 export const createTaskController = async (req, res, next) => {
     try {
@@ -8,6 +9,17 @@ export const createTaskController = async (req, res, next) => {
         const taskData = req.body;
 
         const task = await taskService.create(taskData, userId);
+
+        // Log activity
+        if (task.projectId) {
+            await logActivity({
+                type: 'TASK_CREATED',
+                projectId: task.projectId,
+                userId,
+                taskId: task.id,
+                metadata: { taskTitle: task.title }
+            });
+        }
 
         return ApiResponse.sendSuccessResponse(
             res,
@@ -69,6 +81,17 @@ export const updateTaskController = async (req, res, next) => {
         const updateData = req.body;
 
         const task = await taskService.update(id, userId, updateData);
+
+        // Log activity
+        if (task.projectId) {
+            await logActivity({
+                type: 'TASK_UPDATED',
+                projectId: task.projectId,
+                userId,
+                taskId: task.id,
+                metadata: { taskTitle: task.title }
+            });
+        }
 
         return ApiResponse.sendSuccessResponse(
             res,

@@ -6,6 +6,7 @@ import statusRouter from "./status.router.js";
 import priorityRouter from "./priority.router.js";
 import commentRouter from "./comment.router.js";
 import userRouter from "./user.router.js";
+import activityRouter from "./activity.router.js";
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use("/api/status", statusRouter);
 router.use("/api/priorities", priorityRouter);
 router.use("/api/comments", commentRouter);
 router.use("/api/users", userRouter);
+router.use("/api", activityRouter);
 
 export default router;

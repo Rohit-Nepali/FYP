@@ -22,6 +22,24 @@ export const projectService = {
             },
         });
 
+        // Create default statuses for the project
+        await prisma.status.createMany({
+            data: [
+                { name: "To Do", color: "#6B7280", order: 0, projectId: project.id },
+                { name: "In Progress", color: "#3B82F6", order: 1, projectId: project.id },
+                { name: "Done", color: "#10B981", order: 2, projectId: project.id },
+            ],
+        });
+
+        // Create default priorities for the project
+        await prisma.priority.createMany({
+            data: [
+                { name: "Low", color: "#10B981", order: 0, projectId: project.id },
+                { name: "Medium", color: "#F59E0B", order: 1, projectId: project.id },
+                { name: "High", color: "#EF4444", order: 2, projectId: project.id },
+            ],
+        });
+
         return project;
     },
 

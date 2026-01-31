@@ -450,52 +450,7 @@ export default function TaskModal({
           </View>
         </View>
       </View>
-
-      Mini-Modal for Adding Status
-      {/* <Modal visible={statusModalVisible} animationType="slide" transparent={true} onRequestClose={() => setStatusModalVisible(false)}>
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setStatusModalVisible(false)}
-          className="flex-1 justify-center items-center bg-black/60 px-6"
-        >
-          <TouchableOpacity activeOpacity={1} className="bg-gray-800 rounded-2xl p-6 w-full">
-
-            <View className="bg-gray-800 rounded-t-2xl p-6">
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-xl font-bold text-white">New Status</Text>
-                <TouchableOpacity onPress={() => setStatusModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
-              <TextInput className="bg-gray-700 rounded-lg px-4 py-3 text-white mb-4" placeholder="Enter status name (e.g., Blocked)" placeholderTextColor="#6B7280" value={newStatusName} onChangeText={setNewStatusName} />
-              <TouchableOpacity onPress={handleCreateStatus} className="bg-blue-600 rounded-lg py-3 items-center">
-                <Text className="text-white font-semibold">Create</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal> */}
-
-      {/* Mini-Modal for Adding Priority */}
-      {/* <Modal visible={priorityModalVisible} animationType="slide" transparent={true} onRequestClose={() => setPriorityModalVisible(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          className="flex-1 justify-end bg-black/50"
-        >
-          <View className="bg-gray-800 rounded-t-2xl p-6">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-white">New Priority</Text>
-              <TouchableOpacity onPress={() => setPriorityModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
-            <TextInput className="bg-gray-700 rounded-lg px-4 py-3 text-white mb-4" placeholder="Enter priority name (e.g., Critical)" placeholderTextColor="#6B7280" value={newPriorityName} onChangeText={setNewPriorityName} />
-            <TouchableOpacity onPress={handleCreatePriority} className="bg-blue-600 rounded-lg py-3 items-center">
-              <Text className="text-white font-semibold">Create</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal> */}
+      
       {/* Mini-Modal for Adding Status */}
       <Modal
         visible={statusModalVisible}

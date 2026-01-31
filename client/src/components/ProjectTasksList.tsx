@@ -74,8 +74,8 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
   const loadStatusesAndPriorities = async () => {
     try {
       const [statusesData, prioritiesData] = await Promise.all([
-        getAllStatuses(),
-        getAllPriorities(),
+        getAllStatuses(projectId),
+        getAllPriorities(projectId),
       ]);
       setStatuses(statusesData);
       setPriorities(prioritiesData);
@@ -291,6 +291,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
         onSave={async (payload) => {
           try {
             setSavingTask(true);
+            console.log(" ______Project id is being sent on create task ______", projectId);
             const newTask = await createTask({ ...payload, projectId });
             Alert.alert("Success", "Task created successfully");
             resetModal();

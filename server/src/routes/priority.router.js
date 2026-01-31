@@ -6,6 +6,7 @@ import {
   getPriorityByIdController,
   updatePriorityController,
   deletePriorityController,
+  getGlobalPrioritiesController,
 } from "../controllers/priority.controller.js";
 import { validate } from "../middleware/validation.middleware.js";
 import {
@@ -24,5 +25,8 @@ priorityRouter.get("/projects/:projectId/priorities", getAllPrioritiesController
 priorityRouter.get("/projects/:projectId/priorities/:id", getPriorityByIdController);
 priorityRouter.put("/projects/:projectId/priorities/:id", validate(updatePrioritySchema), updatePriorityController);
 priorityRouter.delete("/projects/:projectId/priorities/:id", deletePriorityController);
+
+// Global priorities (no project required)
+priorityRouter.get("/priorities", getGlobalPrioritiesController);
 
 export default priorityRouter;

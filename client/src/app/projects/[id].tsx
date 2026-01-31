@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-
+import { useAuth } from "../../contexts/AuthContext";
 import { getProjectById, deleteProject, Project } from "../../services/projectService";
 import { getProjectAttachments, Attachment } from "../../services/attachmentService";
 import ProjectTasksList from "../../components/ProjectTasksList";
@@ -31,6 +31,7 @@ interface ProjectData extends Project {
 export default function ProjectDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const { user } = useAuth();
   const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -71,6 +72,7 @@ export default function ProjectDetail() {
     try {
       setLoading(true);
       const data = await getProjectById(projectId);
+      console.log(" project details", JSON.stringify(data, null, 2));
       setProject(data);
     } catch (err) {
       console.error("Failed to load project", err);
@@ -264,6 +266,35 @@ export default function ProjectDetail() {
             </TouchableOpacity>
             
             <View className="h-px bg-gray-700 my-1" />
+            
+            {/* Owner-only options */}
+            {project.ownerId === user?.id && (
+              <>
+                <TouchableOpacity
+                  className="flex-row items-center p-3 rounded-lg active:bg-gray-700"
+                  onPress={() => {
+                    setMenuVisible(false);
+                    router.push(`/projects/${id}/statuses`);
+                  }}
+                >
+                  <Ionicons name="list-outline" size={20} color="#fff" />
+                  <Text className="text-white ml-3 font-medium">Manage Statuses</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  className="flex-row items-center p-3 rounded-lg active:bg-gray-700"
+                  onPress={() => {
+                    setMenuVisible(false);
+                    router.push(`/projects/${id}/priorities`);
+                  }}
+                >
+                  <Ionicons name="flag-outline" size={20} color="#fff" />
+                  <Text className="text-white ml-3 font-medium">Manage Priorities</Text>
+                </TouchableOpacity>
+                
+                <View className="h-px bg-gray-700 my-1" />
+              </>
+            )}
             
             <TouchableOpacity
               className="flex-row items-center p-3 rounded-lg active:bg-red-900/30"

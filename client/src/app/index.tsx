@@ -224,7 +224,7 @@ export default function Index() {
                 className="mt-3 w-full flex-row items-center justify-center py-3 px-4 rounded-xl bg-purple-700"
               >
                 <Text className="text-white text-sm font-semibold">
-                  See All Projects
+                  Manage All Projects
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color="white" className="pl-2" />
               </TouchableOpacity>
@@ -327,10 +327,10 @@ export default function Index() {
             {!loadingTasks && !taskError && tasks.length > 0 && (
               <TouchableOpacity
                 onPress={() => router.push("/tasks")}
-                className="mt-3 w-full flex-row items-center justify-center py-3 px-4 rounded-xl bg-purple-600"
+                className="mt-3 w-full flex-row items-center justify-center py-3 px-4 rounded-xl bg-purple-700"
               >
                 <Text className="text-white text-sm font-semibold">
-                  See All Tasks
+                  Manage All Tasks
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color="white" className="pl-2" />
               </TouchableOpacity>

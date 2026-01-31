@@ -42,7 +42,7 @@ export const createPriority = async (
 ): Promise<Priority> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE_URL}/projects/${projectId}/priorities`, data, {
+    const response = await axios.post(`${API_BASE_URL}/priorities/projects/${projectId}/priorities`, data, {
       headers,
     });
     return response.data.data;
@@ -56,10 +56,18 @@ export const createPriority = async (
   }
 };
 
-export const getAllPriorities = async (projectId: string): Promise<Priority[]> => {
+export const getAllPriorities = async (projectId?: string): Promise<Priority[]> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE_URL}/projects/${projectId}/priorities`, {
+    let url: string;
+    
+    if (projectId) {
+      url = `${API_BASE_URL}/priorities/projects/${projectId}/priorities`;
+    } else {
+      url = `${API_BASE_URL}/priorities`;
+    }
+    
+    const response = await axios.get(url, {
       headers,
     });
     return response.data.data || [];
@@ -76,7 +84,7 @@ export const getAllPriorities = async (projectId: string): Promise<Priority[]> =
 export const getPriorityById = async (projectId: string, id: string): Promise<Priority> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE_URL}/projects/${projectId}/priorities/${id}`, {
+    const response = await axios.get(`${API_BASE_URL}/priorities/projects/${projectId}/priorities/${id}`, {
       headers,
     });
     return response.data.data;
@@ -97,7 +105,7 @@ export const updatePriority = async (
 ): Promise<Priority> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.put(`${API_BASE_URL}/projects/${projectId}/priorities/${id}`, data, {
+    const response = await axios.put(`${API_BASE_URL}/priorities/projects/${projectId}/priorities/${id}`, data, {
       headers,
     });
     return response.data.data;
@@ -114,7 +122,7 @@ export const updatePriority = async (
 export const deletePriority = async (projectId: string, id: string): Promise<void> => {
   try {
     const headers = await getAuthHeaders();
-    await axios.delete(`${API_BASE_URL}/projects/${projectId}/priorities/${id}`, {
+    await axios.delete(`${API_BASE_URL}/priorities/projects/${projectId}/priorities/${id}`, {
       headers,
     });
   } catch (error: any) {

@@ -39,7 +39,7 @@ const getAuthHeaders = async () => {
 export const createStatus = async (projectId: string, data: CreateStatusData): Promise<Status> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE_URL}/projects/${projectId}/statuses`, data, {
+    const response = await axios.post(`${API_BASE_URL}/status/projects/${projectId}/statuses`, data, {
       headers,
     });
     return response.data.data;
@@ -53,10 +53,18 @@ export const createStatus = async (projectId: string, data: CreateStatusData): P
   }
 };
 
-export const getAllStatuses = async (projectId: string): Promise<Status[]> => {
+export const getAllStatuses = async (projectId?: string): Promise<Status[]> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE_URL}/projects/${projectId}/statuses`, {
+    let url: string;
+
+    if (projectId) {
+      url = `${API_BASE_URL}/status/projects/${projectId}/statuses`;
+    } else {
+      url = `${API_BASE_URL}/status`;
+    }
+
+    const response = await axios.get(url, {
       headers,
     });
     return response.data.data || [];
@@ -73,7 +81,7 @@ export const getAllStatuses = async (projectId: string): Promise<Status[]> => {
 export const getStatusById = async (projectId: string, id: string): Promise<Status> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE_URL}/projects/${projectId}/statuses/${id}`, {
+    const response = await axios.get(`${API_BASE_URL}/status/projects/${projectId}/statuses/${id}`, {
       headers,
     });
     return response.data.data;
@@ -92,7 +100,7 @@ export const updateStatus = async (
 ): Promise<Status> => {
   try {
     const headers = await getAuthHeaders();
-    const response = await axios.put(`${API_BASE_URL}/projects/${projectId}/statuses/${id}`, data, {
+    const response = await axios.put(`${API_BASE_URL}/status/projects/${projectId}/statuses/${id}`, data, {
       headers,
     });
     return response.data.data;
@@ -109,7 +117,7 @@ export const updateStatus = async (
 export const deleteStatus = async (projectId: string, id: string): Promise<void> => {
   try {
     const headers = await getAuthHeaders();
-    await axios.delete(`${API_BASE_URL}/projects/${projectId}/statuses/${id}`, {
+    await axios.delete(`${API_BASE_URL}/status/projects/${projectId}/statuses/${id}`, {
       headers,
     });
   } catch (error: any) {

@@ -372,7 +372,7 @@ export default function Projects() {
       {/* New Project Button - Bottom Right */}
       <TouchableOpacity
         onPress={() => setModalVisible(true)}
-        className="absolute bottom-28 right-4 bg-blue-700 rounded-full p-4 flex-row items-center px-6 shadow-lg"
+        className="absolute bottom-8 right-4 bg-blue-700 rounded-full p-4 flex-row items-center px-6 shadow-lg"
       >
         <Ionicons name="add-outline" size={20} color="#fff" />
         <Text className="text-white font-semibold ml-2">New Project</Text>

@@ -1,13 +1,17 @@
 import { Router } from "express";
 import { authenticateToken } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validation.middleware.js";
+import { upload } from "../middleware/upload.middleware.js";
 import {
     acceptProjectInviteController,
     addProjectMemberController,
     createProjectController,
+    createProjectAttachmentController,
     createProjectInviteController,
+    deleteProjectAttachmentController,
     deleteProjectController,
     getAllProjectsController,
+    getProjectAttachmentsController,
     getProjectByIdController,
     getProjectInvitesController,
     removeProjectMemberController,
@@ -42,6 +46,10 @@ projectRouter.post("/:id/invites", createProjectInviteController);
 projectRouter.get("/:id/invites", getProjectInvitesController);
 projectRouter.post("/invites/:token/accept", acceptProjectInviteController);
 
+// Attachment management routes
+projectRouter.get("/:id/attachments", getProjectAttachmentsController);
+projectRouter.post("/:id/attachments", upload.single("file"), createProjectAttachmentController);
+projectRouter.delete("/:id/attachments/:attachmentId", deleteProjectAttachmentController);
 
 export default projectRouter;
 

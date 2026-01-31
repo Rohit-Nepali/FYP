@@ -218,7 +218,6 @@ export default function Index() {
             </View>
 
             {/* See All tasks button linking to project page */}
-            {/* make this see ALL projects button full width of content */}
             {!loadingProjects && !projectError && projects.length > 0 && (
               <TouchableOpacity
                 onPress={() => router.push("/projects/page")}

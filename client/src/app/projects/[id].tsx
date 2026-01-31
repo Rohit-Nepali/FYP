@@ -8,15 +8,21 @@ import {
   Alert,
   Image,
   Modal,
+  TextInput,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { getProjectById, Project } from "../../services/projectService";
+import { getProjectById, deleteProject, Project } from "../../services/projectService";
+import { getProjectAttachments, Attachment } from "../../services/attachmentService";
 import ProjectTasksList from "../../components/ProjectTasksList";
 import AddMembersModal from "../../components/UI/AddMembersModal";
 import InviteMemberModal from "../../components/UI/InviteMemberModal";
+import AttachmentGrid from "../../components/UI/AttachmentGrid";
+import AttachmentPreviewModal from "../../components/UI/AttachmentPreviewModal";
+import UploadAttachmentModal from "../../components/UI/UploadAttachmentModal";
 
 interface ProjectData extends Project {
   tasks?: any[];
@@ -27,16 +33,39 @@ export default function ProjectDetail() {
   const { id } = useLocalSearchParams();
   const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'tasks'>('tasks');
   const [addMembersModalVisible, setAddMembersModalVisible] = useState(false);
   const [inviteEmailModalVisible, setInviteEmailModalVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  
+  // Attachments state
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [filterType, setFilterType] = useState<'all' | 'image' | 'document' | 'other'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
 
   useEffect(() => {
     if (id && typeof id === "string") {
       loadProjectDetail(id);
+      loadAttachments(id);
     }
   }, [id]);
+
+  const loadAttachments = async (projectId: string) => {
+    try {
+      setAttachmentsLoading(true);
+      const data = await getProjectAttachments(projectId);
+      setAttachments(data);
+    } catch (err) {
+      console.error("Failed to load attachments", err);
+    } finally {
+      setAttachmentsLoading(false);
+    }
+  };
 
   const loadProjectDetail = async (projectId: string) => {
     try {
@@ -111,6 +140,82 @@ export default function ProjectDetail() {
 
   const existingMemberIds = project?.members?.map((m: any) => m.userId || m.id) || [];
 
+  const getAttachmentType = (fileType: string | null): 'image' | 'document' | 'other' => {
+    if (!fileType) return 'other';
+    if (fileType.startsWith('image/')) return 'image';
+    if (
+      fileType.includes('pdf') ||
+      fileType.includes('document') ||
+      fileType.includes('text') ||
+      fileType.includes('spreadsheet') ||
+      fileType.includes('presentation')
+    ) {
+      return 'document';
+    }
+    return 'other';
+  };
+
+  // Filter attachments
+  const filteredAttachments = attachments.filter(attachment => {
+    // Filter by type
+    if (filterType !== 'all') {
+      if (getAttachmentType(attachment.fileType) !== filterType) {
+        return false;
+      }
+    }
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return attachment.fileName.toLowerCase().includes(query);
+    }
+    return true;
+  });
+
+  const handleAttachmentPress = (attachment: Attachment) => {
+    setSelectedAttachment(attachment);
+    setPreviewModalVisible(true);
+  };
+
+  const handleUploadSuccess = () => {
+    if (id && typeof id === 'string') {
+      loadAttachments(id);
+    }
+  };
+
+  const handleDeleteProject = () => {
+    console.log("Deleting project")
+    setMenuVisible(false);
+    Alert.alert(
+      "Delete Project",
+      `Are you sure you want to delete "${project.title}"? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await deleteProject(id as string);
+              Alert.alert(
+                "Success",
+                "Project has been deleted successfully.",
+                [{ text: "OK", onPress: () => router.back() }]
+              );
+            } catch (err) {
+              Alert.alert(
+                "Error",
+                err instanceof Error ? err.message : "Failed to delete project"
+              );
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
       {/* Header */}
@@ -161,6 +266,19 @@ export default function ProjectDetail() {
             <View className="h-px bg-gray-700 my-1" />
             
             <TouchableOpacity
+              className="flex-row items-center p-3 rounded-lg active:bg-red-900/30"
+              onPress={handleDeleteProject}
+              disabled={deleting}
+            >
+              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              <Text className="text-red-500 ml-3 font-medium">
+                {deleting ? "Deleting..." : "Delete Project"}
+              </Text>
+            </TouchableOpacity>
+            
+            <View className="h-px bg-gray-700 my-1" />
+            
+            <TouchableOpacity
               className="flex-row items-center p-3 rounded-lg active:bg-gray-700"
               onPress={() => {
                 setMenuVisible(false);
@@ -187,6 +305,22 @@ export default function ProjectDetail() {
         onClose={() => setInviteEmailModalVisible(false)}
         projectId={id as string}
         onSuccess={() => loadProjectDetail(id as string)}
+      />
+
+      {/* Attachment Preview Modal */}
+      <AttachmentPreviewModal
+        visible={previewModalVisible}
+        attachment={selectedAttachment}
+        onClose={() => setPreviewModalVisible(false)}
+      />
+
+      {/* Upload Attachment Modal */}
+      <UploadAttachmentModal
+        visible={uploadModalVisible}
+        projectId={id as string}
+        projectTitle={project?.title || 'Project'}
+        onClose={() => setUploadModalVisible(false)}
+        onSuccess={handleUploadSuccess}
       />
 
       <ScrollView
@@ -322,6 +456,85 @@ export default function ProjectDetail() {
                   No recent activity
                 </Text>
               </View>
+            </View>
+
+            {/* Attachments Section */}
+            <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center">
+                  <Ionicons name="attach-outline" size={18} color="#60A5FA" />
+                  <Text className="text-white font-semibold text-base ml-2">
+                    Attachments ({filteredAttachments.length})
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setUploadModalVisible(true)}
+                  className="flex-row items-center bg-blue-600 px-3 py-1.5 rounded-lg"
+                >
+                  <Ionicons name="add" size={16} color="#fff" />
+                  <Text className="text-white text-sm font-medium ml-1">Add</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Filter Tabs */}
+              <View className="flex-row bg-gray-900 rounded-lg p-1 mb-3">
+                {(['all', 'image', 'document', 'other'] as const).map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    onPress={() => setFilterType(type)}
+                    className={`flex-1 py-1.5 rounded-md ${filterType === type ? 'bg-gray-700' : ''}`}
+                  >
+                    <Text className={`text-center text-xs font-medium ${filterType === type ? 'text-white' : 'text-gray-400'}`}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Search Bar */}
+              <View className="flex-row items-center bg-gray-900 rounded-lg px-3 py-2 mb-3">
+                <Ionicons name="search-outline" size={16} color="#6B7280" />
+                <TextInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search attachments..."
+                  placeholderTextColor="#6B7280"
+                  className="flex-1 ml-2 text-white text-sm"
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={16} color="#6B7280" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Attachments Grid or Empty State */}
+              {attachmentsLoading ? (
+                <View className="items-center py-8">
+                  <ActivityIndicator size="small" color="#60A5FA" />
+                </View>
+              ) : filteredAttachments.length > 0 ? (
+                <AttachmentGrid
+                  attachments={filteredAttachments}
+                  onAttachmentPress={handleAttachmentPress}
+                />
+              ) : (
+                <View className="items-center py-8">
+                  <Ionicons name="folder-open-outline" size={48} color="#6B7280" />
+                  <Text className="text-gray-400 text-sm mt-2">
+                    No attachments in your project
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setUploadModalVisible(true)}
+                    className="flex-row items-center mt-3 bg-blue-600 px-4 py-2 rounded-lg"
+                  >
+                    <Ionicons name="add" size={16} color="#fff" />
+                    <Text className="text-white text-sm font-medium ml-2">
+                      Add attachments to your project
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         )}

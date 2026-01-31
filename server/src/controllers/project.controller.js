@@ -1,9 +1,11 @@
-import {
-    ApiResponse,
-    HTTP_STATUS,
-    SUCCESS_MESSAGES,
-} from "../utils/response.utils.js";
+// import {
+//     ApiResponse,
+//     ApiError,
+//     SUCCESS_MESSAGES,
+// } from "../utils/response.utils.js";
 import { projectService } from "../services/project.service.js";
+import { attachmentService } from "../services/attachment.service.js";
+import { ApiResponse, HTTP_STATUS, SUCCESS_MESSAGES } from "#utils/response.utils.js";
 
 export const createProjectController = async (req, res, next) => {
     try {
@@ -216,6 +218,68 @@ export const getProjectInvitesController = async (req, res, next) => {
       HTTP_STATUS.OK,
       "Invites retrieved successfully",
       invites
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProjectAttachmentsController = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params; // projectId
+
+    const attachments = await attachmentService.getByProject(id, userId);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Attachments retrieved successfully",
+      attachments
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createProjectAttachmentController = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params; // projectId
+    const file = req.file;
+
+    if (!file) {
+      throw new ApiError("No file uploaded", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const attachment = await attachmentService.createProjectAttachment({
+      file,
+      projectId: id,
+      userId,
+    });
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.CREATED,
+      "Attachment uploaded successfully",
+      attachment
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteProjectAttachmentController = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { id, attachmentId } = req.params; // projectId, attachmentId
+
+    await attachmentService.delete(attachmentId, userId);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Attachment deleted successfully"
     );
   } catch (error) {
     next(error);

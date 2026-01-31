@@ -122,7 +122,7 @@ export const projectService = {
                 HTTP_STATUS.FORBIDDEN
             );
         }
-
+    
         await prisma.project.delete({ where: { id: projectId } });
     },
 

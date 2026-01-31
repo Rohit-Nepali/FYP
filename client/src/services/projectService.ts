@@ -109,3 +109,11 @@ export async function removeProjectMember(projectId: string, memberId: string): 
   }
   throw new Error("Failed to remove member");
 }
+
+export async function deleteProject(projectId: string): Promise<void> {
+  console.log("Project Id : ", projectId);
+  const response = await axiosInstance.delete<ApiResponse<void>>(`/projects/${projectId}`);
+  if (response.data && !(response.data as ApiSuccess<void>).success) {
+    throw new Error("Failed to delete project");
+  }
+}

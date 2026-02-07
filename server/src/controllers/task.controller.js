@@ -2,6 +2,7 @@ import { ApiResponse, HTTP_STATUS, SUCCESS_MESSAGES } from "../utils/response.ut
 import { taskService } from "../services/task.service.js";
 import { CLIENT_RENEG_LIMIT } from "tls";
 import { logActivity } from "../services/activity.service.js";
+import { prisma } from "../config/db.js";
 
 export const createTaskController = async (req, res, next) => {
     try {
@@ -109,7 +110,24 @@ export const deleteTaskController = async (req, res, next) => {
         const userId = req.user.id;
         const { id } = req.params;
 
+        // Get task details before deletion for activity logging
+        const task = await prisma.task.findUnique({
+            where: { id },
+            select: { id: true, title: true, projectId: true }
+        });
+
         await taskService.delete(id, userId);
+
+        // Log activity
+        if (task && task.projectId) {
+            await logActivity({
+                type: 'TASK_DELETED',
+                projectId: task.projectId,
+                userId,
+                taskId: task.id,
+                metadata: { taskTitle: task.title }
+            });
+        }
 
         return ApiResponse.sendSuccessResponse(
             res,

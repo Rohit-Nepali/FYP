@@ -92,20 +92,27 @@ export async function getProjectAttachments(projectId: string): Promise<Attachme
 
 export async function createProjectAttachment(
   projectId: string,
-  file: File
+  file: File | FormData | Blob
 ): Promise<Attachment> {
-  const formData = new FormData();
-  formData.append("file", file);
+  let formData: FormData;
+
+  // Handle different input types
+  if (file instanceof FormData) {
+    // React Native: FormData is already prepared, use it directly
+    formData = file;
+  } else {
+    // Web or Blob: create new FormData
+    formData = new FormData();
+    formData.append("file", file);
+  }
+
+  console.log("form data : ", formData.get("file"));
 
   const response = await axiosInstance.post<ApiResponse<Attachment>>(
     `/projects/${projectId}/attachments`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
+    formData
   );
+
   if (response.data && (response.data as ApiSuccess<Attachment>).success) {
     return (response.data as ApiSuccess<Attachment>).data;
   }
@@ -125,7 +132,7 @@ export async function deleteAttachment(attachmentId: string): Promise<void> {
 // Helper function to determine attachment type category
 export function getAttachmentType(fileType: string | null): "image" | "document" | "other" {
   if (!fileType) return "other";
-  
+
   if (fileType.startsWith("image/")) return "image";
   if (
     fileType.includes("pdf") ||
@@ -142,15 +149,15 @@ export function getAttachmentType(fileType: string | null): "image" | "document"
 // Helper function to format file size
 export function formatFileSize(bytes: number | null): string {
   if (!bytes) return "Unknown";
-  
+
   const units = ["B", "KB", "MB", "GB"];
   let size = bytes;
   let unitIndex = 0;
-  
+
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024;
     unitIndex++;
   }
-  
+
   return `${size.toFixed(1)} ${units[unitIndex]}`;
 }

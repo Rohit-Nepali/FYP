@@ -76,9 +76,13 @@ export const taskService = {
         throw new ApiError(ERROR_MESSAGES.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
       }
 
-      if (project.ownerId !== userId) {
+      // Check if user is owner or member
+      const isOwner = project.ownerId === userId;
+      const isMember = project.members.some((member) => member.userId === userId);
+
+      if (!isOwner && !isMember) {
         throw new ApiError(
-          "Only the project owner can create tasks",
+          "Only project owner or members can create tasks",
           HTTP_STATUS.FORBIDDEN
         );
       }
@@ -267,9 +271,9 @@ export const taskService = {
       if (description !== undefined) data.description = description;
 
       if (statusId !== undefined) {
-        // Verify status belongs to user
+        // Verify status belongs to project
         const status = await prisma.status.findFirst({
-          where: { id: statusId, userId },
+          where: { id: statusId, projectId: existingTask.projectId },
         });
         if (!status) {
           throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);
@@ -278,9 +282,9 @@ export const taskService = {
       }
 
       if (priorityId !== undefined) {
-        // Verify priority belongs to user
+        // Verify priority belongs to project
         const priority = await prisma.priority.findFirst({
-          where: { id: priorityId, userId },
+          where: { id: priorityId, projectId: existingTask.projectId },
         });
         if (!priority) {
           throw new ApiError("Priority not found", HTTP_STATUS.NOT_FOUND);
@@ -309,9 +313,9 @@ export const taskService = {
     } else if (isAssignee) {
       if (title !== undefined) data.title = title;
       if (statusId !== undefined) {
-        // Verify status belongs to user
+        // Verify status belongs to project
         const status = await prisma.status.findFirst({
-          where: { id: statusId, userId },
+          where: { id: statusId, projectId: existingTask.projectId },
         });
         if (!status) {
           throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);

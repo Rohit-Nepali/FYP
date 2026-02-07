@@ -1,3 +1,4 @@
+import { prisma } from "#config/db.js";
 import { ApiError } from "#utils/error.utils.js";
 import { HTTP_STATUS } from "#utils/response.utils.js";
 

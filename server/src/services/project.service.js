@@ -46,20 +46,20 @@ export const projectService = {
     getAll: async (userId) => {
         const projects = await prisma.project.findMany({
             where: {
-                ownerId: userId
-            }
-            // where: {
-            //     OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-            // },
-            // include: {
-            //     owner: { select: { id: true, name: true, email: true, profileImage: true } },
-            //     members: {
-            //         include: {
-            //             user: { select: { id: true, name: true, email: true, profileImage: true } },
-            //         },
-            //     },
-            // },
-            // orderBy: { createdAt: "desc" },
+                OR: [
+                    { ownerId: userId },
+                    { members: { some: { userId } } },
+                ],
+            },
+            include: {
+                owner: { select: { id: true, name: true, email: true, profileImage: true } },
+                members: {
+                    include: {
+                        user: { select: { id: true, name: true, email: true, profileImage: true } },
+                    },
+                },
+            },
+            orderBy: { createdAt: "desc" },
         });
 
         return projects;

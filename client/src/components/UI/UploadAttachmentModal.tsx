@@ -12,6 +12,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { createProjectAttachment } from "../../services/attachmentService";
+import { config } from "../../config/environment";
+import * as FileSystem from 'expo-file-system';
 
 interface UploadAttachmentModalProps {
   visible: boolean;
@@ -27,6 +29,8 @@ interface SelectedFile {
   size: number | null;
   mimeType: string | null;
 }
+
+const API_BASE_URL = config.API_BASE_URL;
 
 export default function UploadAttachmentModal({
   visible,
@@ -68,23 +72,35 @@ export default function UploadAttachmentModal({
       return;
     }
 
-    const file = new File([selectedFile.uri], selectedFile.name, {
-      type: selectedFile.mimeType || "*/*",
-    });
-
     try {
       setUploading(true);
       setError(null);
-      
-      await createProjectAttachment(projectId, file);
-      
+
+      // Use FileSystem to upload properly
+      const uploadResult = await FileSystem.uploadAsync(
+        `${API_BASE_URL}/projects/${projectId}/attachments`,
+        selectedFile.uri,
+        {
+          fieldName: 'file',
+          httpMethod: 'POST',
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          headers: {
+            // Add your auth headers here
+            'Authorization': `Bearer ${yourAuthToken}`,
+          },
+        }
+      );
+      await createProjectAttachment(projectId, formData);
+
       Alert.alert(
         "Success",
         "Attachment uploaded successfully",
-        [{ text: "OK", onPress: () => {
-          setSelectedFile(null);
-          onSuccess();
-        } }]
+        [{
+          text: "OK", onPress: () => {
+            setSelectedFile(null);
+            onSuccess();
+          }
+        }]
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload attachment");

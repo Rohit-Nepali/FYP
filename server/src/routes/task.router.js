@@ -13,7 +13,7 @@ import {
   createTaskSchema,
   updateTaskSchema,
 } from "../validator/task.validator.js";
-import {  uploadTaskAttachmentController } from "../controllers/attachment.controller.js";
+import { uploadTaskAttachmentController, deleteTaskAttachmentController } from "../controllers/attachment.controller.js";
 import { uploadTaskAttachment } from "../middleware/upload.middleware.js";
 
 const taskRouter = Router();
@@ -31,10 +31,13 @@ taskRouter.patch("/:id", validate(updateTaskSchema), updateTaskController);
 taskRouter.delete("/:id", deleteTaskController);
 
 taskRouter.post(
-  "/tasks/:taskId/attachments",
-  authenticateToken,
+  "/:taskId/attachments",
   uploadTaskAttachment.single("file"),
   uploadTaskAttachmentController
+);
+taskRouter.delete(
+  "/:taskId/attachments/:attachmentId",
+  deleteTaskAttachmentController
 );
 
 export default taskRouter;

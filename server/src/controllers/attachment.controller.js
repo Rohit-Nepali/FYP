@@ -5,6 +5,8 @@ import {
 } from "../utils/response.utils.js";
 
 import { attachmentService } from "../services/attachment.service.js";
+import { logActivity } from "../services/activity.service.js";
+import { prisma } from "../config/db.js";
 
 export const uploadTaskAttachmentController = async (req, res, next) => {
     try {
@@ -19,11 +21,30 @@ export const uploadTaskAttachmentController = async (req, res, next) => {
                 "No file uploaded"
             );
         }
+
+        // Get task details for activity logging
+        const task = await prisma.task.findUnique({
+            where: { id: taskId },
+            select: { id: true, title: true, projectId: true }
+        });
+
         const attachment = await attachmentService.create({
             file: req.file,
             taskId,
             userId,
         });
+
+        // Log activity
+        if (task && task.projectId) {
+            await logActivity({
+                type: 'ATTACHMENT_ADDED',
+                projectId: task.projectId,
+                userId,
+                taskId: task.id,
+                metadata: { fileName: attachment.fileName, attachmentId: attachment.id }
+            });
+        }
+
         return ApiResponse.sendSuccessResponse(
             res,
             HTTP_STATUS.CREATED,
@@ -32,6 +53,74 @@ export const uploadTaskAttachmentController = async (req, res, next) => {
         );
 
     } catch (error) {
+        next(error);
+    }
+};
 
+export const deleteTaskAttachmentController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { taskId, attachmentId } = req.params;
+
+        // Get attachment details before deletion for activity logging
+        const attachment = await prisma.attachment.findUnique({
+            where: { id: attachmentId },
+            select: { id: true, fileName: true, taskId: true }
+        });
+
+        if (!attachment || attachment.taskId !== taskId) {
+            return ApiResponse.sendErrorResponse(
+                res,
+                HTTP_STATUS.NOT_FOUND,
+                "Attachment not found"
+            );
+        }
+
+        // Verify user has access to the task
+        const task = await prisma.task.findFirst({
+            where: {
+                id: taskId,
+                OR: [
+                    { creatorId: userId },
+                    {
+                        project: {
+                            OR: [
+                                { ownerId: userId },
+                                { members: { some: { userId } } },
+                            ],
+                        },
+                    },
+                ],
+            },
+        });
+
+        if (!task) {
+            return ApiResponse.sendErrorResponse(
+                res,
+                HTTP_STATUS.FORBIDDEN,
+                "You don't have access to this task"
+            );
+        }
+
+        await attachmentService.delete(attachmentId, userId);
+
+        // Log activity
+        if (task.projectId) {
+            await logActivity({
+                type: 'ATTACHMENT_DELETED',
+                projectId: task.projectId,
+                userId,
+                taskId: task.id,
+                metadata: { fileName: attachment.fileName, attachmentId: attachment.id }
+            });
+        }
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            "Attachment deleted successfully"
+        );
+    } catch (error) {
+        next(error);
     }
 };

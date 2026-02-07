@@ -1,6 +1,7 @@
 import { ApiResponse, HTTP_STATUS, SUCCESS_MESSAGES } from '#utils/response.utils.js';
 import commentService from '../services/comment.service.js';
 import { logActivity } from '../services/activity.service.js';
+import { prisma } from '#config/db.js';
 
 const createComment = async (req, res, next) => {
   try {
@@ -67,7 +68,37 @@ const updateComment = async (req, res, next) => {
     const { content } = req.body;
     const userId = req.user.id;
 
+    // Get comment details before update for activity logging
+    const existingComment = await prisma.comment.findUnique({
+      where: { id },
+      select: { id: true, taskId: true, content: true }
+    });
+
     const comment = await commentService.updateComment(id, content, userId);
+
+    // Log activity
+    if (existingComment) {
+      const task = await prisma.task.findUnique({
+        where: { id: existingComment.taskId },
+        select: { id: true, title: true, projectId: true }
+      });
+
+      if (task && task.projectId) {
+        await logActivity({
+          type: 'COMMENT_UPDATED',
+          projectId: task.projectId,
+          userId,
+          taskId: task.id,
+          commentId: comment.id,
+          metadata: {
+            taskTitle: task.title,
+            oldContent: existingComment.content.substring(0, 50),
+            newContent: content.substring(0, 50)
+          }
+        });
+      }
+    }
+
     return ApiResponse.sendSuccessResponse(
       res,
       HTTP_STATUS.OK,
@@ -84,7 +115,37 @@ const deleteComment = async (req, res, next) => {
     const { id } = req.params;
     const userId = req.user.id;
 
+    // Get comment details before deletion for activity logging
+    const { prisma } = require('../config/prisma.config');
+    const existingComment = await prisma.comment.findUnique({
+      where: { id },
+      select: { id: true, taskId: true, content: true }
+    });
+
     await commentService.deleteComment(id, userId);
+
+    // Log activity
+    if (existingComment) {
+      const task = await prisma.task.findUnique({
+        where: { id: existingComment.taskId },
+        select: { id: true, title: true, projectId: true }
+      });
+
+      if (task && task.projectId) {
+        await logActivity({
+          type: 'COMMENT_DELETED',
+          projectId: task.projectId,
+          userId,
+          taskId: task.id,
+          commentId: existingComment.id,
+          metadata: {
+            taskTitle: task.title,
+            deletedContent: existingComment.content.substring(0, 50)
+          }
+        });
+      }
+    }
+
     return ApiResponse.sendSuccessResponse(
       res,
       HTTP_STATUS.OK,

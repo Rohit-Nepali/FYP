@@ -24,6 +24,7 @@ import AttachmentGrid from "../../components/UI/AttachmentGrid";
 import AttachmentPreviewModal from "../../components/UI/AttachmentPreviewModal";
 import UploadAttachmentModal from "../../components/UI/UploadAttachmentModal";
 import ActivitySection from "../../components/ActivitySection";
+import ProjectStatusReport from "../../components/ProjectStatusReport";
 
 interface ProjectData extends Project {
   tasks?: any[];
@@ -477,6 +478,9 @@ export default function ProjectDetail() {
         {/* Dashboard Content */}
         {activeTab === 'dashboard' && (
           <View className="space-y-4">
+            {/* Project Status Report */}
+            <ProjectStatusReport projectId={id as string} />
+
             {/* Recent Activity */}
             <ActivitySection projectId={id as string} />
 

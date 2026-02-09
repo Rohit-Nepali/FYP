@@ -14,6 +14,7 @@ import {
     getProjectAttachmentsController,
     getProjectByIdController,
     getProjectInvitesController,
+    getProjectStatisticsController,
     removeProjectMemberController,
     updateProjectController,
 } from "../controllers/project.controller.js";
@@ -29,6 +30,7 @@ projectRouter.use(authenticateToken);
 
 projectRouter.post("/", validate(createProjectSchema), createProjectController);
 projectRouter.get("/", getAllProjectsController);
+projectRouter.get("/:id/statistics", getProjectStatisticsController);
 projectRouter.get("/:id", getProjectByIdController);
 projectRouter.put("/:id", validate(updateProjectSchema), updateProjectController);
 projectRouter.delete("/:id", deleteProjectController);

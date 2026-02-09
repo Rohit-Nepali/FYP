@@ -83,6 +83,8 @@ export const projectService = {
                         assignee: {
                             select: { id: true, name: true, email: true, profileImage: true },
                         },
+                        status: true,
+                        priority: true,
                     },
                     orderBy: { createdAt: "desc" },
                 },
@@ -381,6 +383,142 @@ export const projectService = {
         });
 
         return invites;
+    },
+
+    getStatistics: async (projectId, userId) => {
+        // Verify user has access to the project
+        const project = await prisma.project.findFirst({
+            where: {
+                id: projectId,
+                OR: [
+                    { ownerId: userId },
+                    { members: { some: { userId } } },
+                ],
+            },
+        });
+
+        if (!project) {
+            throw new ApiError(
+                "Access denied: Not a member of this project",
+                HTTP_STATUS.FORBIDDEN
+            );
+        }
+
+        // Get all tasks with their status, priority, and assignee
+        const tasks = await prisma.task.findMany({
+            where: { projectId },
+            include: {
+                status: true,
+                priority: true,
+                assignee: {
+                    select: { id: true, name: true, email: true, profileImage: true },
+                },
+            },
+        });
+
+        const now = new Date();
+        const totalTasks = tasks.length;
+        const completedTasks = tasks.filter(task => {
+            const statusName = task.status?.name?.toLowerCase() || '';
+            return statusName.includes('done') || statusName.includes('complete') || statusName.includes('finished');
+        }).length;
+        const inProgressTasks = tasks.filter(task => {
+            const statusName = task.status?.name?.toLowerCase() || '';
+            return statusName.includes('progress') || statusName.includes('working');
+        }).length;
+        const overdueTasks = tasks.filter(task => {
+            if (!task.dueDate) return false;
+            const dueDate = new Date(task.dueDate);
+            const statusName = task.status?.name?.toLowerCase() || '';
+            const isCompleted = statusName.includes('done') || statusName.includes('complete') || statusName.includes('finished');
+            return dueDate < now && !isCompleted;
+        }).length;
+        const unassignedTasks = tasks.filter(task => !task.assigneeId).length;
+        const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+        // Status breakdown
+        const statusBreakdown = {};
+        tasks.forEach(task => {
+            const statusName = task.status?.name || 'Unknown';
+            if (!statusBreakdown[statusName]) {
+                statusBreakdown[statusName] = {
+                    name: statusName,
+                    color: task.status?.color || '#6B7280',
+                    count: 0,
+                };
+            }
+            statusBreakdown[statusName].count++;
+        });
+
+        // Priority breakdown
+        const priorityBreakdown = {};
+        tasks.forEach(task => {
+            const priorityName = task.priority?.name || 'Unknown';
+            if (!priorityBreakdown[priorityName]) {
+                priorityBreakdown[priorityName] = {
+                    name: priorityName,
+                    color: task.priority?.color || '#6B7280',
+                    count: 0,
+                };
+            }
+            priorityBreakdown[priorityName].count++;
+        });
+
+        // Assignee breakdown
+        const assigneeBreakdown = {};
+        tasks.forEach(task => {
+            if (task.assignee) {
+                const assigneeId = task.assignee.id;
+                if (!assigneeBreakdown[assigneeId]) {
+                    assigneeBreakdown[assigneeId] = {
+                        assignee: task.assignee,
+                        total: 0,
+                        completed: 0,
+                        inProgress: 0,
+                        overdue: 0,
+                    };
+                }
+                assigneeBreakdown[assigneeId].total++;
+                
+                const statusName = task.status?.name?.toLowerCase() || '';
+                if (statusName.includes('done') || statusName.includes('complete') || statusName.includes('finished')) {
+                    assigneeBreakdown[assigneeId].completed++;
+                } else if (statusName.includes('progress') || statusName.includes('working')) {
+                    assigneeBreakdown[assigneeId].inProgress++;
+                }
+                
+                if (task.dueDate) {
+                    const dueDate = new Date(task.dueDate);
+                    if (dueDate < now && !statusName.includes('done') && !statusName.includes('complete') && !statusName.includes('finished')) {
+                        assigneeBreakdown[assigneeId].overdue++;
+                    }
+                }
+            }
+        });
+
+        // Tasks due this week
+        const weekFromNow = new Date(now);
+        weekFromNow.setDate(weekFromNow.getDate() + 7);
+        const tasksDueThisWeek = tasks.filter(task => {
+            if (!task.dueDate) return false;
+            const dueDate = new Date(task.dueDate);
+            return dueDate >= now && dueDate <= weekFromNow;
+        }).length;
+
+        return {
+            overview: {
+                totalTasks,
+                completedTasks,
+                inProgressTasks,
+                overdueTasks,
+                unassignedTasks,
+                tasksDueThisWeek,
+                completionPercentage,
+            },
+            statusBreakdown: Object.values(statusBreakdown),
+            priorityBreakdown: Object.values(priorityBreakdown),
+            assigneeBreakdown: Object.values(assigneeBreakdown),
+        };
     },
 
 };

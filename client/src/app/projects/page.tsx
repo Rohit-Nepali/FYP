@@ -8,8 +8,13 @@ import {
   Modal,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+  StatusBar,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -98,6 +103,12 @@ export default function Projects() {
     setProjectTitle("");
     setProjectDescription("");
   };
+
+  const insets = useSafeAreaInsets();
+  const keyboardVerticalOffset =
+    Platform.OS === "ios"
+      ? insets.bottom + 8
+      : (StatusBar.currentHeight ?? 0) + 8;
 
   // ---------- Derived data: status, filter, sort ----------
 
@@ -442,69 +453,83 @@ export default function Projects() {
         transparent={true}
         onRequestClose={resetModal}
       >
-        <View className="flex-1 justify-end bg-black/10 ">
-          <LinearGradient
-            colors={["#1F2937", "#111827"]}
-            className="rounded-t-xl p-6 max-h-[70%]"
-          >
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-2xl font-bold text-white">
-                New Project
-              </Text>
-              <TouchableOpacity onPress={resetModal}>
-                <Ionicons name="close-circle" size={28} color="#9CA3AF" />
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={keyboardVerticalOffset}
+          style={{ flex: 1, justifyContent: "flex-end" }}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "transparent" }}>
+              <ScrollView
+                contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <LinearGradient
+                  colors={["#1F2937", "#111827"]}
+                  className="rounded-t-xl p-6 max-h-[70%]"
+                >
+                  <View className="flex-row items-center justify-between mb-4">
+                    <Text className="text-2xl font-bold text-white">
+                      New Project
+                    </Text>
+                    <TouchableOpacity onPress={resetModal}>
+                      <Ionicons name="close-circle" size={28} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View className="mb-4">
+                    <TextInput
+                      className="bg-gray-600 rounded-xl px-4 py-3 text-gray-200 "
+                      placeholder="Enter project title"
+                      placeholderTextColor="#6B7280"
+                      value={projectTitle}
+                      onChangeText={setProjectTitle}
+                      editable={!saving}
+                    />
+                  </View>
+
+                  <View className="mb-6">
+                    <TextInput
+                      className="bg-gray-800 rounded-xl px-4 py-3 text-gray-200 border border-gray-700 min-h-[100px]"
+                      placeholder="Enter project description (optional)"
+                      placeholderTextColor="#6B7280"
+                      value={projectDescription}
+                      onChangeText={setProjectDescription}
+                      multiline
+                      textAlignVertical="top"
+                      editable={!saving}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handleCreateProject}
+                    className="bg-blue-600 rounded-xl py-4 items-center mb-4"
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text className="text-white font-bold text-lg">
+                        Create Project
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={resetModal}
+                    className="bg-gray-700 rounded-xl py-4 items-center"
+                    disabled={saving}
+                  >
+                    <Text className="text-gray-200 font-semibold text-lg">
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </ScrollView>
             </View>
-
-            <View className="mb-4">
-              <TextInput
-                className="bg-gray-600 rounded-xl px-4 py-3 text-gray-200 "
-                placeholder="Enter project title"
-                placeholderTextColor="#6B7280"
-                value={projectTitle}
-                onChangeText={setProjectTitle}
-                editable={!saving}
-              />
-            </View>
-
-            <View className="mb-6">
-              <TextInput
-                className="bg-gray-800 rounded-xl px-4 py-3 text-gray-200 border border-gray-700 min-h-[100px]"
-                placeholder="Enter project description (optional)"
-                placeholderTextColor="#6B7280"
-                value={projectDescription}
-                onChangeText={setProjectDescription}
-                multiline
-                textAlignVertical="top"
-                editable={!saving}
-              />
-            </View>
-
-            <TouchableOpacity
-              onPress={handleCreateProject}
-              className="bg-blue-600 rounded-xl py-4 items-center mb-4"
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold text-lg">
-                  Create Project
-                </Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={resetModal}
-              className="bg-gray-700 rounded-xl py-4 items-center"
-              disabled={saving}
-            >
-              <Text className="text-gray-200 font-semibold text-lg">
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </LinearGradient>
-        </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

@@ -384,3 +384,21 @@ export const deleteProjectAttachmentController = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getProjectStatisticsController = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const statistics = await projectService.getStatistics(id, userId);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Statistics retrieved successfully",
+      statistics
+    );
+  } catch (error) {
+    next(error);
+  }
+};

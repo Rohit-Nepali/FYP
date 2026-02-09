@@ -10,12 +10,16 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  StatusBar,
   Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, getTaskById, updateTask } from "../../services/taskService";
 import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Props {
   visible: boolean;
@@ -38,6 +42,9 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
+
+  const insets = useSafeAreaInsets();
+  const keyboardVerticalOffset = Platform.OS === "ios" ? insets.bottom + 16 : (StatusBar.currentHeight ?? 0) + 16;
 
   useEffect(() => {
 
@@ -144,12 +151,14 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
       <View className="flex-1 justify-end bg-black/50">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={keyboardVerticalOffset}
           className="h-[85%]"
         >
-          <LinearGradient
-            colors={["#1F2937", "#111827"]}
-            className="flex-1 rounded-t-2xl overflow-hidden"
-          >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <LinearGradient
+              colors={["#1F2937", "#111827"]}
+              className="flex-1 rounded-t-2xl overflow-hidden"
+            >
             {/* Header */}
             <View className="flex-row items-center justify-between p-4 border-b border-gray-700 bg-gray-900/50">
               <View className="flex-1 mr-4">
@@ -446,6 +455,7 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
               </View>
             )}
           </LinearGradient>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </View>
     </Modal>

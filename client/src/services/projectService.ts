@@ -117,3 +117,45 @@ export async function deleteProject(projectId: string): Promise<void> {
     throw new Error("Failed to delete project");
   }
 }
+
+export interface ProjectStatistics {
+  overview: {
+    totalTasks: number;
+    completedTasks: number;
+    inProgressTasks: number;
+    overdueTasks: number;
+    unassignedTasks: number;
+    tasksDueThisWeek: number;
+    completionPercentage: number;
+  };
+  statusBreakdown: Array<{
+    name: string;
+    color: string;
+    count: number;
+  }>;
+  priorityBreakdown: Array<{
+    name: string;
+    color: string;
+    count: number;
+  }>;
+  assigneeBreakdown: Array<{
+    assignee: {
+      id: string;
+      name: string;
+      email: string;
+      profileImage?: string;
+    };
+    total: number;
+    completed: number;
+    inProgress: number;
+    overdue: number;
+  }>;
+}
+
+export async function getProjectStatistics(projectId: string): Promise<ProjectStatistics> {
+  const response = await axiosInstance.get<ApiResponse<ProjectStatistics>>(`/projects/${projectId}/statistics`);
+  if (response.data && (response.data as ApiSuccess<ProjectStatistics>).success) {
+    return (response.data as ApiSuccess<ProjectStatistics>).data;
+  }
+  throw new Error("Failed to fetch project statistics");
+}

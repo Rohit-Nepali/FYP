@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,15 +7,22 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   FlatList,
   Image,
+  Animated,
+  PanResponder,
+  Dimensions,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { addProjectMembers, searchUsers, UserLite } from "@/src/services/userService";
-import { CLIENT_RENEG_LIMIT } from "tls";
+
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const MIN_SHEET_HEIGHT = SCREEN_HEIGHT * 0.3;
+const MAX_SHEET_HEIGHT = SCREEN_HEIGHT * 0.9;
+const INITIAL_SHEET_HEIGHT = SCREEN_HEIGHT * 0.6;
 
 interface Props {
   visible: boolean;
@@ -37,6 +44,10 @@ export default function AddMembersModal({
   const [users, setUsers] = useState<UserLite[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
+
+  // Animation values
+  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const sheetHeight = useRef(new Animated.Value(INITIAL_SHEET_HEIGHT)).current;
 
   // Debounce search input
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -72,16 +83,26 @@ export default function AddMembersModal({
     loadUsers();
   }, [visible, debouncedSearch]);
 
-  // Add this after loading users
+  // Animate sheet in/out
   useEffect(() => {
-    console.log("Users state updated:", users.length, "users");
-    console.log("First user:", users[0]);
-  }, [users]);
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 50,
+          friction: 9,
+        }),
+      ]).start();
+    } else {
+      Animated.timing(translateY, {
+        toValue: SCREEN_HEIGHT,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
 
-  // Also check what existingMemberIds contains
-  useEffect(() => {
-    console.log("Existing member IDs:", existingMemberIds);
-  }, [existingMemberIds]);
   // Reset state when closing
   useEffect(() => {
     if (!visible) {
@@ -90,11 +111,42 @@ export default function AddMembersModal({
       setSelectedIds(new Set());
       setSearchLoading(false);
       setAdding(false);
+      sheetHeight.setValue(INITIAL_SHEET_HEIGHT);
     }
   }, [visible]);
 
+  // Pan responder for dragging
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          // Only allow dragging down
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          // Close if dragged down significantly
+          onClose();
+        } else {
+          // Snap back to position
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 9,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   const toggleSelect = (userId: string, alreadyMember: boolean) => {
-    if (alreadyMember) return; // don't allow selecting existing members
+    if (alreadyMember) return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(userId)) next.delete(userId);
@@ -130,23 +182,21 @@ export default function AddMembersModal({
     const alreadyMember = existingMemberIds.includes(item.id);
     const isSelected = selectedIds.has(item.id);
 
-    console.log("Rendering user:", item.email, "alreadyMember:", alreadyMember);
-
     return (
       <TouchableOpacity
         onPress={() => toggleSelect(item.id, alreadyMember)}
         disabled={alreadyMember}
-        className="flex-row items-center py-2 px-1"
+        className="flex-row items-center py-3 px-4"
       >
         {/* Avatar */}
         {item.avatarUrl ? (
           <Image
             source={{ uri: item.avatarUrl }}
-            className="w-9 h-9 rounded-full mr-3"
+            className="w-10 h-10 rounded-full mr-3"
           />
         ) : (
-          <View className="w-9 h-9 rounded-full bg-gray-700 mr-3 items-center justify-center">
-            <Text className="text-white text-xs font-semibold">
+          <View className="w-10 h-10 rounded-full bg-gray-700 mr-3 items-center justify-center">
+            <Text className="text-white text-sm font-semibold">
               {item.name?.charAt(0)?.toUpperCase() || "?"}
             </Text>
           </View>
@@ -188,21 +238,47 @@ export default function AddMembersModal({
     <Modal
       visible={visible}
       transparent={true}
-      animationType="fade"
+      animationType="none"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <View className="flex-1 justify-center items-center bg-black/60 px-4">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="w-full max-w-sm"
+      <View className="flex-1">
+        {/* Backdrop */}
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View className="flex-1 bg-black/60" />
+        </TouchableWithoutFeedback>
+
+        {/* Bottom Sheet */}
+        <Animated.View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: MAX_SHEET_HEIGHT,
+            transform: [{ translateY }],
+          }}
         >
           <LinearGradient
             colors={["#1F2937", "#111827"]}
-            className="rounded-2xl p-6 border border-gray-700 w-full"
-            style={{ maxHeight: "90%" }}
+            className="flex-1 border-gray-700 "
+            style={{
+              paddingHorizontal: 16,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              overflow: 'hidden', // Important! Clips content to rounded corners
+            }}
           >
+            {/* Drag Handle */}
+            <View
+              {...panResponder.panHandlers}
+              className="items-center py-3"
+            >
+              <View className="w-12 h-1 bg-gray-600 rounded-full" />
+            </View>
+
             {/* Header */}
-            <View className="flex-row justify-between items-center mb-4">
+            <View className="flex-row justify-between items-center mb-4 px-2">
               <Text className="text-xl font-bold text-white">
                 Add Members
               </Text>
@@ -212,8 +288,8 @@ export default function AddMembersModal({
             </View>
 
             {/* Search input */}
-            <View className="mb-3">
-              <Text className="text-gray-400 text-xs mb-2 ml-1">
+            <View className="mb-3 px-2">
+              <Text className="text-gray-400 text-xs mb-2">
                 Search users
               </Text>
               <View className="flex-row items-center bg-gray-800 rounded-xl border border-gray-700 px-3">
@@ -224,7 +300,7 @@ export default function AddMembersModal({
                   style={{ marginRight: 6 }}
                 />
                 <TextInput
-                  className="flex-1 text-white py-2"
+                  className="flex-1 text-white py-3"
                   placeholder="Name or email"
                   placeholderTextColor="#6B7280"
                   value={search}
@@ -237,22 +313,18 @@ export default function AddMembersModal({
               </View>
             </View>
 
-            {/* Users list - FIXED: Scrollable area with proper boundaries  */}
-            <View className=" mt-2 mb-3">
+            {/* Users list - Scrollable */}
+            <View className="flex-1 mb-3">
               {searchLoading && users.length === 0 ? (
-                <View className="flex-1 justify-center items-center py-8">
+                <View className="flex-1 justify-center items-center">
                   <ActivityIndicator size="small" color="#60A5FA" />
                   <Text className="text-gray-400 text-xs mt-2">
                     Searching users...
                   </Text>
                 </View>
               ) : users.length === 0 ? (
-                <View className="flex-1 justify-center items-center py-8">
-                  <Ionicons
-                    name="person-outline"
-                    size={32}
-                    color="#4B5563"
-                  />
+                <View className="flex-1 justify-center items-center">
+                  <Ionicons name="person-outline" size={32} color="#4B5563" />
                   <Text className="text-gray-500 text-sm mt-2">
                     No users found
                   </Text>
@@ -266,18 +338,19 @@ export default function AddMembersModal({
                   keyExtractor={(item) => item.id}
                   renderItem={renderUserItem}
                   ItemSeparatorComponent={() => (
-                    <View className="h-px bg-gray-800" />
+                    <View className="h-px bg-gray-800 mx-4" />
                   )}
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={true}
                   keyboardDismissMode="on-drag"
+                  contentContainerStyle={{ paddingBottom: 16 }}
                 />
               )}
             </View>
 
             {/* Footer: selected count + action */}
-            <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-gray-800">
-              <Text className="text-gray-400 text-xs">
+            <View className="flex-row items-center justify-between py-4 px-2 border-t border-gray-800">
+              <Text className="text-gray-400 text-sm">
                 {selectedCount === 0
                   ? "No users selected"
                   : `${selectedCount} user${selectedCount > 1 ? "s" : ""
@@ -287,20 +360,14 @@ export default function AddMembersModal({
               <TouchableOpacity
                 onPress={handleAddMembers}
                 disabled={adding || selectedCount === 0}
-                className={`px-4 py-2 rounded-xl flex-row items-center ${selectedCount === 0 || adding
-                  ? "bg-gray-700"
-                  : "bg-blue-600"
+                className={`px-5 py-3 rounded-xl flex-row items-center ${selectedCount === 0 || adding ? "bg-gray-700" : "bg-blue-600"
                   }`}
               >
                 {adding ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
-                    <Ionicons
-                      name="person-add-outline"
-                      size={16}
-                      color="#fff"
-                    />
+                    <Ionicons name="person-add-outline" size={16} color="#fff" />
                     <Text className="text-white font-semibold text-sm ml-2">
                       Add
                     </Text>
@@ -309,7 +376,7 @@ export default function AddMembersModal({
               </TouchableOpacity>
             </View>
           </LinearGradient>
-        </KeyboardAvoidingView>
+        </Animated.View>
       </View>
     </Modal>
   );

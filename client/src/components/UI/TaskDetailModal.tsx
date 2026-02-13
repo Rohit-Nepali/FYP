@@ -19,6 +19,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, getTaskById, updateTask } from "../../services/taskService";
 import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
+import { Status } from "../../services/statusService";
+import { Priority } from "../../services/priorityService";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Props {
@@ -31,9 +33,11 @@ interface Props {
     email: string;
     profileImage?: string;
   }>;
+  statuses?: Array<{ id: string; name: string }>;
+  priorities?: Array<{ id: string; name: string }>;
 }
 
-export default function TaskDetailModal({ visible, taskId, onClose, projectMembers = [] }: Props) {
+export default function TaskDetailModal({ visible, taskId, onClose, projectMembers = [], statuses = [], priorities = [] }: Props) {
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +46,10 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [updatingPriority, setUpdatingPriority] = useState(false);
 
   const insets = useSafeAreaInsets();
   const keyboardVerticalOffset = Platform.OS === "ios" ? insets.bottom + 16 : (StatusBar.currentHeight ?? 0) + 16;
@@ -77,6 +85,40 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
       setError(err instanceof Error ? err.message : "Failed to load task details");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (statusId: string) => {
+    if (!task) return;
+    try {
+      setUpdatingStatus(true);
+      await updateTask(task.id, { statusId });
+      const newStatus = statuses.find(s => s.id === statusId);
+      if (newStatus) {
+        setTask({ ...task, statusId, status: newStatus as any });
+      }
+      setShowStatusDropdown(false);
+    } catch (err) {
+      Alert.alert("Error", "Failed to update status");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleUpdatePriority = async (priorityId: string) => {
+    if (!task) return;
+    try {
+      setUpdatingPriority(true);
+      await updateTask(task.id, { priorityId });
+      const newPriority = priorities.find(p => p.id === priorityId);
+      if (newPriority) {
+        setTask({ ...task, priorityId, priority: newPriority as any });
+      }
+      setShowPriorityDropdown(false);
+    } catch (err) {
+      Alert.alert("Error", "Failed to update priority");
+    } finally {
+      setUpdatingPriority(false);
     }
   };
 
@@ -402,32 +444,66 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
 
                 {activeTab === 'status' && (
                   <View className="space-y-3">
-                    <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 flex-row items-center justify-between">
-                      <View className="flex-row items-center gap-3">
-                        <View className="w-8 h-8 rounded-full bg-yellow-900/30 items-center justify-center">
-                          <Ionicons name="flag" size={16} color="#FBBF24" />
+                    {/* Status */}
+                    <View>
+                      <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 flex-row items-center justify-between">
+                        <View className="flex-row items-center gap-3">
+                          <View className="w-8 h-8 rounded-full bg-yellow-900/30 items-center justify-center">
+                            <Ionicons name="flag" size={16} color="#FBBF24" />
+                          </View>
+                          <Text className="text-gray-300 font-medium">Status</Text>
                         </View>
-                        <Text className="text-gray-300 font-medium">Status</Text>
+                        <View className="flex-row items-center gap-2">
+                          {updatingStatus && <ActivityIndicator size="small" color="#60A5FA" />}
+                          <TouchableOpacity onPress={() => setShowStatusDropdown(!showStatusDropdown)} disabled={updatingStatus} className="px-3 py-1 rounded-full bg-yellow-900/30 border border-yellow-700/50 flex-row items-center gap-1">
+                            <Text className="text-yellow-500 text-sm font-medium">{task.status?.name || "-"}</Text>
+                            <Ionicons name={showStatusDropdown ? "chevron-up" : "chevron-down"} size={16} color="#9CA3AF" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                      <View className="px-3 py-1 rounded-full bg-yellow-900/30 border border-yellow-700/50">
-                        <Text className="text-yellow-500 text-sm font-medium">
-                          {task.status?.name || "-"}
-                        </Text>
-                      </View>
+                      {showStatusDropdown && statuses.length > 0 && (
+                        <View className="items-end pr-4">
+                          <View className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden w-40">
+                            {statuses.map((status) => (
+                              <TouchableOpacity key={status.id} onPress={() => handleUpdateStatus(status.id)} disabled={updatingStatus} className={`px-4 py-3 flex-row items-center justify-between border-b border-gray-700 ${task.statusId === status.id ? "bg-gray-700" : ""}`}>
+                                <Text className={`text-sm ${task.statusId === status.id ? "text-white font-medium" : "text-gray-300"}`}>{status.name}</Text>
+                                {task.statusId === status.id && <Ionicons name="checkmark" size={16} color="#60A5FA" />}
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </View>
+                      )}
                     </View>
 
-                    <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 flex-row items-center justify-between">
-                      <View className="flex-row items-center gap-3">
-                        <View className="w-8 h-8 rounded-full bg-red-900/30 items-center justify-center">
-                          <Ionicons name="alert-circle" size={18} color="#EF4444" />
+                    {/* Priority */}
+                    <View>
+                      <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 flex-row items-center justify-between">
+                        <View className="flex-row items-center gap-3">
+                          <View className="w-8 h-8 rounded-full bg-red-900/30 items-center justify-center">
+                            <Ionicons name="alert-circle" size={18} color="#EF4444" />
+                          </View>
+                          <Text className="text-gray-300 font-medium">Priority</Text>
                         </View>
-                        <Text className="text-gray-300 font-medium">Priority</Text>
+                        <View className="flex-row items-center gap-2">
+                          {updatingPriority && <ActivityIndicator size="small" color="#60A5FA" />}
+                          <TouchableOpacity onPress={() => setShowPriorityDropdown(!showPriorityDropdown)} disabled={updatingPriority} className="px-3 py-1 rounded-full bg-red-900/30 border border-red-700/50 flex-row items-center gap-1">
+                            <Text className="text-red-400 text-sm font-medium">{task.priority?.name || "-"}</Text>
+                            <Ionicons name={showPriorityDropdown ? "chevron-up" : "chevron-down"} size={16} color="#9CA3AF" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                      <View className="px-3 py-1 rounded-full bg-red-900/30 border border-red-700/50">
-                        <Text className="text-red-400 text-sm font-medium">
-                          {task.priority?.name || "-"}
-                        </Text>
-                      </View>
+                      {showPriorityDropdown && priorities.length > 0 && (
+                        <View className="items-end pr-4">
+                          <View className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden w-40">
+                            {priorities.map((priority) => (
+                              <TouchableOpacity key={priority.id} onPress={() => handleUpdatePriority(priority.id)} disabled={updatingPriority} className={`px-4 py-3 flex-row items-center justify-between border-b border-gray-700 ${task.priorityId === priority.id ? "bg-gray-700" : ""}`}>
+                                <Text className={`text-sm ${task.priorityId === priority.id ? "text-white font-medium" : "text-gray-300"}`}>{priority.name}</Text>
+                                {task.priorityId === priority.id && <Ionicons name="checkmark" size={16} color="#60A5FA" />}
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </View>
+                      )}
                     </View>
 
                     <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 flex-row items-center justify-between">

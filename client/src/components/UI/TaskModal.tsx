@@ -215,7 +215,7 @@ export default function TaskModal({
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           className="max-h-[80%]"
         >
-          <LinearGradient colors={["#1F2937", "#111827"]} className="rounded-t-2xl  p-4">
+          <LinearGradient colors={["#1F2937", "#111827"]} className="rounded-t-2xl overflow-hidden p-4">
             <View className="flex-row items-center justify-between mb-6">
               <View className="flex-row items-center gap-2">
                 <Ionicons name="add-circle" size={24} color="#60A5FA" />

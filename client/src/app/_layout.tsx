@@ -80,7 +80,6 @@ function AppLayout() {
         <Stack.Screen name="chatbot" />
         <Stack.Screen name="index" />
         <Stack.Screen name="profile" />
-        <Stack.Screen name="task-settings" />
         <Stack.Screen name="projects/page" />
         <Stack.Screen name="settings/AccountSettings" />
         <Stack.Screen name="settings/PrivacySecurity" />

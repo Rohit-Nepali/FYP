@@ -16,7 +16,7 @@ export interface Task {
   priority: Priority;
   dueDate?: string;
   creatorId: string;
-  projectId?: string;
+  projectId?: string | null;
   assigneeId?: string;
   assignee?: {
     id: string;
@@ -185,6 +185,8 @@ export async function getAllTasks(filters?: TaskFilters): Promise<{
   const response = await axiosInstance.get<ApiResponse<Task[]>>("/tasks", {
     params: filters,
   });
+
+  console.log("Tasks : ", JSON.stringify(response.data, null, 2));
 
   if (response.data.success) {
     return {

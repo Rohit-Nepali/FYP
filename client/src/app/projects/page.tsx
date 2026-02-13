@@ -467,7 +467,7 @@ export default function Projects() {
               >
                 <LinearGradient
                   colors={["#1F2937", "#111827"]}
-                  className="rounded-t-xl p-6 max-h-[70%]"
+                  className="rounded-t-xl p-6 max-h-[70%] overflow-hidden"
                 >
                   <View className="flex-row items-center justify-between mb-4">
                     <Text className="text-2xl font-bold text-white">

@@ -326,6 +326,8 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
         taskId={taskDetailModal.taskId}
         onClose={handleCloseTaskDetail}
         projectMembers={projectMembers}
+        statuses={statuses.map(s => ({ id: s.id, name: s.name }))}
+        priorities={priorities.map(p => ({ id: p.id, name: p.name }))}
       />
     </View>
   );

@@ -24,6 +24,7 @@ taskRouter.use(authenticateToken);
 // Task routes
 taskRouter.post("/", validate(createTaskSchema), createTaskController);
 taskRouter.get("/", getAllTasksController);
+
 // Project-scoped tasks should be matched before :id
 taskRouter.get("/project/:projectId", getProjectTasksController);
 taskRouter.get("/:id", getTaskByIdController);

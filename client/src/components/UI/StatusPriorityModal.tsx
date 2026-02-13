@@ -124,7 +124,7 @@ export default function StatusPriorityModal({
         >
           <LinearGradient
             colors={["#1F2937", "#111827"]}
-            className="rounded-2xl p-6 border border-gray-700 w-full"
+            className="rounded-2xl p-6 border border-gray-700 w-full overflow-hidden"
           >
             {/* Header */}
             <View className="flex-row justify-between items-center mb-4">

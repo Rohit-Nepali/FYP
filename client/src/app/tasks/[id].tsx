@@ -13,8 +13,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Task, getTaskById } from "../../services/taskService";
-import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
+import { Task, getTaskById } from "@/src/services/taskService";
+import { Comment, createComment, getCommentsByTask } from "@/src/services/commentService";
 import { Button } from "@/src/components/UI/Buttons";
 
 export default function TaskDetail() {

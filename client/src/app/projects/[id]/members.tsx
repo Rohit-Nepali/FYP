@@ -13,7 +13,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { getProjectById, removeProjectMember, Project } from "@/src/services/projectService";
 import { useAuth } from "@/src/contexts/AuthContext";
-import AddMembersModal from "@/src/components/UI/AddMembersModal";
+import AddMembersModal from "@/src/components/UI/modals/AddMembersModal";
 
 export default function ProjectMembers() {
   const router = useRouter();

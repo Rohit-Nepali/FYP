@@ -107,5 +107,42 @@ export const userService = {
         });
 
         return updatedUser;
+    },
+
+    updateAvatar: async (userId, file) => {
+        const existingUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true }
+        });
+
+        if (!existingUser) {
+            throw new ApiError("User not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        const baseUrl =
+            process.env.FILE_BASE_URL ||
+            process.env.BACKEND_URL ||
+            "";
+
+        const relativePath = `/uploads/avatars/${file.filename}`;
+        const avatarUrl = baseUrl ? `${baseUrl}${relativePath}` : relativePath;
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                profileImage: avatarUrl,
+            },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                profileImage: true,
+                createdAt: true,
+                googleId: true,
+            },
+        });
+
+        return updatedUser;
     }
 };

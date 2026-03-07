@@ -17,7 +17,7 @@ import {
   deleteStatus,
   Status,
 } from "@/src/services/statusService";
-import StatusPriorityModal from "@/src/components/UI/StatusPriorityModal";
+import StatusPriorityModal from "@/src/components/UI/modals/StatusPriorityModal";
 import { Button } from "@/src/components/UI/Buttons";
 import useAlert from "@/src/hooks/useAlert";
 

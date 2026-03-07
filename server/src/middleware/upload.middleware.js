@@ -35,6 +35,19 @@ const projectStorage = multer.diskStorage({
   },
 });
 
+// User avatar storage
+const avatarStorage = multer.diskStorage({
+  destination: (_, file, cb) => {
+    const dir = "uploads/avatars";
+    ensureDir(dir);
+    cb(null, dir);
+  },
+  filename: (_, file, cb) => {
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  },
+});
+
 export const uploadTaskAttachment = multer({
   storage: taskStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -43,6 +56,11 @@ export const uploadTaskAttachment = multer({
 export const uploadProjectAttachment = multer({
   storage: projectStorage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
+
+export const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
 
 export const upload = uploadProjectAttachment; // Default export for project attachments

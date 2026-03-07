@@ -17,7 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Task, getAllTasks } from "../services/taskService";
 import { getAllProjects, Project, createProject } from "../services/projectService";
 import { Button } from "@/src/components/UI/Buttons";
-import TaskModal from "@/src/components/UI/TaskModal";
+import TaskModal from "@/src/components/UI/modals/TaskModal";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
 import { createTask } from "@/src/services/taskService";

@@ -11,9 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
-import { createProjectAttachment } from "../../services/attachmentService";
-import { config } from "../../config/environment";
-import * as FileSystem from 'expo-file-system';
+import { createProjectAttachment } from "../../../services/attachmentService";
 
 interface UploadAttachmentModalProps {
   visible: boolean;
@@ -29,8 +27,6 @@ interface SelectedFile {
   size: number | null;
   mimeType: string | null;
 }
-
-const API_BASE_URL = config.API_BASE_URL;
 
 export default function UploadAttachmentModal({
   visible,
@@ -76,20 +72,14 @@ export default function UploadAttachmentModal({
       setUploading(true);
       setError(null);
 
-      // Use FileSystem to upload properly
-      const uploadResult = await FileSystem.uploadAsync(
-        `${API_BASE_URL}/projects/${projectId}/attachments`,
-        selectedFile.uri,
-        {
-          fieldName: 'file',
-          httpMethod: 'POST',
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          headers: {
-            // Add your auth headers here
-            'Authorization': `Bearer ${yourAuthToken}`,
-          },
-        }
-      );
+      // Build FormData compatible with our backend and axios services
+      const formData = new FormData();
+      formData.append("file", {
+        uri: selectedFile.uri,
+        name: selectedFile.name,
+        type: selectedFile.mimeType || "application/octet-stream",
+      } as any);
+
       await createProjectAttachment(projectId, formData);
 
       Alert.alert(

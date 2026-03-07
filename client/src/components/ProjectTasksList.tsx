@@ -8,13 +8,13 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import TaskModal from "@/src/components/UI/TaskModal";
-import TaskDetailModal from "@/src/components/UI/TaskDetailModal";
+import TaskModal from "@/src/components/UI/modals/TaskModal";
 import { getProjectById, Project } from "@/src/services/projectService";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
 import { createTask } from "@/src/services/taskService";
 import useAlert from "@/src/hooks/useAlert";
+import TaskDetailModal from "./UI/modals/TaskDetailModal";
 
 interface ProjectDetail extends Project {
   tasks?: any[];

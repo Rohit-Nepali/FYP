@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Attachment, getAttachmentType, formatFileSize } from "../../services/attachmentService";
+import { Attachment, getAttachmentType, formatFileSize } from "../../../services/attachmentService";
 
 interface AttachmentPreviewModalProps {
   visible: boolean;

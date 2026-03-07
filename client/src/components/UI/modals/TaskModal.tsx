@@ -12,8 +12,8 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Status, createStatus } from "../../services/statusService";
-import { Priority, createPriority } from "../../services/priorityService";
+import { Status, createStatus } from "../../../services/statusService";
+import { Priority, createPriority } from "../../../services/priorityService";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Platform } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
@@ -136,11 +136,12 @@ export default function TaskModal({
       showValidationError("Please enter a task title");
       return;
     }
-    if (!statusId) {
+    // Status and priority are required only when creating inside a project.
+    if (projectId && !statusId) {
       showValidationError("Please select a status");
       return;
     }
-    if (!priorityId) {
+    if (projectId && !priorityId) {
       showValidationError("Please select a priority");
       return;
     }
@@ -265,7 +266,9 @@ export default function TaskModal({
               <View className="mb-4">
                 <View className="flex-row items-center gap-2 mb-2">
                   <Ionicons name="flag-outline" size={16} color="#60A5FA" />
-                  <Text className="text-gray-300 font-medium">Status *</Text>
+                  <Text className="text-gray-300 font-medium">
+                    Status{projectId ? " *" : ""}
+                  </Text>
                 </View>
                 <View className="flex-row flex-wrap gap-2 mb-2">
                   {statuses.map((status) => (
@@ -291,7 +294,9 @@ export default function TaskModal({
               <View className="mb-6">
                 <View className="flex-row items-center gap-2 mb-2">
                   <Ionicons name="alert-circle-outline" size={16} color="#60A5FA" />
-                  <Text className="text-gray-300 font-medium">Priority *</Text>
+                  <Text className="text-gray-300 font-medium">
+                    Priority{projectId ? " *" : ""}
+                  </Text>
                 </View>
                 <View className="flex-row flex-wrap gap-2 mb-2">
                   {priorities.map((priority) => (

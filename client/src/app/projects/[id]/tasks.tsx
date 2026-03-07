@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import TaskModal from "@/src/components/UI/TaskModal";
+import TaskModal from "@/src/components/UI/modals/TaskModal";
 import { getProjectById, Project } from "@/src/services/projectService";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";

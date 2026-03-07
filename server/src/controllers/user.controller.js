@@ -77,3 +77,25 @@ export const updateProfileController = async (req, res, next) => {
         next(error);
     }
 };
+
+export const uploadAvatarController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const file = req.file;
+
+        if (!file) {
+            throw new ApiError("No file uploaded", HTTP_STATUS.BAD_REQUEST);
+        }
+
+        const updatedUser = await userService.updateAvatar(userId, file);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.UPDATED,
+            updatedUser
+        );
+    } catch (error) {
+        next(error);
+    }
+};

@@ -16,10 +16,10 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Task, getTaskById, updateTask } from "../../services/taskService";
-import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
-import { Status } from "../../services/statusService";
-import { Priority } from "../../services/priorityService";
+import { Task, getTaskById, updateTask } from "@/src/services/taskService";
+import { Comment, createComment, getCommentsByTask } from "@/src/services/commentService";
+import { Status } from "@/src/services/statusService";
+import { Priority } from "@/src/services/priorityService";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useAlert from "@/src/hooks/useAlert";
 

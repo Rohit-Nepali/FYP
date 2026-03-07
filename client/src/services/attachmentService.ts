@@ -110,7 +110,12 @@ export async function createProjectAttachment(
 
   const response = await axiosInstance.post<ApiResponse<Attachment>>(
     `/projects/${projectId}/attachments`,
-    formData
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
   );
 
   if (response.data && (response.data as ApiSuccess<Attachment>).success) {

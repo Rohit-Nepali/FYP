@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -13,8 +14,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { theme } from "@/src/config/theme";
-import { updateProfile } from "@/src/services/userService";
+import * as DocumentPicker from "expo-document-picker";
 import { Button } from "@/src/components/UI/Buttons";
+import { updateProfile, uploadAvatar } from "@/src/services/userService";
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -26,16 +28,60 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(
+    user?.profileImage || null,
+  );
 
   // Track original values to detect changes
   const originalName = user?.name || "";
   const originalEmail = user?.email || "";
 
   // Check if there are any changes
-  const hasChanges = 
-    name !== originalName || 
-    email !== originalEmail || 
-    password.trim() !== "";
+  const hasChanges =
+    name !== originalName || email !== originalEmail || password.trim() !== "";
+
+  const handlePickAvatar = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "image/*",
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        const asset = result.assets[0];
+
+        setAvatarUploading(true);
+
+        const updatedUser = await uploadAvatar({
+          uri: asset.uri,
+          name: asset.name || "avatar.jpg",
+          type: asset.mimeType || "image/jpeg",
+        });
+
+        setLocalAvatarUri(updatedUser.profileImage || null);
+
+        setUserFromGoogle({
+          id: updatedUser.id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          role: updatedUser.role,
+          profileImage: updatedUser.profileImage,
+          createdAt: updatedUser.createdAt,
+        });
+
+        Alert.alert("Success", "Profile image updated successfully!");
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Error",
+        error.message || "Failed to update profile image. Try again later.",
+      );
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim() || !email.trim()) {
@@ -62,7 +108,10 @@ export default function EditProfileScreen() {
       Alert.alert("Success", "Profile updated successfully!");
       router.back();
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to update profile. Try again later.");
+      Alert.alert(
+        "Error",
+        error.message || "Failed to update profile. Try again later.",
+      );
     } finally {
       setSaving(false);
     }
@@ -86,14 +135,23 @@ export default function EditProfileScreen() {
           <View className="items-center mb-6">
             {/* Avatar with gradient and camera overlay - matching Profile screen style */}
             <View className="relative mb-3">
-              <View className="w-20 h-20 bg-gray-700 rounded-full items-center justify-center">
-                <Text className="text-white font-bold text-2xl">
-                  {name?.charAt(0)?.toUpperCase() || "U"}
-                </Text>
-              </View>
+              {localAvatarUri ? (
+                <Image
+                  source={{ uri: localAvatarUri }}
+                  className="w-20 h-20 rounded-full"
+                />
+              ) : (
+                <View className="w-20 h-20 bg-gray-700 rounded-full items-center justify-center">
+                  <Text className="text-white font-bold text-2xl">
+                    {name?.charAt(0)?.toUpperCase() || "U"}
+                  </Text>
+                </View>
+              )}
               {/* Camera icon overlay */}
               <TouchableOpacity
                 className="absolute bottom-0 right-0 w-8 h-8 bg-blue-500 rounded-full items-center justify-center border-2 border-gray-800"
+                disabled={avatarUploading}
+                onPress={handlePickAvatar}
               >
                 <Ionicons name="camera" size={14} color="#ffffff" />
               </TouchableOpacity>
@@ -107,14 +165,16 @@ export default function EditProfileScreen() {
             onChangeText={setName}
             placeholder="Enter your full name"
             placeholderTextColor="#6B7280"
-            onFocus={() => setFocusedField('name')}
+            onFocus={() => setFocusedField("name")}
             onBlur={() => setFocusedField(null)}
-            className={`bg-gray-700 text-white rounded-lg px-4 py-3 mb-4 border ${focusedField === 'name' ? 'border-blue-500' : 'border-transparent'}`}
+            className={`bg-gray-700 text-white rounded-lg px-4 py-3 mb-4 border ${focusedField === "name" ? "border-blue-500" : "border-transparent"}`}
           />
 
           {/* Email - Read-only with lock icon */}
           <Text className="text-gray-400 text-sm mb-1">Email</Text>
-          <View className={`bg-gray-700 rounded-lg px-4 py-3 mb-4 border ${focusedField === 'email' ? 'border-blue-500' : 'border-transparent'} flex-row items-center`}>
+          <View
+            className={`bg-gray-700 rounded-lg px-4 py-3 mb-4 border ${focusedField === "email" ? "border-blue-500" : "border-transparent"} flex-row items-center`}
+          >
             <TextInput
               value={email}
               placeholder="Enter your email"
@@ -122,7 +182,7 @@ export default function EditProfileScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               editable={false}
-              onFocus={() => setFocusedField('email')}
+              onFocus={() => setFocusedField("email")}
               onBlur={() => setFocusedField(null)}
               className="flex-1 text-white opacity-60"
             />
@@ -131,19 +191,26 @@ export default function EditProfileScreen() {
 
           {/* Password */}
           <Text className="text-gray-400 text-sm mb-1">New Password</Text>
-          <Text className="text-gray-500 text-xs mb-2">Leave blank to keep your current password.</Text>
-          <View className={`bg-gray-700 rounded-lg px-4 py-3 mb-6 border ${focusedField === 'password' ? 'border-blue-500' : 'border-transparent'} flex-row items-center`}>
+          <Text className="text-gray-500 text-xs mb-2">
+            Leave blank to keep your current password.
+          </Text>
+          <View
+            className={`bg-gray-700 rounded-lg px-4 py-3 mb-6 border ${focusedField === "password" ? "border-blue-500" : "border-transparent"} flex-row items-center`}
+          >
             <TextInput
               value={password}
               onChangeText={setPassword}
               placeholder="Enter new password"
               placeholderTextColor="#6B7280"
               secureTextEntry={!showPassword}
-              onFocus={() => setFocusedField('password')}
+              onFocus={() => setFocusedField("password")}
               onBlur={() => setFocusedField(null)}
               className="flex-1 text-white"
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} className="p-1">
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              className="p-1"
+            >
               <Ionicons
                 name={showPassword ? "eye-outline" : "eye-off-outline"}
                 size={20}
@@ -177,7 +244,7 @@ export default function EditProfileScreen() {
                 [
                   { text: "Cancel", style: "cancel" },
                   { text: "Delete", style: "destructive" },
-                ]
+                ],
               )
             }
             variant="danger-ghost"

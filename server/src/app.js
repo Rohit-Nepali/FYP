@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 // Add routes
 app.use("/", router);
 
-app.use(notFoundMiddleware); //handle 404 not found error before other error middleware
+app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 
 export default app;

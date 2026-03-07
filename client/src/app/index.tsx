@@ -12,7 +12,7 @@ import {
   Alert,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Task, getAllTasks } from "../services/taskService";
 import { getAllProjects, Project, createProject } from "../services/projectService";
@@ -337,11 +337,9 @@ export default function Index() {
             )}
           </View>
         </View>
-
-
       </ScrollView>
 
-      {/* Project Creation Modal */}
+      {/* Project Creation Modal in case no projects exist */}
       <Modal
         visible={createModalVisible}
         animationType="slide"

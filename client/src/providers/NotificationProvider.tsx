@@ -2,11 +2,12 @@ import { useEffect } from "react";
 import {
   setNotificationHandler,
   addNotificationReceivedListener,
+  addNotificationResponseReceivedListener,
   requestFirebasePermission,
   getFcmToken,
+  getInitialNotification,
 } from "../services/notificationService";
 import { useAuth } from "../contexts/AuthContext";
-import { config } from "../config/environment";
 import messaging from '@react-native-firebase/messaging';
 import { Alert } from 'react-native';
 import { axiosInstance } from "../services/authService";
@@ -40,6 +41,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       // Set up notification handlers
       setNotificationHandler();
 
+      // Listen for foreground notifications
       const receivedSub = addNotificationReceivedListener(notification => {
         console.log("🔔 Notification received:", notification);
         // Show alert for foreground notifications
@@ -49,14 +51,30 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         );
       });
 
-      const unsubscribeNotificationOpened = messaging().onNotificationOpenedApp(remoteMessage => {
-        console.log("👉 Notification tapped:", remoteMessage);
+      // Listen for notification tap (when app was in background)
+      const responseSub = addNotificationResponseReceivedListener(response => {
+        console.log("👉 Notification tapped:", response);
+        const data = response.notification.request.content.data;
+        if (data?.taskId) {
+          console.log('Navigate to task:', data.taskId);
+          // You can add navigation logic here if needed
+        }
       });
+
+      // Check if app was opened from a notification (when app was killed)
+      const initialNotification = await getInitialNotification();
+      if (initialNotification) {
+        console.log('📱 App opened from notification:', initialNotification);
+        if (initialNotification.data?.taskId) {
+          console.log('Navigate to task:', initialNotification.data.taskId);
+          // You can add navigation logic here if needed
+        }
+      }
 
       return () => {
         unsubscribeTokenRefresh();
         receivedSub.remove();
-        unsubscribeNotificationOpened();
+        responseSub.remove();
       };
     };
 

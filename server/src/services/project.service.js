@@ -135,6 +135,7 @@ export const projectService = {
         const project = await prisma.project.findFirst({
             where: { id: projectId, ownerId: userId },
         });
+        console.log("Project : ", project);
 
         if (!project) {
             throw new ApiError(

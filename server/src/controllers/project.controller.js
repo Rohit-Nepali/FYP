@@ -6,206 +6,197 @@ import { prisma } from "../config/db.js";
 import { ApiError } from "#utils/error.utils.js";
 
 export const createProjectController = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const projectData = req.body;
+  try {
+    const userId = req.user.id;
+    const projectData = req.body;
 
-        const project = await projectService.create(projectData, userId);
+    const project = await projectService.create(projectData, userId);
 
-        // Log activity
-        await logActivity({
-            type: 'PROJECT_CREATED',
-            projectId: project.id,
-            userId,
-            metadata: { projectTitle: project.title }
-        });
+    // Log activity
+    await logActivity({
+      type: 'PROJECT_CREATED',
+      projectId: project.id,
+      userId,
+      metadata: { projectTitle: project.title }
+    });
 
-        return ApiResponse.sendSuccessResponse(
-            res,
-            HTTP_STATUS.CREATED,
-            SUCCESS_MESSAGES.CREATED,
-            project
-        );
-    } catch (error) {
-        next(error);
-    }
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.CREATED,
+      SUCCESS_MESSAGES.CREATED,
+      project
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const getAllProjectsController = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const projects = await projectService.getAll(userId);
+  try {
+    const userId = req.user.id;
+    const projects = await projectService.getAll(userId);
 
-        return ApiResponse.sendSuccessResponse(
-            res,
-            HTTP_STATUS.OK,
-            SUCCESS_MESSAGES.RETRIEVED,
-            projects
-        );
-    } catch (error) {
-        next(error);
-    }
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.RETRIEVED,
+      projects
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const getProjectByIdController = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const { id } = req.params;
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
 
-        const project = await projectService.getById(id, userId);
+    const project = await projectService.getById(id, userId);
 
-        return ApiResponse.sendSuccessResponse(
-            res,
-            HTTP_STATUS.OK,
-            SUCCESS_MESSAGES.RETRIEVED,
-            project
-        );
-    } catch (error) {
-        next(error);
-    }
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.RETRIEVED,
+      project
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const updateProjectController = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const { id } = req.params;
-        const updateData = req.body;
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const updateData = req.body;
 
-        const project = await projectService.update(id, userId, updateData);
+    const project = await projectService.update(id, userId, updateData);
 
-        // Log activity
-        await logActivity({
-            type: 'PROJECT_UPDATED',
-            projectId: project.id,
-            userId,
-            metadata: { projectTitle: project.title }
-        });
+    // Log activity
+    await logActivity({
+      type: 'PROJECT_UPDATED',
+      projectId: project.id,
+      userId,
+      metadata: { projectTitle: project.title }
+    });
 
-        return ApiResponse.sendSuccessResponse(
-            res,
-            HTTP_STATUS.OK,
-            SUCCESS_MESSAGES.UPDATED,
-            project
-        );
-    } catch (error) {
-        next(error);
-    }
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.UPDATED,
+      project
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const deleteProjectController = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const { id } = req.params;
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
 
-        // Get project details before deletion for activity logging
-        const { prisma } = require('../config/prisma.config');
-        const project = await prisma.project.findUnique({
-            where: { id },
-            select: { id: true, title: true }
-        });
+    const project = await projectService.delete(id, userId);
 
-        await projectService.delete(id, userId);
+    // Log activity (this will be deleted along with project, but logged for audit)
+    await logActivity({
+      type: 'PROJECT_DELETED',
+      projectId: project.id,
+      userId,
+      metadata: { projectTitle: project.title }
+    });
 
-        // Log activity (this will be deleted along with project, but logged for audit)
-        if (project) {
-            await logActivity({
-                type: 'PROJECT_DELETED',
-                projectId: project.id,
-                userId,
-                metadata: { projectTitle: project.title }
-            });
-        }
-
-        return ApiResponse.sendSuccessResponse(
-            res,
-            HTTP_STATUS.OK,
-            SUCCESS_MESSAGES.DELETED
-        );
-    } catch (error) {
-        next(error);
-    }
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.DELETED
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const addProjectMemberController = async (req, res, next) => {
-    try {
+  try {
 
-        console.log("Adding members to project:", req.body);
+    console.log("Adding members to project:", req.body);
 
-        const userId = req.user.id;
-        const { id } = req.params;
-        const { memberId, userIds, role } = req.body;
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { memberId, userIds, role } = req.body;
 
-        let project;
-        let addedMembers = [];
+    let project;
+    let addedMembers = [];
 
-        if (userIds && Array.isArray(userIds)) {
-             // Bulk add
-             for (const mId of userIds) {
-                 try {
-                     await projectService.addMember(id, userId, mId, role);
-                     addedMembers.push(mId);
-                 } catch (err) {
-                     // specific error handling if needed, e.g. ignoring 'already member'
-                     // For now we continue to try adding others
-                     console.log(`Failed to add member ${mId}: ${err.message}`);
-                 }
-             }
-             // Get final state
-             project = await projectService.getById(id, userId);
-        } else if (memberId) {
-             project = await projectService.addMember(id, userId, memberId, role);
-             addedMembers.push(memberId);
-        } else {
-            // Fallback or error
-            // If neither, maybe return current project or throw error
-             project = await projectService.getById(id, userId);
+    if (userIds && Array.isArray(userIds)) {
+      // Bulk add
+      for (const mId of userIds) {
+        try {
+          await projectService.addMember(id, userId, mId, role);
+          addedMembers.push(mId);
+        } catch (err) {
+          // specific error handling if needed, e.g. ignoring 'already member'
+          // For now we continue to try adding others
+          console.log(`Failed to add member ${mId}: ${err.message}`);
         }
-
-        // Log activity for each added member
-        for (const addedMemberId of addedMembers) {
-            await logActivity({
-                type: 'MEMBER_ADDED',
-                projectId: id,
-                userId,
-                metadata: { memberId: addedMemberId, role: role || 'member' }
-            });
-        }
-
-        return ApiResponse.sendSuccessResponse(
-            res,
-            HTTP_STATUS.OK,
-            "Member(s) added successfully",
-            project
-        );
-    } catch (error) {
-        next(error);
+      }
+      // Get final state
+      project = await projectService.getById(id, userId);
+    } else if (memberId) {
+      project = await projectService.addMember(id, userId, memberId, role);
+      addedMembers.push(memberId);
+    } else {
+      // Fallback or error
+      // If neither, maybe return current project or throw error
+      project = await projectService.getById(id, userId);
     }
+
+    // Log activity for each added member
+    for (const addedMemberId of addedMembers) {
+      await logActivity({
+        type: 'MEMBER_ADDED',
+        projectId: id,
+        userId,
+        metadata: { memberId: addedMemberId, role: role || 'member' }
+      });
+    }
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Member(s) added successfully",
+      project
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const removeProjectMemberController = async (req, res, next) => {
-    try {
-        const userId = req.user.id;
-        const { id, memberId } = req.params;
+  try {
+    const userId = req.user.id;
+    const { id, memberId } = req.params;
 
-        const project = await projectService.removeMember(id, userId, memberId);
+    const project = await projectService.removeMember(id, userId, memberId);
 
-        // Log activity
-        await logActivity({
-            type: 'MEMBER_REMOVED',
-            projectId: id,
-            userId,
-            metadata: { memberId }
-        });
+    // Log activity
+    await logActivity({
+      type: 'MEMBER_REMOVED',
+      projectId: id,
+      userId,
+      metadata: { memberId }
+    });
 
-        return ApiResponse.sendSuccessResponse(
-            res,
-            HTTP_STATUS.OK,
-            "Member removed successfully",
-            project
-        );
-    } catch (error) {
-        next(error);
-    }
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Member removed successfully",
+      project
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const createProjectInviteController = async (req, res, next) => {
@@ -319,7 +310,7 @@ export const createProjectAttachmentController = async (req, res, next) => {
     const { id } = req.params; // projectId
     const file = req.file;
 
-    console.log("File :", file );
+    console.log("File :", file);
     console.log("REq body: ", req.body);
 
     if (!file) {

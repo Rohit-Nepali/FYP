@@ -25,6 +25,7 @@ import AttachmentPreviewModal from "../../components/UI/AttachmentPreviewModal";
 import UploadAttachmentModal from "../../components/UI/UploadAttachmentModal";
 import ActivitySection from "../../components/ActivitySection";
 import ProjectStatusReport from "../../components/ProjectStatusReport";
+import CustomAlert from "../../components/UI/CustomAlert";
 
 interface ProjectData extends Project {
   tasks?: any[];
@@ -41,6 +42,12 @@ export default function ProjectDetail() {
   const [addMembersModalVisible, setAddMembersModalVisible] = useState(false);
   const [inviteEmailModalVisible, setInviteEmailModalVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  
+  // Delete confirmation alert state
+  const [deleteAlertVisible, setDeleteAlertVisible] = useState(false);
+  const [successAlertVisible, setSuccessAlertVisible] = useState(false);
+  const [errorAlertVisible, setErrorAlertVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   
   // Attachments state
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -189,35 +196,27 @@ export default function ProjectDetail() {
   const handleDeleteProject = () => {
     console.log("Deleting project")
     setMenuVisible(false);
-    Alert.alert(
-      "Delete Project",
-      `Are you sure you want to delete "${project.title}"? This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setDeleting(true);
-              await deleteProject(id as string);
-              Alert.alert(
-                "Success",
-                "Project has been deleted successfully.",
-                [{ text: "OK", onPress: () => router.back() }]
-              );
-            } catch (err) {
-              Alert.alert(
-                "Error",
-                err instanceof Error ? err.message : "Failed to delete project"
-              );
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ]
-    );
+    setDeleteAlertVisible(true);
+  };
+
+  const confirmDeleteProject = async () => {
+    try {
+      setDeleting(true);
+      await deleteProject(id as string);
+      setDeleteAlertVisible(false);
+      setSuccessAlertVisible(true);
+    } catch (err) {
+      setDeleteAlertVisible(false);
+      setErrorMessage(err instanceof Error ? err.message : "Failed to delete project");
+      setErrorAlertVisible(true);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteSuccess = () => {
+    setSuccessAlertVisible(false);
+    router.back();
   };
 
   return (
@@ -571,6 +570,41 @@ export default function ProjectDetail() {
         )}
 
       </ScrollView>
+
+      {/* Delete Confirmation Alert */}
+      <CustomAlert
+        visible={deleteAlertVisible}
+        title="Delete Project"
+        message={`Are you sure you want to delete this project "${project?.title}"? \nThis action cannot be undone.`}
+        type="warning"
+        showCancel={true}
+        cancelText="Cancel"
+        confirmText="Delete"
+        onClose={() => setDeleteAlertVisible(false)}
+        onConfirm={confirmDeleteProject}
+      />
+
+      {/* Success Alert */}
+      <CustomAlert
+        visible={successAlertVisible}
+        title="Success"
+        message="Project has been deleted successfully."
+        type="success"
+        confirmText="OK"
+        onClose={handleDeleteSuccess}
+        onConfirm={handleDeleteSuccess}
+      />
+
+      {/* Error Alert */}
+      <CustomAlert
+        visible={errorAlertVisible}
+        title="Error"
+        message={errorMessage}
+        type="error"
+        confirmText="OK"
+        onClose={() => setErrorAlertVisible(false)}
+        onConfirm={() => setErrorAlertVisible(false)}
+      />
     </SafeAreaView >
   );
 }

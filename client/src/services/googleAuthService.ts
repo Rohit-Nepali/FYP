@@ -44,17 +44,23 @@ export const signInWithGoogle = async (): Promise<GoogleAuthResult> => {
     const userInfo = await GoogleSignin.signIn();
     console.log("User : ", userInfo);
 
-    console.log('✅ Google Sign-In successful:', userInfo.user.email);
+    const googleUser = userInfo.data?.user;
+
+    if (!googleUser) {
+      throw new Error('Google Sign-In failed: No user data returned');
+    }
+
+    console.log('✅ Google Sign-In successful:', googleUser.email);
 
     // Get access token
     const tokens = await GoogleSignin.getTokens();
     console.log('✅ Got tokens');
 
     const user: GoogleUser = {
-      id: userInfo.user.id,
-      email: userInfo.user.email,
-      name: userInfo.user.name || userInfo.user.email.split('@')[0],
-      picture: userInfo.user.photo || undefined,
+      id: googleUser.id,
+      email: googleUser.email,
+      name: googleUser.name || googleUser.email.split('@')[0],
+      picture: googleUser.photo || undefined,
     };
 
     // Authenticate with backend

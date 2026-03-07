@@ -81,11 +81,19 @@ export const GoogleAuthProvider: React.FC<GoogleAuthProviderProps> = ({ children
   const refreshUser = async (): Promise<void> => {
     try {
       const userInfo = await GoogleSignin.signInSilently();
+      const googleUser = userInfo.data?.user;
+      
+      if (!googleUser) {
+        console.log('No user to refresh');
+        setUser(null);
+        return;
+      }
+      
       setUser({
-        id: userInfo.user.id,
-        email: userInfo.user.email,
-        name: userInfo.user.name || '',
-        picture: userInfo.user.photo || undefined,
+        id: googleUser.id,
+        email: googleUser.email,
+        name: googleUser.name || '',
+        picture: googleUser.photo || undefined,
       });
     } catch (error) {
       console.log('No user to refresh');

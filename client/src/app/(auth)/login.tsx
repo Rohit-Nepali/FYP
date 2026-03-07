@@ -11,7 +11,6 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "../../contexts/AuthContext";
 import { theme } from "../../config/theme";
 import { FormInput } from "@/src/components/common/FormInput";
 import { PrimaryButton } from "@/src/components/UI/Buttons";
@@ -19,10 +18,11 @@ import { CustomAlert } from "@/src/components/UI/CustomAlert";
 import { useLoginForm } from "../../hooks/useLoginForm";
 import { handleAuthError, getAuthErrorMessage } from "../../utils/errorHandler";
 import { signInWithGoogle } from "../../services/googleAuthService";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, isAuthChecking } = useAuth();
+  const { login, isAuthChecking, setUserFromGoogle } = useAuth();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Alert state
@@ -149,7 +149,16 @@ export default function LoginScreen() {
   const handleGoogleSignIn = useCallback(async () => {
     setIsGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
+      // Sync AuthContext with the user from Google Sign-In
+      setUserFromGoogle({
+        id: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        role: 'user', // Default role for Google sign-in users
+        profileImage: result.user.picture,
+        createdAt: new Date().toISOString(),
+      });
       router.replace("/");
     } catch (error: any) {
       const errorMessage = error.message || "Failed to sign in with Google";
@@ -157,7 +166,7 @@ export default function LoginScreen() {
     } finally {
       setIsGoogleLoading(false);
     }
-  }, [router]);
+  }, [router, setUserFromGoogle]);
 
   // Memoized computed values
   const isSubmitDisabled = useMemo(

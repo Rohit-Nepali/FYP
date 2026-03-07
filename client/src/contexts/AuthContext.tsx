@@ -34,6 +34,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
+  setUserFromGoogle: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -110,6 +111,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Set user from Google Sign-In (called after successful Google auth)
+  const setUserFromGoogle = (user: User) => {
+    setUser(user);
+  };
+
   const value: AuthContextType = {
     user,
     isAuthChecking,
@@ -118,6 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     refreshToken,
+    setUserFromGoogle,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

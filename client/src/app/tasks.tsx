@@ -21,6 +21,7 @@ import { Priority, getAllPriorities } from "@/src/services/priorityService";
 import TaskModal from "@/src/components/UI/modals/TaskModal";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/src/components/UI/Buttons";
+import CalendarView from "@/src/components/CalendarView";
 
 // Types
 interface GroupedTasks {
@@ -492,6 +493,7 @@ export default function TasksPage() {
 
     // UI state
     const [searchQuery, setSearchQuery] = useState("");
+    const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
     const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
         statusIds: [],
         priorityIds: [],
@@ -699,9 +701,42 @@ export default function TasksPage() {
         <SafeAreaView className="flex-1 bg-gray-900">
             {/* Header */}
             <View className="px-4 pt-2 pb-4">
-                <Text className="text-white text-2xl font-bold mb-4">Tasks</Text>
+                <View className="flex-row items-center justify-between mb-4">
+                    <Text className="text-white text-2xl font-bold">Tasks</Text>
 
-                {/* Search and Filter Row */}
+                    {/* List / Calendar Toggle */}
+                    <View className="flex-row items-center bg-gray-800 rounded-xl p-1">
+                        <TouchableOpacity
+                            onPress={() => setViewMode("list")}
+                            className={`px-3 py-1.5 rounded-lg ${
+                                viewMode === "list" ? "bg-blue-600" : ""
+                            }`}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons
+                                name="list"
+                                size={18}
+                                color={viewMode === "list" ? "#fff" : "#9CA3AF"}
+                            />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setViewMode("calendar")}
+                            className={`px-3 py-1.5 rounded-lg ${
+                                viewMode === "calendar" ? "bg-blue-600" : ""
+                            }`}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons
+                                name="calendar"
+                                size={18}
+                                color={viewMode === "calendar" ? "#fff" : "#9CA3AF"}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Search and Filter Row — only in list mode */}
+                {viewMode === "list" && (
                 <View className="flex-row items-center gap-2">
                     {/* Search Bar */}
                     <View className="flex-1 flex-row items-center bg-gray-800 rounded-xl px-4  border border-gray-700">
@@ -742,9 +777,10 @@ export default function TasksPage() {
                         )}
                     </TouchableOpacity>
                 </View>
+                )}
 
-                {/* Active Filter Chips */}
-                {activeFilterCount > 0 && (
+                {/* Active Filter Chips — only in list mode */}
+                {viewMode === "list" && activeFilterCount > 0 && (
                     <View className="flex-row flex-wrap gap-2 mt-3">
                         {activeFilters.statusIds.map((statusId) => {
                             const status = statuses.find((s) => s.id === statusId);
@@ -794,7 +830,28 @@ export default function TasksPage() {
                 )}
             </View>
 
-            {/* Task Groups */}
+            {/* Calendar View Mode */}
+            {viewMode === "calendar" ? (
+            <ScrollView
+                className="flex-1 px-4"
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={["#60A5FA"]}
+                        tintColor="#60A5FA"
+                    />
+                }
+                contentContainerStyle={{ paddingBottom: 100 }}
+            >
+                <CalendarView
+                    tasks={tasks}
+                    onTaskPress={handleTaskPress}
+                    onRefresh={onRefresh}
+                />
+            </ScrollView>
+            ) : (
+            /* List View Mode */
             <ScrollView
                 className="flex-1 px-4"
                 refreshControl={
@@ -905,6 +962,7 @@ export default function TasksPage() {
                     />
                 )}
             </ScrollView>
+            )}
 
             {/* Floating Action Button */}
             <TouchableOpacity

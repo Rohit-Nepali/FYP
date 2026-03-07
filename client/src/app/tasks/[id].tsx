@@ -16,6 +16,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { Task, getTaskById } from "@/src/services/taskService";
 import { Comment, createComment, getCommentsByTask } from "@/src/services/commentService";
 import { Button } from "@/src/components/UI/Buttons";
+import {
+  syncTaskToCalendar,
+  getCalendarConnectionStatus,
+  CalendarConnectionStatus,
+} from "@/src/services/calendarService";
 
 export default function TaskDetail() {
   const router = useRouter();
@@ -29,6 +34,11 @@ export default function TaskDetail() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+
+  // Calendar sync state
+  const [calendarStatus, setCalendarStatus] = useState<CalendarConnectionStatus>({ connected: false });
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSynced, setIsSynced] = useState(false);
 
   useEffect(() => {
     if (!taskId) return;
@@ -61,6 +71,19 @@ export default function TaskDetail() {
     loadComments();
   }, [taskId]);
 
+  // Check calendar connection on mount
+  useEffect(() => {
+    const checkCalendar = async () => {
+      try {
+        const status = await getCalendarConnectionStatus();
+        setCalendarStatus(status);
+      } catch (err) {
+        // Silently fail — calendar is an optional feature
+      }
+    };
+    checkCalendar();
+  }, []);
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -87,6 +110,54 @@ export default function TaskDetail() {
       );
     } finally {
       setPostingComment(false);
+    }
+  };
+
+  // Handle sync to Google Calendar
+  const handleSyncToCalendar = async () => {
+    if (!task) return;
+
+    if (!calendarStatus.connected) {
+      Alert.alert(
+        "Connect Google Calendar",
+        "You need to connect your Google Calendar first to sync tasks.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Connect",
+            onPress: () => router.push("/settings/CalendarSettings"),
+          },
+        ]
+      );
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+
+      // Use due date as start, and 1 hour later as end
+      const startDate = task.dueDate
+        ? new Date(task.dueDate)
+        : new Date();
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+      await syncTaskToCalendar(task.id, {
+        title: task.title,
+        description: task.description || undefined,
+        startDateTime: startDate.toISOString(),
+        endDateTime: endDate.toISOString(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+
+      setIsSynced(true);
+      Alert.alert("Synced!", "Task has been added to your Google Calendar.");
+    } catch (err) {
+      Alert.alert(
+        "Sync Failed",
+        err instanceof Error ? err.message : "Failed to sync to Google Calendar"
+      );
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -268,6 +339,45 @@ export default function TaskDetail() {
                       {formatDate(task.dueDate)}
                     </Text>
                   </View>
+                )}
+
+                {/* Sync to Google Calendar */}
+                {task.dueDate && (
+                  <TouchableOpacity
+                    onPress={handleSyncToCalendar}
+                    disabled={isSyncing || isSynced}
+                    className="bg-gray-800 rounded-2xl p-4 border border-gray-700 flex-row items-center justify-between"
+                    activeOpacity={0.7}
+                  >
+                    <View className="flex-row items-center">
+                      <Ionicons
+                        name="logo-google"
+                        size={16}
+                        color={isSynced ? "#10B981" : calendarStatus.connected ? "#3B82F6" : "#9CA3AF"}
+                      />
+                      <Text className={`font-medium ml-2 ${
+                        isSynced ? "text-green-400" : calendarStatus.connected ? "text-blue-400" : "text-gray-400"
+                      }`}>
+                        {isSynced ? "Synced to Calendar" : "Sync to Calendar"}
+                      </Text>
+                    </View>
+
+                    {isSyncing ? (
+                      <ActivityIndicator size="small" color="#3B82F6" />
+                    ) : isSynced ? (
+                      <View className="flex-row items-center bg-green-500/20 px-2.5 py-1 rounded-full">
+                        <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                        <Text className="text-green-400 text-xs font-medium ml-1">Synced</Text>
+                      </View>
+                    ) : calendarStatus.connected ? (
+                      <Ionicons name="sync-outline" size={18} color="#3B82F6" />
+                    ) : (
+                      <View className="flex-row items-center">
+                        <Text className="text-gray-500 text-xs mr-1">Connect</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#6B7280" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
                 )}
 
                 {/* Project link (if available) */}

@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { theme } from "@/src/config/theme";
+import { Button } from "@/src/components/UI/Buttons";
 
 export default function HelpSupportScreen() {
   const router = useRouter();
@@ -44,9 +45,13 @@ export default function HelpSupportScreen() {
           <Text className="text-gray-400 text-sm mb-4">
             Need further help? Reach out to our support team via email.
           </Text>
-          <TouchableOpacity onPress={openSupportEmail} className="bg-blue-600 rounded-xl py-3 items-center">
-            <Text className="text-white font-medium">Email Support</Text>
-          </TouchableOpacity>
+          <Button
+            title="Email Support"
+            onPress={openSupportEmail}
+            variant="primary"
+            icon="mail-outline"
+            className="w-full"
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

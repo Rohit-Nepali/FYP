@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../config/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button } from '@/src/components/UI/Buttons';
 import {
   connectGoogleCalendar,
   disconnectGoogleCalendar,
@@ -138,33 +139,23 @@ export default function CalendarSettingsScreen() {
               </View>
 
               {calendarStatus.connected ? (
-                <TouchableOpacity
+                <Button
+                  title="Disconnect"
                   onPress={handleDisconnectCalendar}
+                  variant="danger-ghost"
+                  loading={isConnecting}
                   disabled={isConnecting}
-                  className="bg-red-500/20 py-3 rounded-xl items-center"
-                >
-                  {isConnecting ? (
-                    <ActivityIndicator size="small" color="#ff4444" />
-                  ) : (
-                    <Text className="text-red-400 font-semibold">
-                      Disconnect
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                  className="w-full"
+                />
               ) : (
-                <TouchableOpacity
+                <Button
+                  title="Connect Google Calendar"
                   onPress={handleConnectCalendar}
+                  variant="primary"
+                  loading={isConnecting}
                   disabled={isConnecting}
-                  className="bg-blue-500 py-3 rounded-xl items-center"
-                >
-                  {isConnecting ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text className="text-white font-semibold">
-                      Connect Google Calendar
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                  className="w-full"
+                />
               )}
             </View>
 

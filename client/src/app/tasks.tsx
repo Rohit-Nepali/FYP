@@ -20,6 +20,7 @@ import { Status, getAllStatuses } from "@/src/services/statusService";
 import { Priority, getAllPriorities } from "@/src/services/priorityService";
 import TaskModal from "@/src/components/UI/TaskModal";
 import { LinearGradient } from "expo-linear-gradient";
+import { Button } from "@/src/components/UI/Buttons";
 
 // Types
 interface GroupedTasks {
@@ -455,23 +456,21 @@ const FilterModal: React.FC<FilterModalProps> = ({
                     {/* Actions */}
                     <View className="flex-row gap-3 mt-4">
                         {hasActiveFilters && (
-                            <TouchableOpacity
+                            <Button
+                                title="Clear All"
                                 onPress={handleClear}
-                                className="flex-1 bg-gray-800 border border-gray-700 rounded-xl py-3 items-center"
-                            >
-                                <Text className="text-gray-300 font-semibold">Clear All</Text>
-                            </TouchableOpacity>
+                                variant="secondary"
+                                className="flex-1"
+                            />
                         )}
-                        <TouchableOpacity
+                        <Button
+                            title={`Apply Filters${localFilters.statusIds.length + localFilters.priorityIds.length > 0
+                                ? ` (${localFilters.statusIds.length + localFilters.priorityIds.length})`
+                                : ''}`}
                             onPress={handleApply}
-                            className="flex-1 bg-blue-600 rounded-xl py-3 items-center"
-                        >
-                            <Text className="text-white font-semibold">
-                                Apply Filters
-                                {localFilters.statusIds.length + localFilters.priorityIds.length > 0 &&
-                                    ` (${localFilters.statusIds.length + localFilters.priorityIds.length})`}
-                            </Text>
-                        </TouchableOpacity>
+                            variant="primary"
+                            className="flex-1"
+                        />
                     </View>
                 </View>
             </View>
@@ -680,17 +679,17 @@ export default function TasksPage() {
                     <Text className="text-gray-400 text-sm mt-2 text-center">
                         {error}
                     </Text>
-                    <TouchableOpacity
+                    <Button
+                        title="Retry"
                         onPress={() => {
                             setLoading(true);
                             Promise.all([loadTasks(), loadFilters()]).finally(() =>
                                 setLoading(false)
                             );
                         }}
-                        className="mt-6 bg-blue-600 rounded-xl px-6 py-3"
-                    >
-                        <Text className="text-white font-semibold">Retry</Text>
-                    </TouchableOpacity>
+                        variant="primary"
+                        className="mt-6"
+                    />
                 </View>
             </SafeAreaView>
         );
@@ -823,18 +822,16 @@ export default function TasksPage() {
                                 : "Create a new task to get started"}
                         </Text>
                         {!searchQuery && activeFilterCount === 0 && (
-                            <TouchableOpacity
-                                onPress={() => setTaskModalVisible(true)}
-                                className="mt-6 bg-blue-600 rounded-xl px-6 py-3 flex-row items-center"
-                            >
-                                <Ionicons name="add" size={18} color="#fff" />
-                                <Text className="text-white font-semibold ml-2">
-                                    Create Task
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                )}
+                            <Button
+                            title="Create Task"
+                            onPress={() => setTaskModalVisible(true)}
+                            variant="primary"
+                            icon="add"
+                            className="mt-6"
+                        />
+                    )}
+                </View>
+            )}
 
                 {/* Overdue Group */}
                 {groupedTasks.overdue.length > 0 && (

@@ -19,6 +19,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import ProjectCard from "../../components/UI/ProjectCard";
+import { Button } from "@/src/components/UI/Buttons";
 import {
   getAllProjects,
   Project,
@@ -381,13 +382,13 @@ export default function Projects() {
       )}
 
       {/* New Project Button - Bottom Right */}
-      <TouchableOpacity
+      <Button
+        title="New Project"
         onPress={() => setModalVisible(true)}
-        className="absolute bottom-8 right-4 bg-blue-700 rounded-full p-4 flex-row items-center px-6 shadow-lg"
-      >
-        <Ionicons name="add-outline" size={20} color="#fff" />
-        <Text className="text-white font-semibold ml-2">New Project</Text>
-      </TouchableOpacity>
+        variant="primary"
+        icon="add-outline"
+        className="absolute bottom-8 right-4"
+      />
 
       {/* Sort Options Modal */}
       <Modal
@@ -502,29 +503,24 @@ export default function Projects() {
                     />
                   </View>
 
-                  <TouchableOpacity
+                  <Button
+                    title="Create Project"
                     onPress={handleCreateProject}
-                    className="bg-blue-600 rounded-xl py-4 items-center mb-4"
+                    variant="primary"
+                    size="large"
+                    loading={saving}
                     disabled={saving}
-                  >
-                    {saving ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text className="text-white font-bold text-lg">
-                        Create Project
-                      </Text>
-                    )}
-                  </TouchableOpacity>
+                    className="w-full mb-4"
+                  />
 
-                  <TouchableOpacity
+                  <Button
+                    title="Cancel"
                     onPress={resetModal}
-                    className="bg-gray-700 rounded-xl py-4 items-center"
+                    variant="secondary"
+                    size="large"
                     disabled={saving}
-                  >
-                    <Text className="text-gray-200 font-semibold text-lg">
-                      Cancel
-                    </Text>
-                  </TouchableOpacity>
+                    className="w-full"
+                  />
                 </LinearGradient>
               </ScrollView>
             </View>

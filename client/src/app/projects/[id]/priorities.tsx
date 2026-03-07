@@ -19,6 +19,7 @@ import {
   Priority,
 } from "@/src/services/priorityService";
 import StatusPriorityModal from "@/src/components/UI/StatusPriorityModal";
+import { Button } from "@/src/components/UI/Buttons";
 
 export default function ProjectPriorities() {
   const router = useRouter();
@@ -218,13 +219,13 @@ export default function ProjectPriorities() {
             <Text className="text-gray-600 text-sm mt-2">
               Create your first priority to get started
             </Text>
-            <TouchableOpacity
+            <Button
+              title="Create Priority"
               onPress={() => setModalVisible(true)}
-              className="mt-6 px-6 py-3 bg-blue-600 rounded-xl flex-row items-center gap-2"
-            >
-              <Ionicons name="add-circle" size={20} color="#fff" />
-              <Text className="text-white font-medium">Create Priority</Text>
-            </TouchableOpacity>
+              variant="primary"
+              icon="add-circle"
+              className="mt-6"
+            />
           </View>
         }
       />

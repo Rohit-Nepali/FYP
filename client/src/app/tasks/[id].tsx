@@ -14,8 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, getTaskById } from "../../services/taskService";
-import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Comment, createComment, getCommentsByTask } from "../../services/commentService";
+import { Button } from "@/src/components/UI/Buttons";
 
 export default function TaskDetail() {
   const router = useRouter();
@@ -206,12 +206,12 @@ export default function TaskDetail() {
               Unable to load task
             </Text>
             <Text className="text-gray-400 text-sm mb-3">{error}</Text>
-            <TouchableOpacity
+            <Button
+              title="Go back"
               onPress={() => router.back()}
-              className="bg-red-600 rounded-lg py-2 items-center"
-            >
-              <Text className="text-white font-medium">Go back</Text>
-            </TouchableOpacity>
+              variant="danger"
+              size="small"
+            />
           </View>
         ) : !task ? (
           <View className="flex-1 justify-center items-center py-20">
@@ -317,17 +317,14 @@ export default function TaskDetail() {
                     multiline
                     textAlignVertical="top"
                   />
-                  <TouchableOpacity
+                  <Button
+                    title="Post Comment"
                     onPress={handlePostComment}
+                    variant="primary"
                     disabled={!newComment.trim() || postingComment}
-                    className={`rounded-xl py-3 items-center ${newComment.trim() && !postingComment ? 'bg-blue-600' : 'bg-gray-600'}`}
-                  >
-                    {postingComment ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text className="text-white font-medium">Post Comment</Text>
-                    )}
-                  </TouchableOpacity>
+                    loading={postingComment}
+                    className="w-full"
+                  />
                 </View>
 
                 {/* Comments List */}

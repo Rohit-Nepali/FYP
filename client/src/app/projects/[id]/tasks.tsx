@@ -15,6 +15,7 @@ import { getProjectById, Project } from "@/src/services/projectService";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
 import { createTask } from "@/src/services/taskService";
+import { Button } from "@/src/components/UI/Buttons";
 
 interface ProjectDetail extends Project {
   tasks?: any[];
@@ -109,12 +110,12 @@ export default function ProjectTasks() {
         <View className="flex-1 justify-center items-center px-6">
           <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
           <Text className="text-white text-lg mt-4">Project not found</Text>
-          <TouchableOpacity
+          <Button
+            title="Go Back"
             onPress={() => router.back()}
-            className="mt-6 bg-blue-600 rounded-lg px-6 py-3"
-          >
-            <Text className="text-white font-semibold">Go Back</Text>
-          </TouchableOpacity>
+            variant="primary"
+            className="mt-6"
+          />
         </View>
       </SafeAreaView>
     );
@@ -241,15 +242,12 @@ export default function ProjectTasks() {
 
       {/* Bottom bar with Add Task */}
       <View className="border-t border-gray-800 bg-gray-900 px-4 py-3 mb-24">
-        <TouchableOpacity
+        <Button
+          title="Add Task"
           onPress={() => setModalVisible(true)}
-          className="bg-blue-600 rounded-xl py-3 flex-row items-center justify-center"
-        >
-          <Ionicons name="add-outline" size={18} color="#fff" />
-          <Text className="text-white font-semibold text-sm ml-2">
-            Add Task
-          </Text>
-        </TouchableOpacity>
+          variant="primary"
+          icon="add-outline"
+        />
       </View>
 
       {/* Create Task Modal */}

@@ -26,6 +26,7 @@ import UploadAttachmentModal from "../../components/UI/UploadAttachmentModal";
 import ActivitySection from "../../components/ActivitySection";
 import ProjectStatusReport from "../../components/ProjectStatusReport";
 import CustomAlert from "../../components/UI/CustomAlert";
+import { Button } from "@/src/components/UI/Buttons";
 
 interface ProjectData extends Project {
   tasks?: any[];
@@ -121,12 +122,12 @@ export default function ProjectDetail() {
         <View className="flex-1 justify-center items-center px-6">
           <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
           <Text className="text-white text-lg mt-4">Project not found</Text>
-          <TouchableOpacity
+          <Button
+            title="Go Back"
             onPress={() => router.back()}
-            className="mt-6 bg-blue-600 rounded-lg px-6 py-3"
-          >
-            <Text className="text-white font-semibold">Go Back</Text>
-          </TouchableOpacity>
+            variant="primary"
+            className="mt-6"
+          />
         </View>
       </SafeAreaView>
     );
@@ -492,13 +493,13 @@ export default function ProjectDetail() {
                     Attachments ({filteredAttachments.length})
                   </Text>
                 </View>
-                <TouchableOpacity
+                <Button
+                  title="Add"
                   onPress={() => setUploadModalVisible(true)}
-                  className="flex-row items-center bg-blue-600 px-3 py-1.5 rounded-lg"
-                >
-                  <Ionicons name="add" size={16} color="#fff" />
-                  <Text className="text-white text-sm font-medium ml-1">Add</Text>
-                </TouchableOpacity>
+                  variant="primary"
+                  size="small"
+                  icon="add"
+                />
               </View>
 
               {/* Filter Tabs */}
@@ -549,15 +550,14 @@ export default function ProjectDetail() {
                   <Text className="text-gray-400 text-sm mt-2">
                     No attachments in your project
                   </Text>
-                  <TouchableOpacity
+                  <Button
+                    title="Add attachments to your project"
                     onPress={() => setUploadModalVisible(true)}
-                    className="flex-row items-center mt-3 bg-blue-600 px-4 py-2 rounded-lg"
-                  >
-                    <Ionicons name="add" size={16} color="#fff" />
-                    <Text className="text-white text-sm font-medium ml-2">
-                      Add attachments to your project
-                    </Text>
-                  </TouchableOpacity>
+                    variant="primary"
+                    size="small"
+                    icon="add"
+                    className="mt-3"
+                  />
                 </View>
               )}
             </View>

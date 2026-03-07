@@ -16,6 +16,7 @@ import { Ionicons, } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Task, getAllTasks } from "../services/taskService";
 import { getAllProjects, Project, createProject } from "../services/projectService";
+import { Button } from "@/src/components/UI/Buttons";
 
 export default function Index() {
   const router = useRouter();
@@ -157,12 +158,12 @@ export default function Index() {
                   <Text className="text-gray-400 text-sm mb-3">
                     {projectError}
                   </Text>
-                  <TouchableOpacity
+                  <Button
+                    title="Retry"
                     onPress={loadProjects}
-                    className="bg-red-600 rounded-lg py-2 items-center"
-                  >
-                    <Text className="text-white font-medium">Retry</Text>
-                  </TouchableOpacity>
+                    variant="danger"
+                    size="small"
+                  />
                 </View>
               ) : projects.length === 0 ? (
                 <View className="py-12 items-center justify-center bg-gray-800 rounded-xl">
@@ -179,12 +180,13 @@ export default function Index() {
                     Create your first project to organize your tasks.
                   </Text>
 
-                  <TouchableOpacity
+                  <Button
+                    title="Create Project"
                     onPress={() => setCreateModalVisible(true)}
-                    className="mt-4 bg-purple-600 rounded-lg px-6 py-3"
-                  >
-                    <Text className="text-white font-medium">Create Project</Text>
-                  </TouchableOpacity>
+                    variant="primary"
+                    size="small"
+                    className="mt-4"
+                  />
                 </View>
               ) : (
                 projects.slice(0, 2).map((project, index) => (
@@ -219,15 +221,15 @@ export default function Index() {
 
             {/* See All tasks button linking to project page */}
             {!loadingProjects && !projectError && projects.length > 0 && (
-              <TouchableOpacity
+              <Button
+                title="Manage All Projects"
                 onPress={() => router.push("/projects/page")}
-                className="mt-3 w-full flex-row items-center justify-center py-3 px-4 rounded-xl bg-purple-700"
-              >
-                <Text className="text-white text-sm font-semibold">
-                  Manage All Projects
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color="white" className="pl-2" />
-              </TouchableOpacity>
+                variant="secondary"
+                size="small"
+                icon="chevron-forward"
+                iconPosition="right"
+                className="mt-3"
+              />
             )}
           </View>
         </View>
@@ -249,12 +251,12 @@ export default function Index() {
                     Unable to load tasks
                   </Text>
                   <Text className="text-gray-400 text-sm mb-3">{taskError}</Text>
-                  <TouchableOpacity
+                  <Button
+                    title="Retry"
                     onPress={loadTasks}
-                    className="bg-red-600 rounded-lg py-2 items-center"
-                  >
-                    <Text className="text-white font-medium">Retry</Text>
-                  </TouchableOpacity>
+                    variant="danger"
+                    size="small"
+                  />
                 </View>
               ) : tasks.length === 0 ? (
                 <View className="py-12 items-center justify-center bg-gray-800 rounded-xl">
@@ -373,24 +375,21 @@ export default function Index() {
             />
 
             <View className="flex-row gap-3">
-              <TouchableOpacity
+              <Button
+                title="Cancel"
                 onPress={() => setCreateModalVisible(false)}
-                className="flex-1 bg-gray-600 rounded-lg py-3 items-center"
-              >
-                <Text className="text-white font-medium">Cancel</Text>
-              </TouchableOpacity>
+                variant="secondary"
+                className="flex-1"
+              />
 
-              <TouchableOpacity
+              <Button
+                title="Create"
                 onPress={handleCreateProject}
                 disabled={creating}
-                className="flex-1 bg-purple-600 rounded-lg py-3 items-center"
-              >
-                {creating ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text className="text-white font-medium">Create</Text>
-                )}
-              </TouchableOpacity>
+                loading={creating}
+                variant="primary"
+                className="flex-1"
+              />
             </View>
           </View>
         </View>

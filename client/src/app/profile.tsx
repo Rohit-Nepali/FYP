@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { theme } from "../config/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Button } from "@/src/components/UI/Buttons";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -129,33 +130,21 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <View className="flex-row items-center gap-2 mb-1">
-              <Text className="text-white text-xl font-bold">
-                {user?.name || "User"}
-              </Text>
-              {/* Small edit icon next to name */}
-              <TouchableOpacity
-                onPress={() => router.push("/settings/EditProfile")}
-                className="p-1"
-              >
-                <Ionicons name="pencil" size={16} color="#9ca3af" />
-              </TouchableOpacity>
-            </View>
+            <Text className="text-white text-xl font-bold mb-1">
+              {user?.name || "User"}
+            </Text>
             <Text className="text-gray-400 text-sm">
               {user?.email || "user@example.com"}
             </Text>
           </View>
 
-          {/* Ghost/Secondary Button for Edit Profile */}
-          <TouchableOpacity
-            onPress={() => {
-              router.push("/settings/EditProfile");
-            }}
-            className="border border-gray-600 rounded-xl py-2.5 px-4 items-center flex-row justify-center gap-2"
-          >
-            <Ionicons name="create-outline" size={16} color="#9ca3af" />
-            <Text className="text-gray-300 font-medium">Edit Profile</Text>
-          </TouchableOpacity>
+          {/* Edit Profile Button */}
+          <Button
+            title="Edit Profile"
+            onPress={() => router.push("/settings/EditProfile")}
+            variant="secondary"
+            icon="create-outline"
+          />
         </View>
 
         {/* Settings Sections - Grouped Cards */}
@@ -245,21 +234,21 @@ export default function ProfileScreen() {
             </Text>
 
             <View className="flex-row gap-3">
-              <TouchableOpacity
+              <Button
+                title="Cancel"
                 onPress={() => setShowLogoutModal(false)}
-                className="flex-1 bg-gray-700 rounded-xl py-3 items-center"
-              >
-                <Text className="text-gray-200 font-medium">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+                variant="secondary"
+                className="flex-1"
+              />
+              <Button
+                title="Logout"
                 onPress={() => {
                   setShowLogoutModal(false);
                   handleLogout();
                 }}
-                className="flex-1 bg-red-600 rounded-xl py-3 items-center"
-              >
-                <Text className="text-white font-medium">Logout</Text>
-              </TouchableOpacity>
+                variant="danger"
+                className="flex-1"
+              />
             </View>
           </View>
         </View>

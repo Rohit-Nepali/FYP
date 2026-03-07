@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { theme } from "@/src/config/theme";
 import { updateProfile } from "@/src/services/userService";
+import { Button } from "@/src/components/UI/Buttons";
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -151,15 +152,14 @@ export default function EditProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            disabled={saving || !hasChanges}
+          <Button
+            title="Save Changes"
             onPress={handleSave}
-            className={`rounded-xl py-3 items-center ${!hasChanges ? "bg-gray-600" : saving ? "bg-blue-400" : "bg-blue-600"}`}
-          >
-            <Text className={`font-medium ${!hasChanges ? "text-gray-400" : "text-white"}`}>
-              {saving ? "Saving..." : "Save Changes"}
-            </Text>
-          </TouchableOpacity>
+            disabled={!hasChanges}
+            loading={saving}
+            variant="primary"
+            className="w-full"
+          />
         </View>
 
         {/* Danger Zone - Increased margin */}
@@ -168,7 +168,8 @@ export default function EditProfileScreen() {
             Danger Zone
           </Text>
 
-          <TouchableOpacity
+          <Button
+            title="Delete Account"
             onPress={() =>
               Alert.alert(
                 "Confirm Deletion",
@@ -179,16 +180,10 @@ export default function EditProfileScreen() {
                 ]
               )
             }
-            className="flex-row items-center justify-center border border-red-500 py-3 rounded-xl"
-          >
-            <Ionicons
-              name="trash-outline"
-              size={18}
-              color="#EF4444"
-              style={{ marginRight: 6 }}
-            />
-            <Text className="text-red-500 font-medium">Delete Account</Text>
-          </TouchableOpacity>
+            variant="danger-ghost"
+            icon="trash-outline"
+            className="w-full"
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

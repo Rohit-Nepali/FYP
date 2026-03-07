@@ -4,7 +4,6 @@ import {
   Text,
   ActivityIndicator,
   TouchableOpacity,
-  Alert,
   Image,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -15,6 +14,7 @@ import { getProjectById, Project } from "@/src/services/projectService";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
 import { createTask } from "@/src/services/taskService";
+import useAlert from "@/src/hooks/useAlert";
 
 interface ProjectDetail extends Project {
   tasks?: any[];
@@ -48,6 +48,9 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
   const [priorities, setPriorities] = useState<Priority[]>([]);
   const [savingTask, setSavingTask] = useState(false);
 
+  // Use custom alert hook
+  const { showError, showSuccess, AlertComponent } = useAlert();
+
   useEffect(() => {
     if (projectId) {
       loadProjectDetail(projectId);
@@ -62,10 +65,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
       setProject(data);
     } catch (err) {
       console.error("Failed to load project", err);
-      Alert.alert(
-        "Error",
-        err instanceof Error ? err.message : "Failed to load project"
-      );
+      showError(err instanceof Error ? err.message : "Failed to load project");
     } finally {
       setLoading(false);
     }
@@ -293,15 +293,12 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
             setSavingTask(true);
             console.log(" ______Project id is being sent on create task ______", projectId);
             const newTask = await createTask({ ...payload, projectId });
-            Alert.alert("Success", "Task created successfully");
+            showSuccess("Task created successfully");
             resetModal();
             loadProjectDetail(projectId);
             return newTask;
           } catch (err) {
-            Alert.alert(
-              "Error",
-              err instanceof Error ? err.message : "Failed to create task"
-            );
+            showError(err instanceof Error ? err.message : "Failed to create task");
             throw err;
           } finally {
             setSavingTask(false);
@@ -329,6 +326,9 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
         statuses={statuses.map(s => ({ id: s.id, name: s.name }))}
         priorities={priorities.map(p => ({ id: p.id, name: p.name }))}
       />
+
+      {/* Custom Alert */}
+      {AlertComponent}
     </View>
   );
 }

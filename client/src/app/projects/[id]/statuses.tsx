@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +19,7 @@ import {
 } from "@/src/services/statusService";
 import StatusPriorityModal from "@/src/components/UI/StatusPriorityModal";
 import { Button } from "@/src/components/UI/Buttons";
+import useAlert from "@/src/hooks/useAlert";
 
 export default function ProjectStatuses() {
   const router = useRouter();
@@ -33,6 +33,9 @@ export default function ProjectStatuses() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Use custom alert hook
+  const { showError, showSuccess, showConfirm, AlertComponent } = useAlert();
+
   useEffect(() => {
     if (id) loadStatuses();
   }, [id]);
@@ -43,10 +46,7 @@ export default function ProjectStatuses() {
       const data = await getAllStatuses(id as string);
       setStatuses(data);
     } catch (err) {
-      Alert.alert(
-        "Error",
-        err instanceof Error ? err.message : "Failed to load statuses"
-      );
+      showError(err instanceof Error ? err.message : "Failed to load statuses");
       router.back();
     } finally {
       setLoading(false);
@@ -61,14 +61,11 @@ export default function ProjectStatuses() {
     try {
       setSaving(true);
       await createStatus(id as string, data);
-      Alert.alert("Success", "Status created successfully");
+      showSuccess("Status created successfully");
       setModalVisible(false);
       loadStatuses();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to create status"
-      );
+      showError(error instanceof Error ? error.message : "Failed to create status");
     } finally {
       setSaving(false);
     }
@@ -84,46 +81,33 @@ export default function ProjectStatuses() {
     try {
       setSaving(true);
       await updateStatus(id as string, editingStatus.id, data);
-      Alert.alert("Success", "Status updated successfully");
+      showSuccess("Status updated successfully");
       setModalVisible(false);
       setEditingStatus(null);
       loadStatuses();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to update status"
-      );
+      showError(error instanceof Error ? error.message : "Failed to update status");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteStatus = async (statusId: string, statusName: string) => {
-    Alert.alert(
-      "Delete Status",
+    showConfirm(
       `Are you sure you want to delete "${statusName}"?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setDeletingId(statusId);
-              await deleteStatus(id as string, statusId);
-              Alert.alert("Success", "Status deleted successfully");
-              loadStatuses();
-            } catch (err) {
-              Alert.alert(
-                "Error",
-                err instanceof Error ? err.message : "Failed to delete status"
-              );
-            } finally {
-              setDeletingId(null);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          setDeletingId(statusId);
+          await deleteStatus(id as string, statusId);
+          showSuccess("Status deleted successfully");
+          loadStatuses();
+        } catch (err) {
+          showError(err instanceof Error ? err.message : "Failed to delete status");
+        } finally {
+          setDeletingId(null);
+        }
+      },
+      "Delete Status"
     );
   };
 
@@ -246,6 +230,9 @@ export default function ProjectStatuses() {
         title={editingStatus ? "Edit Status" : "Create Status"}
         loading={saving}
       />
+
+      {/* Custom Alert */}
+      {AlertComponent}
     </SafeAreaView>
   );
 }

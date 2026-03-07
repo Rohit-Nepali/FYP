@@ -17,6 +17,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Task, getAllTasks } from "../services/taskService";
 import { getAllProjects, Project, createProject } from "../services/projectService";
 import { Button } from "@/src/components/UI/Buttons";
+import TaskModal from "@/src/components/UI/TaskModal";
+import { getAllStatuses, Status } from "@/src/services/statusService";
+import { getAllPriorities, Priority } from "@/src/services/priorityService";
+import { createTask } from "@/src/services/taskService";
 
 export default function Index() {
   const router = useRouter();
@@ -39,8 +43,16 @@ export default function Index() {
   const [projectDescription, setProjectDescription] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Task creation modal state
+  const [taskModalVisible, setTaskModalVisible] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [statuses, setStatuses] = useState<Status[]>([]);
+  const [priorities, setPriorities] = useState<Priority[]>([]);
+  const [loadingTaskData, setLoadingTaskData] = useState(false);
+
   useEffect(() => {
     loadProjects();
+    loadTaskData();
   }, []);
 
   useEffect(() => {
@@ -74,6 +86,22 @@ export default function Index() {
       );
     } finally {
       setLoadingTasks(false);
+    }
+  };
+
+  const loadTaskData = async () => {
+    try {
+      setLoadingTaskData(true);
+      const [statusesData, prioritiesData] = await Promise.all([
+        getAllStatuses(),
+        getAllPriorities(),
+      ]);
+      setStatuses(statusesData);
+      setPriorities(prioritiesData);
+    } catch (error) {
+      console.error("Failed to load task data:", error);
+    } finally {
+      setLoadingTaskData(false);
     }
   };
 
@@ -271,6 +299,22 @@ export default function Index() {
                   <Text className="text-gray-500 text-sm mt-1 text-center px-6">
                     Create a new task to get started.
                   </Text>
+                  <Button
+                    title="Create Task"
+                    onPress={() => {
+                      // Auto-select first project if one exists, otherwise leave empty for standalone task
+                      if (projects.length > 0) {
+                        setSelectedProjectId(projects[0].id);
+                      } else {
+                        setSelectedProjectId("");
+                      }
+                      setTaskModalVisible(true);
+                    }}
+                    variant="primary"
+                    size="small"
+                    className="mt-4"
+                    icon="add-circle"
+                  />
                 </View>
               ) : (
                 tasks.slice(0, 4).map((task, index) => (
@@ -327,15 +371,35 @@ export default function Index() {
 
             {/* See All tasks button linking to project page */}
             {!loadingTasks && !taskError && tasks.length > 0 && (
-              <TouchableOpacity
-                onPress={() => router.push("/tasks")}
-                className="mt-3 w-full flex-row items-center justify-center py-3 px-4 rounded-xl bg-purple-700"
-              >
-                <Text className="text-white text-sm font-semibold">
-                  Manage All Tasks
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color="white" className="pl-2" />
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  onPress={() => {
+                    // Auto-select first project if one exists, otherwise leave empty for standalone task
+                    if (projects.length > 0) {
+                      setSelectedProjectId(projects[0].id);
+                    } else {
+                      setSelectedProjectId("");
+                    }
+                    setTaskModalVisible(true);
+                  }}
+                  className="mt-3 w-full flex-row items-center justify-center py-3 px-4 rounded-xl bg-purple-700"
+                >
+                  <Text className="text-white text-sm font-semibold">
+                    Create New Task
+                  </Text>
+                  <Ionicons name="add-circle" size={18} color="white" className="pl-2" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.push("/tasks")}
+                  className="mt-2 w-full flex-row items-center justify-center py-2 px-4 rounded-xl bg-gray-700"
+                >
+                  <Text className="text-white text-sm font-semibold">
+                    Manage All Tasks
+                  </Text>
+                  <Ionicons name="chevron-forward" size={18} color="white" className="pl-2" />
+                </TouchableOpacity>
+              </>
             )}
           </View>
         </View>
@@ -394,6 +458,27 @@ export default function Index() {
           </View>
         </View>
       </Modal>
+
+      {/* Task Creation Modal */}
+      <TaskModal
+        visible={taskModalVisible}
+        onClose={() => setTaskModalVisible(false)}
+        onSave={async (payload) => {
+          // Only include projectId if it's not empty
+          const taskData = {
+            ...payload,
+            ...(selectedProjectId ? { projectId: selectedProjectId } : {})
+          };
+          const task = await createTask(taskData);
+          await loadTasks();
+          return task;
+        }}
+        statuses={statuses}
+        setStatuses={setStatuses}
+        priorities={priorities}
+        setPriorities={setPriorities}
+        projectId={selectedProjectId}
+      />
     </SafeAreaView >
   );
 }

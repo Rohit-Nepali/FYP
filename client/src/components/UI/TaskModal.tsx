@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   ScrollView,
   Image,
@@ -19,6 +18,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Platform } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Task, uploadAttachments } from "@/src/services/taskService";
+import useAlert from "@/src/hooks/useAlert";
 
 interface InitialValues {
   title?: string;
@@ -91,6 +91,9 @@ export default function TaskModal({
   const [newPriorityName, setNewPriorityName] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
+  // Use custom alert hook
+  const { showError, showSuccess, showValidationError, AlertComponent } = useAlert();
+
   useEffect(() => {
     setTitle(initialValues?.title || "");
     setDescription(initialValues?.description || "");
@@ -124,21 +127,21 @@ export default function TaskModal({
         setAttachments((prev) => [...prev, ...files]);
       }
     } catch (err) {
-      Alert.alert("Error", "Failed to pick file");
+      showError("Failed to pick file");
     }
   };
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      Alert.alert("Validation", "Please enter a task title");
+      showValidationError("Please enter a task title");
       return;
     }
     if (!statusId) {
-      Alert.alert("Validation", "Please select a status");
+      showValidationError("Please select a status");
       return;
     }
     if (!priorityId) {
-      Alert.alert("Validation", "Please select a priority");
+      showValidationError("Please select a priority");
       return;
     }
 
@@ -158,9 +161,9 @@ export default function TaskModal({
       }
 
       onClose();
-      Alert.alert("Success", "Task created successfully");
+      showSuccess("Task created successfully");
     } catch (err) {
-      Alert.alert("Error", err instanceof Error ? err.message : String(err));
+      showError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -168,11 +171,11 @@ export default function TaskModal({
 
   const handleCreateStatus = async () => {
     if (!newStatusName.trim()) {
-      Alert.alert("Error", "Status name is required");
+      showValidationError("Status name is required");
       return;
     }
     if (!projectId) {
-      Alert.alert("Error", "Project ID is required");
+      showError("Project ID is required");
       return;
     }
     try {
@@ -181,19 +184,19 @@ export default function TaskModal({
       setStatusId(newStatus.id);
       setStatusModalVisible(false);
       setNewStatusName("");
-      Alert.alert("Success", "Status added!");
+      showSuccess("Status added!");
     } catch (err) {
-      Alert.alert("Error", "Failed to create status");
+      showError("Failed to create status");
     }
   };
 
   const handleCreatePriority = async () => {
     if (!newPriorityName.trim()) {
-      Alert.alert("Error", "Priority name is required");
+      showValidationError("Priority name is required");
       return;
     }
     if (!projectId) {
-      Alert.alert("Error", "Project ID is required");
+      showError("Project ID is required");
       return;
     }
     try {
@@ -202,11 +205,11 @@ export default function TaskModal({
       setPriorityId(newPriority.id);
       setPriorityModalVisible(false);
       setNewPriorityName("");
-      Alert.alert("Success", "Priority added!");
+      showSuccess("Priority added!");
     } catch (err) {
-      Alert.alert("Error", "Failed to create priority");
+      showError("Failed to create priority");
     }
-  };
+  };;
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
@@ -528,6 +531,9 @@ export default function TaskModal({
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Custom Alert */}
+      {AlertComponent}
     </Modal>
   );
 }

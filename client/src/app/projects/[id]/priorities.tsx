@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +19,7 @@ import {
 } from "@/src/services/priorityService";
 import StatusPriorityModal from "@/src/components/UI/StatusPriorityModal";
 import { Button } from "@/src/components/UI/Buttons";
+import useAlert from "@/src/hooks/useAlert";
 
 export default function ProjectPriorities() {
   const router = useRouter();
@@ -33,6 +33,9 @@ export default function ProjectPriorities() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Use custom alert hook
+  const { showError, showSuccess, showConfirm, AlertComponent } = useAlert();
+
   useEffect(() => {
     if (id) loadPriorities();
   }, [id]);
@@ -43,10 +46,7 @@ export default function ProjectPriorities() {
       const data = await getAllPriorities(id as string);
       setPriorities(data);
     } catch (err) {
-      Alert.alert(
-        "Error",
-        err instanceof Error ? err.message : "Failed to load priorities"
-      );
+      showError(err instanceof Error ? err.message : "Failed to load priorities");
       router.back();
     } finally {
       setLoading(false);
@@ -61,14 +61,11 @@ export default function ProjectPriorities() {
     try {
       setSaving(true);
       await createPriority(id as string, data);
-      Alert.alert("Success", "Priority created successfully");
+      showSuccess("Priority created successfully");
       setModalVisible(false);
       loadPriorities();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to create priority"
-      );
+      showError(error instanceof Error ? error.message : "Failed to create priority");
     } finally {
       setSaving(false);
     }
@@ -84,46 +81,33 @@ export default function ProjectPriorities() {
     try {
       setSaving(true);
       await updatePriority(id as string, editingPriority.id, data);
-      Alert.alert("Success", "Priority updated successfully");
+      showSuccess("Priority updated successfully");
       setModalVisible(false);
       setEditingPriority(null);
       loadPriorities();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to update priority"
-      );
+      showError(error instanceof Error ? error.message : "Failed to update priority");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeletePriority = async (priorityId: string, priorityName: string) => {
-    Alert.alert(
-      "Delete Priority",
+    showConfirm(
       `Are you sure you want to delete "${priorityName}"?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setDeletingId(priorityId);
-              await deletePriority(id as string, priorityId);
-              Alert.alert("Success", "Priority deleted successfully");
-              loadPriorities();
-            } catch (err) {
-              Alert.alert(
-                "Error",
-                err instanceof Error ? err.message : "Failed to delete priority"
-              );
-            } finally {
-              setDeletingId(null);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          setDeletingId(priorityId);
+          await deletePriority(id as string, priorityId);
+          showSuccess("Priority deleted successfully");
+          loadPriorities();
+        } catch (err) {
+          showError(err instanceof Error ? err.message : "Failed to delete priority");
+        } finally {
+          setDeletingId(null);
+        }
+      },
+      "Delete Priority"
     );
   };
 
@@ -246,6 +230,9 @@ export default function ProjectPriorities() {
         title={editingPriority ? "Edit Priority" : "Create Priority"}
         loading={saving}
       />
+
+      {/* Custom Alert */}
+      {AlertComponent}
     </SafeAreaView>
   );
 }

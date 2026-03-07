@@ -6,13 +6,13 @@ import {
     TouchableOpacity,
     TextInput,
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { inviteProjectMember } from "@/src/services/projectService";
+import useAlert from "@/src/hooks/useAlert";
 
 interface Props {
     visible: boolean;
@@ -30,34 +30,31 @@ export default function InviteMemberModal({
     const [email, setEmail] = useState("");
     const [inviting, setInviting] = useState(false);
 
+    // Use custom alert hook
+    const { showError, showSuccess, showValidationError, AlertComponent } = useAlert();
+
     const handleInvite = async () => {
         if (!email.trim()) {
-            Alert.alert("Validation Error", "Please enter an email address.");
+            showValidationError("Please enter an email address.");
             return;
         }
 
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            Alert.alert("Validation Error", "Please enter a valid email address.");
+            showValidationError("Please enter a valid email address.");
             return;
         }
 
         try {
             setInviting(true);
             await inviteProjectMember(projectId, email, "member");
-            Alert.alert(
-                "Success",
-                "Invitation sent successfully! If the user exists, they've been added. Otherwise, an invite email has been sent."
-            );
+            showSuccess("Invitation sent successfully! If the user exists, they've been added. Otherwise, an invite email has been sent.");
             setEmail("");
             onSuccess?.();
             onClose();
         } catch (error) {
-            Alert.alert(
-                "Error",
-                error instanceof Error ? error.message : "Failed to send invitation"
-            );
+            showError(error instanceof Error ? error.message : "Failed to send invitation");
         } finally {
             setInviting(false);
         }
@@ -165,4 +162,5 @@ export default function InviteMemberModal({
             </View>
         </Modal>
     );
+    { AlertComponent }
 }

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Animated,
@@ -17,6 +16,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { addProjectMembers, searchUsers, UserLite } from "@/src/services/userService";
+import useAlert from "@/src/hooks/useAlert";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -45,6 +45,9 @@ export default function AddMembersModal({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState(false);
 
+  // Use custom alert hook
+  const { showError, showSuccess, showValidationError, AlertComponent } = useAlert();
+
   // Animation values
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const sheetHeight = useRef(new Animated.Value(INITIAL_SHEET_HEIGHT)).current;
@@ -71,10 +74,7 @@ export default function AddMembersModal({
         }
       } catch (err) {
         console.error("Failed to search users", err);
-        Alert.alert(
-          "Error",
-          err instanceof Error ? err.message : "Failed to load users"
-        );
+        showError(err instanceof Error ? err.message : "Failed to load users");
       } finally {
         setSearchLoading(false);
       }
@@ -157,7 +157,7 @@ export default function AddMembersModal({
 
   const handleAddMembers = async () => {
     if (selectedIds.size === 0) {
-      Alert.alert("Nothing selected", "Please select at least one user.");
+      showValidationError("Please select at least one user.");
       return;
     }
 
@@ -165,14 +165,11 @@ export default function AddMembersModal({
       setAdding(true);
       const userIds = Array.from(selectedIds);
       await addProjectMembers(projectId, userIds);
-      Alert.alert("Success", "Members added to the project");
+      showSuccess("Members added to the project");
       onSuccess?.();
       onClose();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to add members"
-      );
+      showError(error instanceof Error ? error.message : "Failed to add members");
     } finally {
       setAdding(false);
     }
@@ -379,5 +376,8 @@ export default function AddMembersModal({
         </Animated.View>
       </View>
     </Modal>
-  );
+    );
+
+  {/* Custom Alert */}
+  {AlertComponent}
 }

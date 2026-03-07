@@ -7,7 +7,6 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
@@ -22,6 +21,7 @@ import { Comment, createComment, getCommentsByTask } from "../../services/commen
 import { Status } from "../../services/statusService";
 import { Priority } from "../../services/priorityService";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import useAlert from "@/src/hooks/useAlert";
 
 interface Props {
   visible: boolean;
@@ -50,6 +50,9 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingPriority, setUpdatingPriority] = useState(false);
+
+  // Use custom alert hook
+  const { showError, AlertComponent } = useAlert();
 
   const insets = useSafeAreaInsets();
   const keyboardVerticalOffset = Platform.OS === "ios" ? insets.bottom + 16 : (StatusBar.currentHeight ?? 0) + 16;
@@ -99,7 +102,7 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
       }
       setShowStatusDropdown(false);
     } catch (err) {
-      Alert.alert("Error", "Failed to update status");
+      showError("Failed to update status");
     } finally {
       setUpdatingStatus(false);
     }
@@ -116,7 +119,7 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
       }
       setShowPriorityDropdown(false);
     } catch (err) {
-      Alert.alert("Error", "Failed to update priority");
+      showError("Failed to update priority");
     } finally {
       setUpdatingPriority(false);
     }
@@ -135,10 +138,7 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
       const commentsData = await getCommentsByTask(taskId);
       setComments(commentsData);
     } catch (err) {
-      Alert.alert(
-        "Error",
-        err instanceof Error ? err.message : "Failed to post comment"
-      );
+      showError(err instanceof Error ? err.message : "Failed to post comment");
     } finally {
       setPostingComment(false);
     }
@@ -165,7 +165,7 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
       // Reload to ensure consistency
       loadTaskData();
     } catch (err) {
-      Alert.alert("Error", "Failed to update assignee");
+      showError("Failed to update assignee");
       loadTaskData(); // Revert on error
     }
   };
@@ -535,5 +535,8 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
         </KeyboardAvoidingView>
       </View>
     </Modal>
-  );
+    );
+
+  {/* Custom Alert */}
+  {AlertComponent}
 }

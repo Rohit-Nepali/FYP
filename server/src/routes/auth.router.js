@@ -21,6 +21,8 @@ import {
   forgotPasswordSchema,
   verifyResetTokenSchema,
   resetPasswordSchema,
+  googleSignUpSchema,
+  googleSignInSchema,
 } from "../validator/auth.validator.js";
 
 const authRouter = Router();
@@ -50,10 +52,18 @@ authRouter.post(
 );
 
 // Google Sign-Up route (public)
-authRouter.post("/google-signup", googleSignUpController);
+authRouter.post(
+  "/google-signup",
+  validate(googleSignUpSchema),
+  googleSignUpController
+);
 
 // Google Sign-In route (public) - for existing users
-authRouter.post("/google-signin", googleSignInController);
+authRouter.post(
+  "/google-signin",
+  validate(googleSignInSchema),
+  googleSignInController
+);
 
 // Protected routes
 authRouter.post("/logout", authenticateToken, logoutController);

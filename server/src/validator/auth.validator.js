@@ -27,3 +27,19 @@ export const resetPasswordSchema = joi.object({
   token: joi.string().required(),
   password: joi.string().min(6).required(),
 });
+
+export const googleSignUpSchema = joi.object({
+  googleId: joi.string().required(),
+  email: joi.string().email().lowercase().trim().required(),
+  name: joi.string().min(2).max(100).trim().required(),
+  profileImage: joi.string().uri().allow(null, ""),
+  accessToken: joi.string().required(),
+  refreshToken: joi.string().allow(null, ""),
+});
+
+export const googleSignInSchema = joi.object({
+  googleId: joi.string().required(),
+  email: joi.string().email().lowercase().trim().required(),
+  accessToken: joi.string().required(),
+  refreshToken: joi.string().allow(null, ""),
+});

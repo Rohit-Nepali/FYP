@@ -7,25 +7,18 @@ export const taskService = {
   create: async (taskData, userId) => {
     const { title, description, statusId, priorityId, dueDate, projectId, assigneeId } = taskData;
 
-    // Get or create default status and priority if not provided
+    // Default status and priority logic
     let finalStatusId = statusId;
     let finalPriorityId = priorityId;
 
     if (!finalStatusId) {
-      // Get first status for project, or create a default one
-      let defaultStatus = await prisma.status.findFirst({
+      // Get first status for project (should be "To Do" by default)
+      const defaultStatus = await prisma.status.findFirst({
         where: { projectId },
         orderBy: { order: "asc" },
       });
-
       if (!defaultStatus) {
-        defaultStatus = await prisma.status.create({
-          data: {
-            name: "TODO",
-            projectId,
-            order: 0,
-          },
-        });
+        throw new ApiError("No status found for this project", HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
       finalStatusId = defaultStatus.id;
     } else {
@@ -39,20 +32,13 @@ export const taskService = {
     }
 
     if (!finalPriorityId) {
-      // Get first priority for project, or create a default one
-      let defaultPriority = await prisma.priority.findFirst({
+      // Get first priority for project (should be "Low" by default)
+      const defaultPriority = await prisma.priority.findFirst({
         where: { projectId },
         orderBy: { order: "asc" },
       });
-
       if (!defaultPriority) {
-        defaultPriority = await prisma.priority.create({
-          data: {
-            name: "MEDIUM",
-            projectId,
-            order: 0,
-          },
-        });
+        throw new ApiError("No priority found for this project", HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
       finalPriorityId = defaultPriority.id;
     } else {

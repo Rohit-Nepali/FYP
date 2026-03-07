@@ -442,4 +442,189 @@ export const authService = {
       user,
     };
   },
+
+  /**
+   * Sign up with Google
+   * @param {Object} googleData - Google user data
+   * @param {string} googleData.googleId - Google user ID
+   * @param {string} googleData.email - User's email from Google
+   * @param {string} googleData.name - User's name from Google
+   * @param {string} googleData.profileImage - User's profile image from Google
+   * @param {string} googleData.accessToken - Google access token
+   * @param {string} googleData.refreshToken - Google refresh token
+   * @param {string} ipAddress - IP address of the request
+   * @param {string} deviceInfo - Device information from User-Agent header
+   * @returns {Promise<Object>} User data with tokens
+   */
+  signUpWithGoogle: async (googleData, ipAddress, deviceInfo) => {
+    const { googleId, email, name, profileImage, accessToken, refreshToken } = googleData;
+
+    // Check if user already exists by email
+    let user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    // If user exists, check if they signed up with Google
+    if (user) {
+      if (!user.googleId) {
+        // User exists but didn't sign up with Google - link the account
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId,
+            profileImage: profileImage || user.profileImage,
+            googleRefreshToken: refreshToken,
+          },
+        });
+      }
+      // If user already has googleId, just return them (they can sign in)
+    } else {
+      // Create new user with Google
+      user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          googleId,
+          profileImage,
+          googleRefreshToken: refreshToken,
+          // No password needed for Google users
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          profileImage: true,
+          createdAt: true,
+        },
+      });
+    }
+
+    // Generate tokens
+    const accessTokenJWT = generateAccessToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    const refreshTokenJWT = generateRefreshToken({
+      id: user.id,
+      email: user.email,
+    });
+
+    // Calculate expiration date (7 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    // Create session
+    await prisma.userSession.create({
+      data: {
+        userId: user.id,
+        refreshToken: refreshTokenJWT,
+        ipAddress,
+        deviceInfo,
+        expiresAt,
+      },
+    });
+
+    return {
+      user,
+      accessToken: accessTokenJWT,
+      refreshToken: refreshTokenJWT,
+    };
+  },
+
+  /**
+   * Sign in with Google (for existing Google users only)
+   * @param {Object} googleData - Google user data
+   * @param {string} googleData.googleId - Google user ID
+   * @param {string} googleData.email - User's email from Google
+   * @param {string} googleData.accessToken - Google access token
+   * @param {string} googleData.refreshToken - Google refresh token
+   * @param {string} ipAddress - IP address of the request
+   * @param {string} deviceInfo - Device information from User-Agent header
+   * @returns {Promise<Object>} User data with tokens
+   */
+  signInWithGoogle: async (googleData, ipAddress, deviceInfo) => {
+    const { googleId, email, accessToken, refreshToken } = googleData;
+
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    // If user doesn't exist, throw error (user should sign up first)
+    if (!user) {
+      throw new ApiError(
+        "No account found with this Google email. Please sign up first.",
+        HTTP_STATUS.NOT_FOUND
+      );
+    }
+
+    // Check if user has Google ID linked
+    if (!user.googleId) {
+      throw new ApiError(
+        "This email is already registered. Please sign in with email and password, or use a different Google account.",
+        HTTP_STATUS.CONFLICT
+      );
+    }
+
+    // Verify the Google ID matches
+    if (user.googleId !== googleId) {
+      throw new ApiError(
+        "Google account mismatch. Please try again.",
+        HTTP_STATUS.UNAUTHORIZED
+      );
+    }
+
+    // Update refresh token if provided
+    if (refreshToken) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleRefreshToken: refreshToken,
+        },
+      });
+    }
+
+    // Generate tokens
+    const accessTokenJWT = generateAccessToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    const refreshTokenJWT = generateRefreshToken({
+      id: user.id,
+      email: user.email,
+    });
+
+    // Calculate expiration date (7 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    // Create session
+    await prisma.userSession.create({
+      data: {
+        userId: user.id,
+        refreshToken: refreshTokenJWT,
+        ipAddress,
+        deviceInfo,
+        expiresAt,
+      },
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        profileImage: user.profileImage,
+        createdAt: user.createdAt,
+      },
+      accessToken: accessTokenJWT,
+      refreshToken: refreshTokenJWT,
+    };
+  },
 };

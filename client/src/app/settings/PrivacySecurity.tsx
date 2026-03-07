@@ -20,7 +20,7 @@ export default function PrivacySecurityScreen() {
         </View>
 
         <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
-          <View className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
+          <View className="bg-gray-800 rounded-xl border border-gray-700 p-6">
             <Text className="text-gray-100 text-lg font-semibold mb-3">
               Privacy Controls
             </Text>
@@ -29,6 +29,14 @@ export default function PrivacySecurityScreen() {
               className="flex-row justify-between items-center mb-3"
             >
               <Text className="text-gray-300">Manage Data Sharing</Text>
+              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push("/settings/CalendarSettings")}
+              className="flex-row justify-between items-center mb-3"
+            >
+              <Text className="text-gray-300">Google Calendar Integration</Text>
               <Ionicons name="chevron-forward" size={20} color="#6B7280" />
             </TouchableOpacity>
 

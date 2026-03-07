@@ -10,6 +10,8 @@ import {
   forgotPasswordController,
   verifyResetTokenController,
   resetPasswordController,
+  googleSignUpController,
+  googleSignInController,
 } from "../controllers/auth.controller.js";
 import { validate } from "../middleware/validation.middleware.js";
 import {
@@ -46,6 +48,12 @@ authRouter.post(
   validate(resetPasswordSchema),
   resetPasswordController
 );
+
+// Google Sign-Up route (public)
+authRouter.post("/google-signup", googleSignUpController);
+
+// Google Sign-In route (public) - for existing users
+authRouter.post("/google-signin", googleSignInController);
 
 // Protected routes
 authRouter.post("/logout", authenticateToken, logoutController);

@@ -18,6 +18,7 @@ import { PrimaryButton } from "@/src/components/UI/Buttons";
 import { CustomAlert } from "@/src/components/UI/CustomAlert";
 import { useLoginForm } from "../../hooks/useLoginForm";
 import { handleAuthError, getAuthErrorMessage } from "../../utils/errorHandler";
+import { signInWithGoogle } from "../../services/googleAuthService";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -30,6 +31,9 @@ export default function LoginScreen() {
   const [alertType, setAlertType] = useState<
     "default" | "success" | "error" | "warning" | "info"
   >("default");
+
+  // Google Sign-In loading state
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Use our custom hook for form state management
   const {
@@ -141,6 +145,20 @@ export default function LoginScreen() {
     router.push("/signup");
   }, [router]);
 
+  // Handle Google Sign-In
+  const handleGoogleSignIn = useCallback(async () => {
+    setIsGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      router.replace("/");
+    } catch (error: any) {
+      const errorMessage = error.message || "Failed to sign in with Google";
+      showAlert("Google Sign-In Failed", errorMessage, "error");
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }, [router]);
+
   // Memoized computed values
   const isSubmitDisabled = useMemo(
     () => isAuthChecking || isSubmitting,
@@ -229,17 +247,12 @@ export default function LoginScreen() {
 
             {/* Social Login */}
             <PrimaryButton
-              title="Continue with Google"
-              onPress={() => {
-                // Add Google login logic here
-                showAlert(
-                  "Coming Soon",
-                  "Google login will be available soon!",
-                  "info"
-                );
-              }}
+              title={isGoogleLoading ? "Signing in with Google..." : "Continue with Google"}
+              onPress={handleGoogleSignIn}
               variant="secondary"
               icon={googleIcon}
+              loading={isGoogleLoading}
+              disabled={isGoogleLoading}
             />
           </View>
 

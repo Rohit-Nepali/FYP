@@ -8,6 +8,7 @@ import { ActivityIndicator, View } from "react-native";
 import { useEffect } from "react";
 import { NotificationProvider } from "../providers/NotificationProvider";
 import { registerBackgroundHandler } from "../firebase/backgroundMessaging";
+import { GoogleAuthProvider } from '../providers/GoogleAuthProvider';
 
 export default function RootLayout() {
 
@@ -17,11 +18,13 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <NotificationProvider>
-          <AppLayout />
-        </NotificationProvider>
-      </AuthProvider>
+      <GoogleAuthProvider>
+        <AuthProvider>
+          <NotificationProvider>
+            <AppLayout />
+          </NotificationProvider>
+        </AuthProvider>
+      </GoogleAuthProvider>
     </SafeAreaProvider>
   );
 }

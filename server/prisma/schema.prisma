@@ -22,13 +22,18 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   name         String
-  passwordHash String
+  passwordHash String?
   role         userRole @default(USER)
   profileImage String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions           UserSession[]
+  // Google Sign-In fields
+  googleId            String?
+  googleRefreshToken String?
+  calendarConnected   Boolean  @default(false)
+
+  sessions            UserSession[]
   passwordResets     PasswordReset[]
   projectsOwned      Project[]       @relation("ownerProjects")
   projectMemberships ProjectMember[]
@@ -236,4 +241,15 @@ model Attachment {
 
   @@index([taskId])
   @@index([projectId])
+}
+
+// Task-Calendar Link for Google Calendar sync
+model TaskCalendarLink {
+  id              String   @id @default(cuid())
+  taskId          String   @unique
+  calendarEventId String   // Google Calendar event ID
+  lastSyncedAt    DateTime @default(now())
+  syncDirection   String   @default("both") // "to_google", "from_google", "both"
+
+  @@index([taskId])
 }

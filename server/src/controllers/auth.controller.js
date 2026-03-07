@@ -182,3 +182,49 @@ export const resetPasswordController = async (req, res, next) => {
     next(error);
   }
 };
+
+export const googleSignUpController = async (req, res, next) => {
+  try {
+    const { googleId, email, name, profileImage, accessToken, refreshToken } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const deviceInfo = req.get("User-Agent");
+
+    const result = await authService.signUpWithGoogle(
+      { googleId, email, name, profileImage, accessToken, refreshToken },
+      ipAddress,
+      deviceInfo
+    );
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.CREATED,
+      "Signed up with Google successfully",
+      result
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const googleSignInController = async (req, res, next) => {
+  try {
+    const { googleId, email, accessToken, refreshToken } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const deviceInfo = req.get("User-Agent");
+
+    const result = await authService.signInWithGoogle(
+      { googleId, email, accessToken, refreshToken },
+      ipAddress,
+      deviceInfo
+    );
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Signed in with Google successfully",
+      result
+    );
+  } catch (error) {
+    next(error);
+  }
+};

@@ -7,6 +7,7 @@ import priorityRouter from "./priority.router.js";
 import commentRouter from "./comment.router.js";
 import userRouter from "./user.router.js";
 import activityRouter from "./activity.router.js";
+import calendarRouter from "./calendar.router.js";
 
 const router = Router();
 
@@ -22,5 +23,7 @@ router.use("/api/priorities", priorityRouter);
 router.use("/api/comments", commentRouter);
 router.use("/api/users", userRouter);
 router.use("/api", activityRouter);
+
+router.use("/api/calendar", calendarRouter);
 
 export default router;

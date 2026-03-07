@@ -1,8 +1,6 @@
-import axios from "axios";
-import { config } from "../config/environment";
-import { getStoredTokens } from "./authService";
+import { makeRequest } from "./apiClient";
 
-const API_BASE_URL = config.API_BASE_URL;
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface Status {
   id: string;
@@ -26,71 +24,27 @@ export interface UpdateStatusData {
   order?: number;
 }
 
-const getAuthHeaders = async () => {
-  const tokens = await getStoredTokens();
-  if (!tokens?.accessToken) {
-    throw new Error("No access token available");
-  }
-  return {
-    Authorization: `Bearer ${tokens.accessToken}`,
-  };
-};
+// ─── Public API Functions ────────────────────────────────────────────────────
 
 export const createStatus = async (projectId: string, data: CreateStatusData): Promise<Status> => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE_URL}/status/projects/${projectId}/statuses`, data, {
-      headers,
-    });
-    return response.data.data;
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Failed to create status"
-      );
-    }
-    throw error;
-  }
+  return makeRequest<Status>(`/status/projects/${projectId}/statuses`, {
+    method: "POST",
+    data,
+  });
 };
 
 export const getAllStatuses = async (projectId?: string): Promise<Status[]> => {
-  try {
-    const headers = await getAuthHeaders();
-    let url: string;
+  const url = projectId
+    ? `/status/projects/${projectId}/statuses`
+    : `/status`;
 
-    if (projectId) {
-      url = `${API_BASE_URL}/status/projects/${projectId}/statuses`;
-    } else {
-      url = `${API_BASE_URL}/status`;
-    }
-
-    const response = await axios.get(url, {
-      headers,
-    });
-    return response.data.data || [];
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Failed to fetch statuses"
-      );
-    }
-    throw error;
-  }
+  return makeRequest<Status[]>(url, { method: "GET" });
 };
 
 export const getStatusById = async (projectId: string, id: string): Promise<Status> => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE_URL}/status/projects/${projectId}/statuses/${id}`, {
-      headers,
-    });
-    return response.data.data;
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(error.response.data?.message || "Failed to fetch status");
-    }
-    throw error;
-  }
+  return makeRequest<Status>(`/status/projects/${projectId}/statuses/${id}`, {
+    method: "GET",
+  });
 };
 
 export const updateStatus = async (
@@ -98,34 +52,14 @@ export const updateStatus = async (
   id: string,
   data: UpdateStatusData
 ): Promise<Status> => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await axios.put(`${API_BASE_URL}/status/projects/${projectId}/statuses/${id}`, data, {
-      headers,
-    });
-    return response.data.data;
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Failed to update status"
-      );
-    }
-    throw error;
-  }
+  return makeRequest<Status>(`/status/projects/${projectId}/statuses/${id}`, {
+    method: "PUT",
+    data,
+  });
 };
 
 export const deleteStatus = async (projectId: string, id: string): Promise<void> => {
-  try {
-    const headers = await getAuthHeaders();
-    await axios.delete(`${API_BASE_URL}/status/projects/${projectId}/statuses/${id}`, {
-      headers,
-    });
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Failed to delete status"
-      );
-    }
-    throw error;
-  }
+  return makeRequest<void>(`/status/projects/${projectId}/statuses/${id}`, {
+    method: "DELETE",
+  });
 };

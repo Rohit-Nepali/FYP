@@ -1,7 +1,5 @@
 import * as AuthSession from 'expo-auth-session';
-import axios from 'axios';
-import { config } from '../config/environment';
-import { getStoredTokens } from './authService';
+import { makeRequest } from './apiClient';
 
 // Configure redirect URI
 const redirectUri = AuthSession.makeRedirectUri({
@@ -11,6 +9,8 @@ const redirectUri = AuthSession.makeRedirectUri({
 
 // Google Calendar OAuth configuration - Replace with your client IDs
 const GOOGLE_CLIENT_ID = '887155577122-3n3mra5upom1c7tcr7jkmb9gnm2isejj.apps.googleusercontent.com';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface CalendarEvent {
   id: string;
@@ -30,6 +30,8 @@ export interface CalendarConnectionStatus {
   connected: boolean;
   email?: string;
 }
+
+// ─── Public API Functions ────────────────────────────────────────────────────
 
 /**
  * Start the Google Calendar OAuth flow
@@ -74,23 +76,14 @@ export const connectGoogleCalendar = async (): Promise<{
     throw new Error('No access token received');
   }
 
-  // Send tokens to backend to store
-  const tokens = await getStoredTokens();
-  const API_BASE_URL = config.API_BASE_URL;
-  
-  await axios.post(
-    `${API_BASE_URL}/calendar/connect`,
-    {
+  // Send tokens to backend to store (uses shared apiClient with auth interceptor)
+  await makeRequest('/calendar/connect', {
+    method: 'POST',
+    data: {
       accessToken: access_token,
       refreshToken: refresh_token,
     },
-    {
-      headers: {
-        Authorization: `Bearer ${tokens.accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
+  });
 
   return {
     accessToken: access_token,
@@ -102,18 +95,9 @@ export const connectGoogleCalendar = async (): Promise<{
  * Disconnect Google Calendar
  */
 export const disconnectGoogleCalendar = async (): Promise<void> => {
-  const tokens = await getStoredTokens();
-  const API_BASE_URL = config.API_BASE_URL;
-
-  await axios.post(
-    `${API_BASE_URL}/calendar/disconnect`,
-    {},
-    {
-      headers: {
-        Authorization: `Bearer ${tokens.accessToken}`,
-      },
-    }
-  );
+  await makeRequest('/calendar/disconnect', {
+    method: 'POST',
+  });
 };
 
 /**
@@ -121,16 +105,9 @@ export const disconnectGoogleCalendar = async (): Promise<void> => {
  */
 export const getCalendarConnectionStatus = async (): Promise<CalendarConnectionStatus> => {
   try {
-    const tokens = await getStoredTokens();
-    const API_BASE_URL = config.API_BASE_URL;
-
-    const response = await axios.get(`${API_BASE_URL}/calendar/status`, {
-      headers: {
-        Authorization: `Bearer ${tokens.accessToken}`,
-      },
+    return await makeRequest<CalendarConnectionStatus>('/calendar/status', {
+      method: 'GET',
     });
-
-    return response.data.data;
   } catch {
     return { connected: false };
   }
@@ -146,57 +123,31 @@ export const syncTaskToCalendar = async (taskId: string, eventData: {
   endDateTime: string;
   timeZone?: string;
 }): Promise<CalendarEvent> => {
-  const tokens = await getStoredTokens();
-  const API_BASE_URL = config.API_BASE_URL;
-
-  const response = await axios.post(
-    `${API_BASE_URL}/calendar/sync`,
-    {
+  return makeRequest<CalendarEvent>('/calendar/sync', {
+    method: 'POST',
+    data: {
       taskId,
       ...eventData,
     },
-    {
-      headers: {
-        Authorization: `Bearer ${tokens.accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
-
-  return response.data.data;
+  });
 };
 
 /**
  * Get calendar events
  */
 export const getCalendarEvents = async (timeMin?: string, timeMax?: string): Promise<CalendarEvent[]> => {
-  const tokens = await getStoredTokens();
-  const API_BASE_URL = config.API_BASE_URL;
-
-  const response = await axios.get(`${API_BASE_URL}/calendar/events`, {
-    params: {
-      timeMin,
-      timeMax,
-    },
-    headers: {
-      Authorization: `Bearer ${tokens.accessToken}`,
-    },
+  return makeRequest<CalendarEvent[]>('/calendar/events', {
+    method: 'GET',
+    params: { timeMin, timeMax },
   });
-
-  return response.data.data;
 };
 
 /**
  * Delete a calendar event
  */
 export const deleteCalendarEvent = async (eventId: string): Promise<void> => {
-  const tokens = await getStoredTokens();
-  const API_BASE_URL = config.API_BASE_URL;
-
-  await axios.delete(`${API_BASE_URL}/calendar/events/${eventId}`, {
-    headers: {
-      Authorization: `Bearer ${tokens.accessToken}`,
-    },
+  await makeRequest(`/calendar/events/${eventId}`, {
+    method: 'DELETE',
   });
 };
 

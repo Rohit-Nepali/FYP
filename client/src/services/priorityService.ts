@@ -1,8 +1,6 @@
-import axios from "axios";
-import { config } from "../config/environment";
-import { getStoredTokens } from "./authService";
+import { makeRequest } from "./apiClient";
 
-const API_BASE_URL = config.API_BASE_URL;
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface Priority {
   id: string;
@@ -26,76 +24,30 @@ export interface UpdatePriorityData {
   order?: number;
 }
 
-const getAuthHeaders = async () => {
-  const tokens = await getStoredTokens();
-  if (!tokens?.accessToken) {
-    throw new Error("No access token available");
-  }
-  return {
-    Authorization: `Bearer ${tokens.accessToken}`,
-  };
-};
+// ─── Public API Functions ────────────────────────────────────────────────────
 
 export const createPriority = async (
   projectId: string,
   data: CreatePriorityData
 ): Promise<Priority> => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await axios.post(`${API_BASE_URL}/priorities/projects/${projectId}/priorities`, data, {
-      headers,
-    });
-    return response.data.data;
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Failed to create priority"
-      );
-    }
-    throw error;
-  }
+  return makeRequest<Priority>(`/priorities/projects/${projectId}/priorities`, {
+    method: "POST",
+    data,
+  });
 };
 
 export const getAllPriorities = async (projectId?: string): Promise<Priority[]> => {
-  try {
-    const headers = await getAuthHeaders();
-    let url: string;
-    
-    if (projectId) {
-      url = `${API_BASE_URL}/priorities/projects/${projectId}/priorities`;
-    } else {
-      url = `${API_BASE_URL}/priorities`;
-    }
-    
-    const response = await axios.get(url, {
-      headers,
-    });
-    return response.data.data || [];
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Failed to fetch priorities"
-      );
-    }
-    throw error;
-  }
+  const url = projectId
+    ? `/priorities/projects/${projectId}/priorities`
+    : `/priorities`;
+
+  return makeRequest<Priority[]>(url, { method: "GET" });
 };
 
 export const getPriorityById = async (projectId: string, id: string): Promise<Priority> => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await axios.get(`${API_BASE_URL}/priorities/projects/${projectId}/priorities/${id}`, {
-      headers,
-    });
-    return response.data.data;
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Failed to fetch priority"
-      );
-    }
-    throw error;
-  }
+  return makeRequest<Priority>(`/priorities/projects/${projectId}/priorities/${id}`, {
+    method: "GET",
+  });
 };
 
 export const updatePriority = async (
@@ -103,34 +55,14 @@ export const updatePriority = async (
   id: string,
   data: UpdatePriorityData
 ): Promise<Priority> => {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await axios.put(`${API_BASE_URL}/priorities/projects/${projectId}/priorities/${id}`, data, {
-      headers,
-    });
-    return response.data.data;
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Failed to update priority"
-      );
-    }
-    throw error;
-  }
+  return makeRequest<Priority>(`/priorities/projects/${projectId}/priorities/${id}`, {
+    method: "PUT",
+    data,
+  });
 };
 
 export const deletePriority = async (projectId: string, id: string): Promise<void> => {
-  try {
-    const headers = await getAuthHeaders();
-    await axios.delete(`${API_BASE_URL}/priorities/projects/${projectId}/priorities/${id}`, {
-      headers,
-    });
-  } catch (error: any) {
-    if (error.response) {
-      throw new Error(
-        error.response.data?.message || "Failed to delete priority"
-      );
-    }
-    throw error;
-  }
+  return makeRequest<void>(`/priorities/projects/${projectId}/priorities/${id}`, {
+    method: "DELETE",
+  });
 };

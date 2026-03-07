@@ -1,9 +1,9 @@
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import axios from 'axios';
 import { config } from '../config/environment';
-import { storeTokens } from './authService';
+import { storeTokens } from './apiClient';
 
-// Your WEB CLIENT ID 
+// Your WEB CLIENT ID
 const API_BASE_URL = config.API_BASE_URL;
 const WEB_CLIENT_ID = '887155577122-4lrojdh2pm8fh6lmt7ri0jf22unf2q8u.apps.googleusercontent.com';
 
@@ -34,6 +34,8 @@ export interface GoogleAuthResult {
 
 /**
  * Sign in with Google
+ * NOTE: This intentionally uses raw axios (not apiClient) because these are
+ * unauthenticated requests — the user doesn't have a JWT token yet.
  */
 export const signInWithGoogle = async (): Promise<GoogleAuthResult> => {
   try {

@@ -111,3 +111,31 @@ export async function removeProjectMember(projectId: string, memberId: string): 
         throw error;
     }
 }
+
+export interface UpdateProfileData {
+    name?: string;
+    email?: string;
+    profileImage?: string;
+}
+
+export interface UserProfile {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    profileImage?: string;
+    createdAt: string;
+    googleId?: string;
+}
+
+export async function updateProfile(data: UpdateProfileData): Promise<UserProfile> {
+    try {
+        const response = await axiosInstance.put<ApiSuccess<UserProfile>>(
+            `/users/profile`,
+            data
+        );
+        return response.data.data;
+    } catch (error) {
+        throw error;
+    }
+}

@@ -42,3 +42,38 @@ export const addPushTokenController = async (req, res, next) => {
         next(error);
     }
 }
+
+export const updateProfileController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { name, email, profileImage } = req.body;
+
+        // Validate input
+        if (!name && !email && !profileImage) {
+            throw new ApiError("At least one field to update is required", HTTP_STATUS.BAD_REQUEST);
+        }
+
+        // Validate email format if provided
+        if (email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                throw new ApiError("Invalid email format", HTTP_STATUS.BAD_REQUEST);
+            }
+        }
+
+        const updatedUser = await userService.updateUserProfile(userId, {
+            name,
+            email,
+            profileImage
+        });
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.UPDATED,
+            updatedUser
+        );
+    } catch (error) {
+        next(error);
+    }
+};

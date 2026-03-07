@@ -1,5 +1,6 @@
 import { HTTP_STATUS } from "#utils/response.utils.js";
 import { prisma } from "../config/db.js";
+import { ApiError } from "#utils/error.utils.js";
 
 export const userService = {
     searchUsers: async (query) => {
@@ -52,5 +53,59 @@ export const userService = {
                 pushToken: true
             }
         });
+    },
+
+    updateUserProfile: async (userId, { name, email, profileImage }) => {
+        // Check if user exists
+        const existingUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                googleId: true
+            }
+        });
+
+        if (!existingUser) {
+            throw new ApiError("User not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        // Check if email is being changed and if it's already taken
+        if (email && email !== existingUser.email) {
+            const emailExists = await prisma.user.findUnique({
+                where: { email }
+            });
+            if (emailExists) {
+                throw new ApiError("Email already in use", HTTP_STATUS.CONFLICT);
+            }
+        }
+
+        // Google users cannot change their email
+        if (existingUser.googleId && email && email !== existingUser.email) {
+            throw new ApiError("Cannot change email for Google-signed-in accounts", HTTP_STATUS.FORBIDDEN);
+        }
+
+        // Build update data
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (email !== undefined) updateData.email = email;
+        if (profileImage !== undefined) updateData.profileImage = profileImage;
+
+        // Update user
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                profileImage: true,
+                createdAt: true,
+                googleId: true
+            }
+        });
+
+        return updatedUser;
     }
 };

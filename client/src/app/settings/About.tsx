@@ -11,7 +11,6 @@ export default function AboutScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
-      <LinearGradient colors={theme.background.gradient} className="flex-1">
         <View className="pt-6 pb-4 px-6 flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="pr-4">
             <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -37,7 +36,6 @@ export default function AboutScreen() {
             </Text>
           </View>
         </ScrollView>
-      </LinearGradient>
     </SafeAreaView>
   );
 }

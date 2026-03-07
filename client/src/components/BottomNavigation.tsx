@@ -13,16 +13,27 @@ export function BottomNavigation() {
       icon: "checkmark-done" as const,
       route: "/tasks" as const,
     },
-    { name: "Profile", icon: "person" as const, route: "/profile" as const },
     {
       name: "Chatbot",
       icon: "chatbubble-ellipses" as const,
       route: "/chatbot" as const,
     },
+    {
+      name: "Profile",
+      icon: "person" as const,
+      route: "/profile" as const
+    },
   ];
 
   const getActiveTab = () => {
     if (pathname === "/") return "home";
+    
+    // Check if we're in the profile or settings section
+    const normalizedPath = pathname.toLowerCase();
+    if (normalizedPath.includes("/profile") || normalizedPath.includes("/settings")) {
+      return "profile";
+    }
+    
     return pathname.replace("/", "").toLowerCase() || "home";
   };
 

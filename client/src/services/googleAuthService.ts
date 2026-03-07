@@ -42,6 +42,7 @@ export const signInWithGoogle = async (): Promise<GoogleAuthResult> => {
 
     console.log('🔵 Starting Google Sign-In...');
     const userInfo = await GoogleSignin.signIn();
+    console.log("User : ", userInfo);
 
     console.log('✅ Google Sign-In successful:', userInfo.user.email);
 
@@ -152,5 +153,7 @@ export const signOutFromGoogle = async (): Promise<void> => {
  * Check if signed in
  */
 export const isSignedIn = async (): Promise<boolean> => {
-  return await GoogleSignin.isSignedIn();
+  const user = GoogleSignin.getCurrentUser();
+
+  return !!user;
 };

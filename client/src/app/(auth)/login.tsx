@@ -23,6 +23,7 @@ import { signInWithGoogle } from "../../services/googleAuthService";
 export default function LoginScreen() {
   const router = useRouter();
   const { login, isAuthChecking } = useAuth();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Alert state
   const [alertVisible, setAlertVisible] = useState(false);
@@ -33,7 +34,6 @@ export default function LoginScreen() {
   >("default");
 
   // Google Sign-In loading state
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Use our custom hook for form state management
   const {

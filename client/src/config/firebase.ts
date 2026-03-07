@@ -1,4 +1,4 @@
-import firebase from '@react-native-firebase/app';
+import {initializeApp, getApps} from '@react-native-firebase/app';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBog2NDeiT4NzCd2xKWDspKFtGWfcbypB4",
@@ -9,8 +9,8 @@ const firebaseConfig = {
   appId: "1:495522754350:android:860482c4c32af25e4e54bf"
 };
 
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+if(!getApps().length) {
+  initializeApp(firebaseConfig);
 }
 
-export default firebase;
+export { default as firebase } from '@react-native-firebase/app';

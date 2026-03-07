@@ -16,8 +16,6 @@ import {
   clearTokens,
   LoginResponse,
 } from "../services/authService";
-import axios from 'axios';
-import { config } from '../config/environment';
 
 interface User {
   id: string;

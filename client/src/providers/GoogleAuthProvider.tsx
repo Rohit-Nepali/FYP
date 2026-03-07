@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { GoogleSignin, User } from '@react-native-google-signin/google-signin';
-import { configureGoogleSignIn, signInWithGoogle, signOutFromGoogle, isSignedIn } from '@/services/googleAuthService';
-import type { GoogleUser, GoogleAuthResult } from '@/services/googleAuthService';
+import { configureGoogleSignIn, GoogleAuthResult, GoogleUser, isSignedIn, signInWithGoogle, signOutFromGoogle } from '../services/googleAuthService';
 
 interface GoogleAuthContextType {
   // State
@@ -32,9 +31,7 @@ export const GoogleAuthProvider: React.FC<GoogleAuthProviderProps> = ({ children
   }, []);
 
   const initializeGoogleSignIn = async () => {
-    try {
-      console.log('🔵 Initializing Google Sign-In...');
-      
+    try {      
       // Configure
       configureGoogleSignIn();
       setIsConfigured(true);
@@ -47,7 +44,6 @@ export const GoogleAuthProvider: React.FC<GoogleAuthProviderProps> = ({ children
         await refreshUser();
       }
       
-      console.log('✅ Google Sign-In initialized');
     } catch (error) {
       console.error('❌ Failed to initialize Google Sign-In:', error);
     } finally {

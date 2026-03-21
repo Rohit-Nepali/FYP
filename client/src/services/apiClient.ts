@@ -73,13 +73,40 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
+type FailedQueueItem = {
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+};
+
+let isRefreshing = false;
+let failedQueue: FailedQueueItem[] = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+      return;
+    }
+
+    if (token) {
+      resolve(token);
+      return;
+    }
+
+    reject(new Error("Failed to refresh session"));
+  });
+
+  failedQueue = [];
+};
+
 // ─── Request Interceptor — attach auth token ────────────────────────────────
 
 apiClient.interceptors.request.use(
   async (cfg) => {
     const tokens = await getStoredTokens();
     if (tokens.accessToken) {
-      cfg.headers.Authorization = `Bearer ${tokens.accessToken}`;
+      cfg.headers = cfg.headers ?? {};
+      (cfg.headers as any).Authorization = `Bearer ${tokens.accessToken}`;
     }
     return cfg;
   },
@@ -92,7 +119,82 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiError>) => {
+  async (error: AxiosError<ApiError>) => {
+    const originalRequest =
+      (error.config as (typeof error.config & { _retry?: boolean })) || null;
+    const statusCode = error.response?.status;
+    const requestUrl = originalRequest?.url || "";
+    const isRefreshRequest = requestUrl.includes("/auth/refresh-token");
+
+    if (
+      statusCode === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isRefreshRequest
+    ) {
+      const tokens = await getStoredTokens();
+      if (!tokens.refreshToken) {
+        await clearTokens();
+        return Promise.reject(new Error("Session expired. Please sign in again."));
+      }
+
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((newAccessToken) => {
+            originalRequest.headers = originalRequest.headers ?? {};
+            (originalRequest.headers as any).Authorization =
+              `Bearer ${newAccessToken}`;
+            return apiClient(originalRequest);
+          })
+          .catch((queueError) => Promise.reject(queueError));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshResponse = await axios.post<
+          ApiResponse<{ accessToken: string; refreshToken: string }>
+        >(
+          `${config.API_BASE_URL}/auth/refresh-token`,
+          { refreshToken: tokens.refreshToken },
+          {
+            headers: { "Content-Type": "application/json" },
+            timeout: 10000,
+          }
+        );
+
+        if (!refreshResponse.data.success) {
+          throw new Error(
+            refreshResponse.data.error?.message || "Failed to refresh session"
+          );
+        }
+
+        const { accessToken, refreshToken } = refreshResponse.data.data;
+        await storeTokens(accessToken, refreshToken);
+        processQueue(null, accessToken);
+
+        originalRequest.headers = originalRequest.headers ?? {};
+        (originalRequest.headers as any).Authorization = `Bearer ${accessToken}`;
+
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        await clearTokens();
+        processQueue(refreshError, null);
+
+        const errorMessage =
+          refreshError instanceof Error
+            ? refreshError.message
+            : "Session expired. Please sign in again.";
+
+        return Promise.reject(new Error(errorMessage));
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
     if (error.response) {
       const errorData = error.response.data;
       if (errorData && !errorData.success) {

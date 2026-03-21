@@ -331,6 +331,7 @@ export default function ProjectDetail() {
         projectId={id as string}
         onSuccess={() => loadProjectDetail(id as string)}
         existingMemberIds={existingMemberIds}
+        projectOwnerId={project?.ownerId}
       />
 
       <InviteMemberModal

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -30,6 +30,7 @@ interface Props {
   projectId: string;
   onSuccess?: () => void;
   existingMemberIds?: string[];
+  projectOwnerId?: string;
 }
 
 export default function AddMembersModal({
@@ -38,15 +39,17 @@ export default function AddMembersModal({
   projectId,
   onSuccess,
   existingMemberIds = [],
+  projectOwnerId,
 }: Props) {
   const [search, setSearch] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [users, setUsers] = useState<UserLite[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [adding, setAdding] = useState(false);
+  const [memberIds, setMemberIds] = useState<Set<string>>(new Set(existingMemberIds));
+  const [addingUserId, setAddingUserId] = useState<string | null>(null);
+  const [hasAddedMembers, setHasAddedMembers] = useState(false);
 
   // Use custom alert hook
-  const { showError, showSuccess, showValidationError, AlertComponent } = useAlert();
+  const { showError, showSuccess, AlertComponent } = useAlert();
 
   // Animation values
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -108,12 +111,18 @@ export default function AddMembersModal({
     if (!visible) {
       setSearch("");
       setUsers([]);
-      setSelectedIds(new Set());
+      setMemberIds(new Set(existingMemberIds));
       setSearchLoading(false);
-      setAdding(false);
+      setAddingUserId(null);
       sheetHeight.setValue(INITIAL_SHEET_HEIGHT);
     }
-  }, [visible]);
+  }, [visible, existingMemberIds]);
+
+  useEffect(() => {
+    if (visible) {
+      setMemberIds(new Set(existingMemberIds));
+    }
+  }, [existingMemberIds, visible]);
 
   // Pan responder for dragging
   const panResponder = useRef(
@@ -131,7 +140,7 @@ export default function AddMembersModal({
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dy > 100 || gestureState.vy > 0.5) {
           // Close if dragged down significantly
-          onClose();
+          handleClose();
         } else {
           // Snap back to position
           Animated.spring(translateY, {
@@ -145,46 +154,42 @@ export default function AddMembersModal({
     })
   ).current;
 
-  const toggleSelect = (userId: string, alreadyMember: boolean) => {
-    if (alreadyMember) return;
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(userId)) next.delete(userId);
-      else next.add(userId);
-      return next;
-    });
+  const handleClose = () => {
+    if (hasAddedMembers) {
+      onSuccess?.();
+      setHasAddedMembers(false);
+    }
+    onClose();
   };
 
-  const handleAddMembers = async () => {
-    if (selectedIds.size === 0) {
-      showValidationError("Please select at least one user.");
-      return;
-    }
+  const handleAddMember = async (user: UserLite) => {
+    if (memberIds.has(user.id) || addingUserId === user.id) return;
 
     try {
-      setAdding(true);
-      const userIds = Array.from(selectedIds);
-      await addProjectMembers(projectId, userIds);
-      showSuccess("Members added to the project");
-      onSuccess?.();
-      onClose();
+      setAddingUserId(user.id);
+      await addProjectMembers(projectId, [user.id]);
+      setMemberIds((prev) => {
+        const next = new Set(prev);
+        next.add(user.id);
+        return next;
+      });
+      setHasAddedMembers(true);
+      showSuccess(`${user.name || user.email} added to the project`);
     } catch (error) {
-      showError(error instanceof Error ? error.message : "Failed to add members");
+      showError(error instanceof Error ? error.message : "Failed to add member");
     } finally {
-      setAdding(false);
+      setAddingUserId(null);
     }
   };
 
   const renderUserItem = ({ item }: { item: UserLite }) => {
-    const alreadyMember = existingMemberIds.includes(item.id);
-    const isSelected = selectedIds.has(item.id);
+    const isOwner = Boolean(projectOwnerId && item.id === projectOwnerId);
+    const alreadyMember = memberIds.has(item.id);
+    const isAdding = addingUserId === item.id;
+    const isDisabled = alreadyMember || isOwner || isAdding;
 
     return (
-      <TouchableOpacity
-        onPress={() => toggleSelect(item.id, alreadyMember)}
-        disabled={alreadyMember}
-        className="flex-row items-center py-3 px-4"
-      >
+      <View className="flex-row items-center py-3 px-4">
         {/* Avatar */}
         {item.avatarUrl ? (
           <Image
@@ -202,70 +207,87 @@ export default function AddMembersModal({
         {/* Name + email */}
         <View className="flex-1">
           <Text
-            className={`text-sm font-medium ${alreadyMember ? "text-gray-400" : "text-white"
+            className={`text-sm font-medium ${isDisabled ? "text-gray-400" : "text-white"
               }`}
           >
             {item.name || item.email}
           </Text>
-          <Text className="text-gray-500 text-xs" numberOfLines={1}>
-            {item.email}
-          </Text>
+          {isOwner ? (
+            <Text className="text-gray-500 text-xs" numberOfLines={1}>
+              You are the project owner
+            </Text>
+          ) : (
+            <Text className="text-gray-500 text-xs" numberOfLines={1}>
+              {item.email}
+            </Text>
+          )}
         </View>
 
         {/* Right side status / checkbox */}
-        {alreadyMember ? (
+        {isOwner ? (
+          <Text className="text-xs text-gray-500">Owner</Text>
+        ) : alreadyMember ? (
           <View className="flex-row items-center">
             <Ionicons name="checkmark-circle" size={18} color="#10B981" />
             <Text className="text-xs text-green-400 ml-1">Member</Text>
           </View>
+        ) : isAdding ? (
+          <View className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center">
+            <ActivityIndicator size="small" color="#60A5FA" />
+          </View>
         ) : (
-          <Ionicons
-            name={isSelected ? "checkbox" : "square-outline"}
-            size={22}
-            color={isSelected ? "#3B82F6" : "#9CA3AF"}
-          />
+          <TouchableOpacity
+            onPress={() => handleAddMember(item)}
+            disabled={isDisabled}
+            className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center"
+          >
+            <Ionicons
+              name="person-add-outline"
+              size={16}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </View>
     );
   };
 
-  const selectedCount = useMemo(() => selectedIds.size, [selectedIds]);
-
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="none"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <View className="flex-1">
-        {/* Backdrop */}
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View className="flex-1 bg-black/60" />
-        </TouchableWithoutFeedback>
+    <>
+      <Modal
+        visible={visible}
+        transparent={true}
+        animationType="none"
+        onRequestClose={handleClose}
+        statusBarTranslucent
+      >
+        <View className="flex-1">
+          {/* Backdrop */}
+          <TouchableWithoutFeedback onPress={handleClose}>
+            <View className="flex-1 bg-black/60" />
+          </TouchableWithoutFeedback>
 
-        {/* Bottom Sheet */}
-        <Animated.View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: MAX_SHEET_HEIGHT,
-            transform: [{ translateY }],
-          }}
-        >
-          <LinearGradient
-            colors={["#1F2937", "#111827"]}
-            className="flex-1 border-gray-700 "
+          {/* Bottom Sheet */}
+          <Animated.View
             style={{
-              paddingHorizontal: 16,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              overflow: 'hidden', // Important! Clips content to rounded corners
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: MAX_SHEET_HEIGHT,
+              transform: [{ translateY }],
             }}
           >
+            <LinearGradient
+              colors={["#1F2937", "#111827"]}
+              className="flex-1 border-gray-700 "
+              style={{
+                paddingHorizontal: 16,
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                overflow: 'hidden', // Important! Clips content to rounded corners
+              }}
+            >
             {/* Drag Handle */}
             <View
               {...panResponder.panHandlers}
@@ -279,7 +301,7 @@ export default function AddMembersModal({
               <Text className="text-xl font-bold text-white">
                 Add Members
               </Text>
-              <TouchableOpacity onPress={onClose}>
+              <TouchableOpacity onPress={handleClose}>
                 <Ionicons name="close" size={24} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
@@ -345,39 +367,12 @@ export default function AddMembersModal({
               )}
             </View>
 
-            {/* Footer: selected count + action */}
-            <View className="flex-row items-center justify-between py-4 px-2 border-t border-gray-800">
-              <Text className="text-gray-400 text-sm">
-                {selectedCount === 0
-                  ? "No users selected"
-                  : `${selectedCount} user${selectedCount > 1 ? "s" : ""
-                  } selected`}
-              </Text>
+            </LinearGradient>
+          </Animated.View>
+        </View>
+      </Modal>
 
-              <TouchableOpacity
-                onPress={handleAddMembers}
-                disabled={adding || selectedCount === 0}
-                className={`px-5 py-3 rounded-xl flex-row items-center ${selectedCount === 0 || adding ? "bg-gray-700" : "bg-blue-600"
-                  }`}
-              >
-                {adding ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="person-add-outline" size={16} color="#fff" />
-                    <Text className="text-white font-semibold text-sm ml-2">
-                      Add
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </Animated.View>
-      </View>
-    </Modal>
-    );
-
-  {/* Custom Alert */}
-  {AlertComponent}
+      {AlertComponent}
+    </>
+  );
 }

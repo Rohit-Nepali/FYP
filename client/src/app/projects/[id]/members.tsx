@@ -176,6 +176,7 @@ export default function ProjectMembers() {
         projectId={id as string}
         onSuccess={() => loadProject()}
         existingMemberIds={existingMemberIds}
+        projectOwnerId={project?.ownerId}
       />
     </SafeAreaView>
   );

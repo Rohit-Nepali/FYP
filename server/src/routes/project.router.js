@@ -5,6 +5,7 @@ import { upload } from "../middleware/upload.middleware.js";
 import {
     acceptProjectInviteController,
     addProjectMemberController,
+    getProjectAssignmentReportController,
     createProjectController,
     createProjectAttachmentController,
     createProjectInviteController,
@@ -31,6 +32,7 @@ projectRouter.use(authenticateToken);
 projectRouter.post("/", validate(createProjectSchema), createProjectController);
 projectRouter.get("/", getAllProjectsController);
 projectRouter.get("/:id/statistics", getProjectStatisticsController);
+projectRouter.get("/:id/assignment-report", getProjectAssignmentReportController);
 projectRouter.get("/:id", getProjectByIdController);
 projectRouter.put("/:id", validate(updateProjectSchema), updateProjectController);
 projectRouter.delete("/:id", deleteProjectController);

@@ -25,12 +25,14 @@ export default function ActivitySection({ projectId }: ActivitySectionProps) {
     try {
       if (!append) setLoading(true);
       const response = await getProjectActivities(projectId, pageNum, 10);
+      const nextActivities = Array.isArray(response?.data) ? response.data : [];
+
       if (append) {
-        setActivities((prev) => [...prev, ...response.data]);
+        setActivities((prev) => [...prev, ...nextActivities]);
       } else {
-        setActivities(response.data);
+        setActivities(nextActivities);
       }
-      setHasMore(response.pagination.hasMore);
+      setHasMore(Boolean(response?.pagination?.hasMore));
       setPage(pageNum);
     } catch (error) {
       console.error("Failed to load activities:", error);
@@ -55,7 +57,11 @@ export default function ActivitySection({ projectId }: ActivitySectionProps) {
     }
   };
 
-  const groupActivitiesByDay = (activities: Activity[]): ActivityGroup[] => {
+  const groupActivitiesByDay = (activities: Activity[] = []): ActivityGroup[] => {
+    if (!Array.isArray(activities) || activities.length === 0) {
+      return [];
+    }
+
     const groups: Record<string, Activity[]> = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);

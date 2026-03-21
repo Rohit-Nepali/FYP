@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
 import { theme } from "../../config/theme";
 import { FormInput } from "@/src/components/common/FormInput";

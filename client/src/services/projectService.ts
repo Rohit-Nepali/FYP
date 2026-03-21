@@ -51,6 +51,40 @@ export interface ProjectStatistics {
   }>;
 }
 
+export interface AssignmentReportUser {
+  id: string;
+  name: string;
+  email: string;
+  profileImage?: string;
+}
+
+export interface AssignmentReportTag {
+  id: string;
+  name: string;
+  color?: string;
+}
+
+export interface AssignmentReportRow {
+  id: string;
+  title: string;
+  isCompleted: boolean;
+  dueDate?: string | null;
+  assignee: AssignmentReportUser | null;
+  creator: AssignmentReportUser | null;
+  status: AssignmentReportTag | null;
+  priority: AssignmentReportTag | null;
+}
+
+export interface ProjectAssignmentReport {
+  project: {
+    id: string;
+    title: string;
+    owner: AssignmentReportUser;
+  };
+  totalTasks: number;
+  rows: AssignmentReportRow[];
+}
+
 // ─── Public API Functions ────────────────────────────────────────────────────
 
 export async function getAllProjects(): Promise<Project[]> {
@@ -89,6 +123,12 @@ export async function deleteProject(projectId: string): Promise<void> {
 
 export async function getProjectStatistics(projectId: string): Promise<ProjectStatistics> {
   return makeRequest<ProjectStatistics>(`/projects/${projectId}/statistics`, {
+    method: "GET",
+  });
+}
+
+export async function getProjectAssignmentReport(projectId: string): Promise<ProjectAssignmentReport> {
+  return makeRequest<ProjectAssignmentReport>(`/projects/${projectId}/assignment-report`, {
     method: "GET",
   });
 }

@@ -393,3 +393,21 @@ export const getProjectStatisticsController = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getProjectAssignmentReportController = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    const report = await projectService.getAssignmentReport(id, userId);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Assignment report retrieved successfully",
+      report
+    );
+  } catch (error) {
+    next(error);
+  }
+};

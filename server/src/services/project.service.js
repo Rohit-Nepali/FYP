@@ -517,5 +517,96 @@ export const projectService = {
         };
     },
 
+    getAssignmentReport: async (projectId, userId) => {
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            select: {
+                id: true,
+                title: true,
+                ownerId: true,
+                owner: {
+                    select: { id: true, name: true, email: true, profileImage: true },
+                },
+            },
+        });
+
+        if (!project) {
+            throw new ApiError(ERROR_MESSAGES.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+        }
+
+        if (project.ownerId !== userId) {
+            throw new ApiError(
+                "Only the project owner can view this assignment report",
+                HTTP_STATUS.FORBIDDEN
+            );
+        }
+
+        const tasks = await prisma.task.findMany({
+            where: { projectId },
+            include: {
+                assignee: {
+                    select: { id: true, name: true, email: true, profileImage: true },
+                },
+                creator: {
+                    select: { id: true, name: true, email: true, profileImage: true },
+                },
+                status: {
+                    select: { id: true, name: true, color: true },
+                },
+                priority: {
+                    select: { id: true, name: true, color: true },
+                },
+            },
+            orderBy: { createdAt: "desc" },
+        });
+
+        const rows = tasks.map((task) => ({
+            id: task.id,
+            title: task.title,
+            isCompleted: task.isCompleted,
+            dueDate: task.dueDate,
+            assignee: task.assignee
+                ? {
+                    id: task.assignee.id,
+                    name: task.assignee.name,
+                    email: task.assignee.email,
+                    profileImage: task.assignee.profileImage,
+                }
+                : null,
+            creator: task.creator
+                ? {
+                    id: task.creator.id,
+                    name: task.creator.name,
+                    email: task.creator.email,
+                    profileImage: task.creator.profileImage,
+                }
+                : null,
+            status: task.status
+                ? {
+                    id: task.status.id,
+                    name: task.status.name,
+                    color: task.status.color,
+                }
+                : null,
+            priority: task.priority
+                ? {
+                    id: task.priority.id,
+                    name: task.priority.name,
+                    color: task.priority.color,
+                }
+                : null,
+        }));
+
+        return {
+            project: {
+                id: project.id,
+                title: project.title,
+                owner: project.owner,
+            },
+            totalTasks: rows.length,
+            rows,
+        };
+    },
+
 };
 

@@ -382,13 +382,25 @@ export default function Projects() {
       )}
 
       {/* New Project Button - Bottom Right */}
-      <Button
-        title="New Project"
+      {/* Floating Action Button - Bottom Right */}
+      <TouchableOpacity
         onPress={() => setModalVisible(true)}
-        variant="primary"
-        icon="add-outline"
-        className="absolute bottom-8 right-4"
-      />
+        className="absolute right-5 flex-row items-center bg-blue-600 rounded-full px-4 py-3.5 shadow-lg"
+        style={{
+          bottom: Platform.OS === "ios" ? Math.max(insets.bottom + 16, 24) : 24,
+          shadowColor: "#2563EB",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={20} color="#fff" />
+        <Text className="text-white font-semibold text-sm ml-1.5 pr-1">
+          New Project
+        </Text>
+      </TouchableOpacity>
 
       {/* Sort Options Modal */}
       <Modal

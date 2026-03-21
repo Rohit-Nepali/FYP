@@ -750,6 +750,38 @@ export default function HomeScreen() {
                   onPress={() => router.push(`/projects/${project.id}`)}
                 />
               ))}
+
+              <Animated.View
+                entering={FadeInDown.delay(320).duration(350)}
+                className="mt-2 gap-2"
+              >
+                <TouchableOpacity
+                  onPress={() => setCreateModalVisible(true)}
+                  activeOpacity={0.7}
+                  className="flex-row items-center justify-center py-3.5 rounded-2xl bg-blue-600/90"
+                >
+                  <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                  <Text className="text-white font-semibold ml-2">
+                    Create New Project
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.push("/projects/page")}
+                  activeOpacity={0.7}
+                  className="flex-row items-center justify-center py-3 rounded-2xl bg-gray-800/70 border border-gray-700/40"
+                >
+                  <Text className="text-gray-300 font-medium">
+                    View All Projects
+                  </Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color="#9CA3AF"
+                    style={{ marginLeft: 4 }}
+                  />
+                </TouchableOpacity>
+              </Animated.View>
             </View>
           )}
         </View>

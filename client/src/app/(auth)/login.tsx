@@ -149,7 +149,7 @@ export default function LoginScreen() {
   const handleGoogleSignIn = useCallback(async () => {
     setIsGoogleLoading(true);
     try {
-      const result = await signInWithGoogle();
+      const result = await signInWithGoogle({ forceAccountSelection: true });
       // Sync AuthContext with the user from Google Sign-In
       setUserFromGoogle({
         id: result.user.id,

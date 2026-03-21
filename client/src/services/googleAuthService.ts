@@ -32,15 +32,26 @@ export interface GoogleAuthResult {
   refreshToken?: string;
 }
 
+interface GoogleSignInOptions {
+  forceAccountSelection?: boolean;
+}
+
 /**
  * Sign in with Google
  * NOTE: This intentionally uses raw axios (not apiClient) because these are
  * unauthenticated requests — the user doesn't have a JWT token yet.
  */
-export const signInWithGoogle = async (): Promise<GoogleAuthResult> => {
+export const signInWithGoogle = async (
+  options: GoogleSignInOptions = {}
+): Promise<GoogleAuthResult> => {
   try {
     console.log('🔵 Checking Play Services...');
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+    if (options.forceAccountSelection && GoogleSignin.hasPreviousSignIn()) {
+      console.log('🔵 Clearing previous Google session to show account chooser...');
+      await GoogleSignin.signOut();
+    }
 
     console.log('🔵 Starting Google Sign-In...');
     const userInfo = await GoogleSignin.signIn();

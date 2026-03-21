@@ -20,6 +20,7 @@ const priorityRouter = Router();
 priorityRouter.use(authenticateToken);
 
 // Priority routes
+priorityRouter.get("/", getGlobalPrioritiesController);
 priorityRouter.post("/projects/:projectId/priorities", validate(createPrioritySchema), createPriorityController);
 priorityRouter.get("/projects/:projectId/priorities", getAllPrioritiesController);
 priorityRouter.get("/projects/:projectId/priorities/:id", getPriorityByIdController);

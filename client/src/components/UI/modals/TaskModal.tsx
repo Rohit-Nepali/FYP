@@ -35,8 +35,8 @@ interface Props {
   onSave: (payload: {
     title: string;
     description?: string;
-    statusId: string;
-    priorityId: string;
+    statusId?: string;
+    priorityId?: string;
     dueDate?: string;
   }) => Promise<Task>;
   initialValues?: InitialValues;
@@ -97,8 +97,8 @@ export default function TaskModal({
   useEffect(() => {
     setTitle(initialValues?.title || "");
     setDescription(initialValues?.description || "");
-    setStatusId(initialValues?.statusId || (statuses[0]?.id ?? ""));
-    setPriorityId(initialValues?.priorityId || (priorities[0]?.id ?? ""));
+    setStatusId(initialValues?.statusId || "");
+    setPriorityId(initialValues?.priorityId || "");
     setDueDate(initialValues?.dueDate ? new Date(initialValues.dueDate) : null);
 
   }, [initialValues, visible, statuses, priorities]);
@@ -136,23 +136,14 @@ export default function TaskModal({
       showValidationError("Please enter a task title");
       return;
     }
-    // Status and priority are required only when creating inside a project.
-    if (projectId && !statusId) {
-      showValidationError("Please select a status");
-      return;
-    }
-    if (projectId && !priorityId) {
-      showValidationError("Please select a priority");
-      return;
-    }
 
     try {
       setSaving(true);
       const task = await onSave({
         title: title.trim(),
         description: description?.trim() || undefined,
-        statusId,
-        priorityId,
+        ...(statusId ? { statusId } : {}),
+        ...(priorityId ? { priorityId } : {}),
         dueDate: dueDate ? dueDate.toISOString() : undefined,
       });
 

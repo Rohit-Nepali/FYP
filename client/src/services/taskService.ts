@@ -8,10 +8,10 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  statusId: string;
-  status: Status;
-  priorityId: string;
-  priority: Priority;
+  statusId?: string | null;
+  status?: Status | null;
+  priorityId?: string | null;
+  priority?: Priority | null;
   dueDate?: string;
   creatorId: string;
   projectId?: string | null;

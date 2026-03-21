@@ -6,59 +6,21 @@ import { sendPushNotification } from "./notification.service.js";
 export const taskService = {
   create: async (taskData, userId) => {
     const { title, description, statusId, priorityId, dueDate, projectId, assigneeId } = taskData;
+    const normalizedStatusId = statusId || null;
+    const normalizedPriorityId = priorityId || null;
 
-    // Get or create default status and priority if not provided
-    let finalStatusId = statusId;
-    let finalPriorityId = priorityId;
-
-    if (!finalStatusId) {
-      // Get first status for project, or create a default one
-      let defaultStatus = await prisma.status.findFirst({
-        where: { projectId },
-        orderBy: { order: "asc" },
-      });
-
-      if (!defaultStatus) {
-        defaultStatus = await prisma.status.create({
-          data: {
-            name: "TODO",
-            projectId,
-            order: 0,
-          },
-        });
-      }
-      finalStatusId = defaultStatus.id;
-    } else {
-      // Verify status belongs to project
+    if (normalizedStatusId) {
       const status = await prisma.status.findFirst({
-        where: { id: finalStatusId, projectId },
+        where: { id: normalizedStatusId, projectId },
       });
       if (!status) {
         throw new ApiError("Status not found or does not belong to this project", HTTP_STATUS.NOT_FOUND);
       }
     }
 
-    if (!finalPriorityId) {
-      // Get first priority for project, or create a default one
-      let defaultPriority = await prisma.priority.findFirst({
-        where: { projectId },
-        orderBy: { order: "asc" },
-      });
-
-      if (!defaultPriority) {
-        defaultPriority = await prisma.priority.create({
-          data: {
-            name: "MEDIUM",
-            projectId,
-            order: 0,
-          },
-        });
-      }
-      finalPriorityId = defaultPriority.id;
-    } else {
-      // Verify priority belongs to project
+    if (normalizedPriorityId) {
       const priority = await prisma.priority.findFirst({
-        where: { id: finalPriorityId, projectId },
+        where: { id: normalizedPriorityId, projectId },
       });
       if (!priority) {
         throw new ApiError("Priority not found or does not belong to this project", HTTP_STATUS.NOT_FOUND);
@@ -104,8 +66,8 @@ export const taskService = {
       data: {
         title,
         description,
-        statusId: finalStatusId,
-        priorityId: finalPriorityId,
+        statusId: normalizedStatusId,
+        priorityId: normalizedPriorityId,
         dueDate: dueDate ? new Date(dueDate) : null,
         projectId: projectId || null,
         creatorId: userId,
@@ -271,25 +233,31 @@ export const taskService = {
       if (description !== undefined) data.description = description;
 
       if (statusId !== undefined) {
-        // Verify status belongs to project
-        const status = await prisma.status.findFirst({
-          where: { id: statusId, projectId: existingTask.projectId },
-        });
-        if (!status) {
-          throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);
+        if (statusId === null || statusId === "") {
+          data.statusId = null;
+        } else {
+          const status = await prisma.status.findFirst({
+            where: { id: statusId, projectId: existingTask.projectId },
+          });
+          if (!status) {
+            throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);
+          }
+          data.statusId = statusId;
         }
-        data.statusId = statusId;
       }
 
       if (priorityId !== undefined) {
-        // Verify priority belongs to project
-        const priority = await prisma.priority.findFirst({
-          where: { id: priorityId, projectId: existingTask.projectId },
-        });
-        if (!priority) {
-          throw new ApiError("Priority not found", HTTP_STATUS.NOT_FOUND);
+        if (priorityId === null || priorityId === "") {
+          data.priorityId = null;
+        } else {
+          const priority = await prisma.priority.findFirst({
+            where: { id: priorityId, projectId: existingTask.projectId },
+          });
+          if (!priority) {
+            throw new ApiError("Priority not found", HTTP_STATUS.NOT_FOUND);
+          }
+          data.priorityId = priorityId;
         }
-        data.priorityId = priorityId;
       }
 
       if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
@@ -313,14 +281,17 @@ export const taskService = {
     } else if (isAssignee) {
       if (title !== undefined) data.title = title;
       if (statusId !== undefined) {
-        // Verify status belongs to project
-        const status = await prisma.status.findFirst({
-          where: { id: statusId, projectId: existingTask.projectId },
-        });
-        if (!status) {
-          throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);
+        if (statusId === null || statusId === "") {
+          data.statusId = null;
+        } else {
+          const status = await prisma.status.findFirst({
+            where: { id: statusId, projectId: existingTask.projectId },
+          });
+          if (!status) {
+            throw new ApiError("Status not found", HTTP_STATUS.NOT_FOUND);
+          }
+          data.statusId = statusId;
         }
-        data.statusId = statusId;
       }
       // Assignees cannot change other fields
     }

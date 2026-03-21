@@ -22,6 +22,7 @@ import TaskModal from "@/src/components/UI/modals/TaskModal";
 import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/src/components/UI/Buttons";
 import CalendarView from "@/src/components/CalendarView";
+import { useAuth } from "@/src/contexts/AuthContext";
 
 // Types
 interface GroupedTasks {
@@ -482,6 +483,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
 // Main Tasks Page Component
 export default function TasksPage() {
     const router = useRouter();
+    const { isAuthenticated } = useAuth();
 
     // Data state
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -535,13 +537,18 @@ export default function TasksPage() {
     }, []);
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            setLoading(false);
+            return;
+        }
+
         const init = async () => {
             setLoading(true);
             await Promise.all([loadTasks(), loadFilters()]);
             setLoading(false);
         };
         init();
-    }, [loadTasks, loadFilters]);
+    }, [isAuthenticated, loadTasks, loadFilters]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -566,14 +573,14 @@ export default function TasksPage() {
         // Apply status filter
         if (activeFilters.statusIds.length > 0) {
             filtered = filtered.filter((task) =>
-                activeFilters.statusIds.includes(task.statusId)
+                task.statusId ? activeFilters.statusIds.includes(task.statusId) : false
             );
         }
 
         // Apply priority filter
         if (activeFilters.priorityIds.length > 0) {
             filtered = filtered.filter((task) =>
-                activeFilters.priorityIds.includes(task.priorityId)
+                task.priorityId ? activeFilters.priorityIds.includes(task.priorityId) : false
             );
         }
 

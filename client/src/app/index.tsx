@@ -24,7 +24,7 @@ import { createTask } from "@/src/services/taskService";
 
 export default function Index() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const [refreshing, setRefreshing] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -51,13 +51,15 @@ export default function Index() {
   const [loadingTaskData, setLoadingTaskData] = useState(false);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     loadProjects();
     loadTaskData();
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     loadTasks();
-  }, []);
+  }, [isAuthenticated]);
 
   const loadProjects = async () => {
     try {
@@ -302,12 +304,8 @@ export default function Index() {
                   <Button
                     title="Create Task"
                     onPress={() => {
-                      // Auto-select first project if one exists, otherwise leave empty for standalone task
-                      if (projects.length > 0) {
-                        setSelectedProjectId(projects[0].id);
-                      } else {
-                        setSelectedProjectId("");
-                      }
+                      // Default to standalone task unless user explicitly creates from a project context
+                      setSelectedProjectId("");
                       setTaskModalVisible(true);
                     }}
                     variant="primary"
@@ -324,32 +322,45 @@ export default function Index() {
                     onPress={() => router.push(`/tasks/${task.id}`)}
                   >
                     <View>
+                      {(() => {
+                        const statusName = task.status?.name?.toLowerCase() || "";
+                        const isDone =
+                          statusName.includes("complete") || statusName.includes("done");
+
+                        return (
                       <Ionicons
                         name={
-                          task.status.name.toLowerCase().includes("complete") ||
-                            task.status.name.toLowerCase().includes("done")
+                          isDone
                             ? "checkmark-circle"
                             : "ellipse-outline"
                         }
                         size={22}
                         color={
-                          task.status.name.toLowerCase().includes("complete") ||
-                            task.status.name.toLowerCase().includes("done")
+                          isDone
                             ? "#10B981"
                             : "#9CA3AF"
                         }
                       />
+                        );
+                      })()}
                     </View>
                     <View className="flex-1">
+                      {(() => {
+                        const statusName = task.status?.name?.toLowerCase() || "";
+                        const isDone =
+                          statusName.includes("complete") || statusName.includes("done");
+
+                        return (
                       <Text
-                        className={`text-white font-semibold ${task.status.name.toLowerCase().includes("complete") ||
-                          task.status.name.toLowerCase().includes("done")
+                        className={`text-white font-semibold ${isDone
                           ? "line-through text-gray-400"
                           : ""
                           }`}
                       >
                         {task.title}
                       </Text>
+                        );
+                      })()}
                       {task.dueDate ? (
                         <View className="flex-row items-center gap-2 mt-2">
                           <Ionicons
@@ -374,12 +385,8 @@ export default function Index() {
               <>
                 <TouchableOpacity
                   onPress={() => {
-                    // Auto-select first project if one exists, otherwise leave empty for standalone task
-                    if (projects.length > 0) {
-                      setSelectedProjectId(projects[0].id);
-                    } else {
-                      setSelectedProjectId("");
-                    }
+                    // Default to standalone task unless user explicitly creates from a project context
+                    setSelectedProjectId("");
                     setTaskModalVisible(true);
                   }}
                   className="mt-3 w-full flex-row items-center justify-center py-3 px-4 rounded-xl bg-purple-700"
@@ -462,9 +469,12 @@ export default function Index() {
       {/* Task Creation Modal */}
       <TaskModal
         visible={taskModalVisible}
-        onClose={() => setTaskModalVisible(false)}
+        onClose={() => {
+          setTaskModalVisible(false);
+          setSelectedProjectId("");
+        }}
         onSave={async (payload) => {
-          // Only include projectId if it's not empty
+          // Only include projectId if it's explicitly selected
           const taskData = {
             ...payload,
             ...(selectedProjectId ? { projectId: selectedProjectId } : {})

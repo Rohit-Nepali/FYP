@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { View, Text, Image } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
 import { theme } from "../config/theme";
@@ -24,10 +23,7 @@ export default function SplashScreen() {
   }, [isAuthChecking, isAuthenticated, router]);
 
   return (
-    <LinearGradient
-      colors={theme.background.gradient}
-      className="flex-1 justify-center items-center"
-    >
+    <View className="flex-1 justify-center items-center bg-gray-950">
       <View className="flex-1 justify-center items-center">
         <View className="mb-10">
           <View className="flex-1 items-center justify-center">
@@ -49,6 +45,6 @@ export default function SplashScreen() {
           />
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 }

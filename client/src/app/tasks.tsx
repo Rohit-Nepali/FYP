@@ -19,7 +19,6 @@ import { Task, getAllTasks, CreateTaskData } from "@/src/services/taskService";
 import { Status, getAllStatuses } from "@/src/services/statusService";
 import { Priority, getAllPriorities } from "@/src/services/priorityService";
 import TaskModal from "@/src/components/UI/modals/TaskModal";
-import { LinearGradient } from "expo-linear-gradient";
 import { Button } from "@/src/components/UI/Buttons";
 import CalendarView from "@/src/components/CalendarView";
 import { useAuth } from "@/src/contexts/AuthContext";

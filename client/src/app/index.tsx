@@ -15,7 +15,6 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { Task, getAllTasks, createTask } from "../services/taskService";
 import {
@@ -591,7 +590,7 @@ export default function HomeScreen() {
   const motivationalMessage = getMotivationalMessage(stats.total, stats.completed);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-950">
+    <SafeAreaView className="flex-1 bg-gray-900">
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -606,33 +605,28 @@ export default function HomeScreen() {
         }
       >
         {/* ─── Header ────────────────────────────────────────────── */}
-        <Animated.View entering={FadeInUp.duration(400)}>
-          <LinearGradient
-            colors={["rgba(30,41,59,0.9)", "rgba(3,7,18,0)"]}
-            className="px-5 pt-4 pb-6"
-          >
-            {/* Top row */}
-            <View className="flex-row items-center justify-between mb-4">
-              <View>
-                <Text className="text-gray-400 text-sm">{greeting},</Text>
-                <Text className="text-white text-2xl font-bold mt-0.5">
-                  {firstName}! 👋
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => router.push("/profile")}
-                className="bg-gray-800/60 rounded-full p-2 border border-gray-700/40"
-              >
-                <Ionicons name="person-outline" size={22} color="#fff" />
-              </TouchableOpacity>
+        <Animated.View entering={FadeInUp.duration(400)} className="px-5 pt-4 pb-6">
+          {/* Top row */}
+          <View className="flex-row items-center justify-between mb-4">
+            <View>
+              <Text className="text-gray-400 text-sm">{greeting},</Text>
+              <Text className="text-white text-2xl font-bold mt-0.5">
+                {firstName}! 👋
+              </Text>
             </View>
 
-            {/* Motivational message */}
-            <View className="bg-gray-800/50 rounded-2xl px-4 py-3 border border-gray-700/30">
-              <Text className="text-gray-300 text-sm">{motivationalMessage}</Text>
-            </View>
-          </LinearGradient>
+            <TouchableOpacity
+              onPress={() => router.push("/profile")}
+              className="bg-gray-800/60 rounded-full p-2 border border-gray-700/40"
+            >
+              <Ionicons name="person-outline" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Motivational message */}
+          <View className="bg-gray-800/50 rounded-2xl px-4 py-3 border border-gray-700/30">
+            <Text className="text-gray-300 text-sm">{motivationalMessage}</Text>
+          </View>
         </Animated.View>
 
         {/* ─── Stats Cards ───────────────────────────────────────── */}

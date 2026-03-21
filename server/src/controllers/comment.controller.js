@@ -15,24 +15,28 @@ const createComment = async (req, res, next) => {
     });
 
     // Log activity - need to get task to get projectId
-    const { prisma } = require('../config/prisma.config');
-    const task = await prisma.task.findUnique({
-      where: { id: taskId },
-      select: { id: true, title: true, projectId: true }
-    });
-
-    if (task && task.projectId) {
-      await logActivity({
-        type: 'COMMENT_ADDED',
-        projectId: task.projectId,
-        userId: authorId,
-        taskId: task.id,
-        commentId: comment.id,
-        metadata: {
-          taskTitle: task.title,
-          commentPreview: content.substring(0, 50)
-        }
+    try {
+      const task = await prisma.task.findUnique({
+        where: { id: taskId },
+        select: { id: true, title: true, projectId: true }
       });
+
+      if (task && task.projectId) {
+        await logActivity({
+          type: 'COMMENT_ADDED',
+          projectId: task.projectId,
+          userId: authorId,
+          taskId: task.id,
+          commentId: comment.id,
+          metadata: {
+            taskTitle: task.title,
+            commentPreview: content.substring(0, 50)
+          }
+        });
+      }
+    } catch (activityError) {
+      // Log activity errors shouldn't fail the comment creation
+      console.warn('Failed to log comment activity:', activityError);
     }
 
     return ApiResponse.sendSuccessResponse(
@@ -77,7 +81,9 @@ const updateComment = async (req, res, next) => {
     const comment = await commentService.updateComment(id, content, userId);
 
     // Log activity
-    if (existingComment) {
+    // Log activity - wrap in try-catch so activity logging doesn't fail the request
+    try {
+      if (existingComment) {
       const task = await prisma.task.findUnique({
         where: { id: existingComment.taskId },
         select: { id: true, title: true, projectId: true }
@@ -97,6 +103,9 @@ const updateComment = async (req, res, next) => {
           }
         });
       }
+      }
+    } catch (activityError) {
+      console.warn('Failed to log comment activity:', activityError);
     }
 
     return ApiResponse.sendSuccessResponse(
@@ -116,7 +125,6 @@ const deleteComment = async (req, res, next) => {
     const userId = req.user.id;
 
     // Get comment details before deletion for activity logging
-    const { prisma } = require('../config/prisma.config');
     const existingComment = await prisma.comment.findUnique({
       where: { id },
       select: { id: true, taskId: true, content: true }
@@ -124,8 +132,9 @@ const deleteComment = async (req, res, next) => {
 
     await commentService.deleteComment(id, userId);
 
-    // Log activity
-    if (existingComment) {
+    // Log activity - wrap in try-catch so activity logging doesn't fail the request
+    try {
+      if (existingComment) {
       const task = await prisma.task.findUnique({
         where: { id: existingComment.taskId },
         select: { id: true, title: true, projectId: true }
@@ -144,6 +153,9 @@ const deleteComment = async (req, res, next) => {
           }
         });
       }
+      }
+    } catch (activityError) {
+      console.warn('Failed to log comment activity:', activityError);
     }
 
     return ApiResponse.sendSuccessResponse(

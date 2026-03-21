@@ -21,6 +21,7 @@ import {
   getCalendarConnectionStatus,
   CalendarConnectionStatus,
 } from "@/src/services/calendarService";
+import useAlert from "@/src/hooks/useAlert";
 
 export default function TaskDetail() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function TaskDetail() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+  const { showError, AlertComponent } = useAlert();
 
   // Calendar sync state
   const [calendarStatus, setCalendarStatus] = useState<CalendarConnectionStatus>({ connected: false });
@@ -90,6 +92,24 @@ export default function TaskDetail() {
     return date.toLocaleDateString();
   };
 
+  const getCommentErrorMessage = (err: unknown) => {
+    const message = err instanceof Error ? err.message : "";
+
+    if (!message) {
+      return "Could not add comment. Please try again later.";
+    }
+
+    const normalizedMessage = message.trim().toLowerCase();
+    if (
+      normalizedMessage === "internal server error" ||
+      normalizedMessage.includes("internal server error")
+    ) {
+      return "Could not add comment. Please try again later.";
+    }
+
+    return message;
+  };
+
   const handlePostComment = async () => {
     if (!newComment.trim()) return;
 
@@ -104,10 +124,7 @@ export default function TaskDetail() {
       const commentsData = await getCommentsByTask(taskId);
       setComments(commentsData);
     } catch (err) {
-      Alert.alert(
-        "Error",
-        err instanceof Error ? err.message : "Failed to post comment"
-      );
+      showError(getCommentErrorMessage(err), "Comment Error");
     } finally {
       setPostingComment(false);
     }
@@ -189,6 +206,7 @@ export default function TaskDetail() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
+      {AlertComponent}
       {/* Header */}
       <View className="pt-6 pb-4 px-6 bg-gray-900/50">
         <View className="flex-row items-center justify-between mb-2">

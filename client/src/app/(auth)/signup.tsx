@@ -186,11 +186,6 @@ export default function SignupScreen() {
     [isSubmitDisabled]
   );
 
-  const googleIcon = useMemo(
-    () => <Ionicons name="logo-google" size={20} color="#DB4437" />,
-    []
-  );
-
   const checkboxLabel = useMemo(
     () => (
       <Text className="text-xs text-gray-500 leading-4">
@@ -335,7 +330,7 @@ export default function SignupScreen() {
                   );
                 }}
                 variant="secondary"
-                icon={googleIcon}
+                icon="logo-google"
               />
             </View>
 

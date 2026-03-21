@@ -179,11 +179,6 @@ export default function LoginScreen() {
     [isSubmitDisabled]
   );
 
-  const googleIcon = useMemo(
-    () => <Ionicons name="logo-google" size={20} color="#DB4437" />,
-    []
-  );
-
   return (
     <LinearGradient colors={theme.background.gradient} className="flex-1">
       <KeyboardAvoidingView
@@ -259,7 +254,7 @@ export default function LoginScreen() {
               title={isGoogleLoading ? "Signing in with Google..." : "Continue with Google"}
               onPress={handleGoogleSignIn}
               variant="secondary"
-              icon={googleIcon}
+              icon="logo-google"
               loading={isGoogleLoading}
               disabled={isGoogleLoading}
             />

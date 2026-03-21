@@ -1,5 +1,6 @@
 import { prisma } from "#config/db.js";
 import { sendPushNotification } from "./notification.service.js";
+import { NotFoundError, AuthorizationError } from "#utils/error.utils.js";
 
 const createComment = async ({ taskId, content, authorId }) => {
   // Verify task exists and user has access
@@ -16,15 +17,28 @@ const createComment = async ({ taskId, content, authorId }) => {
   });
 
   if (!task) {
-    throw new Error('Task not found');
+    throw new NotFoundError('Task not found');
   }
 
-  // Check if user is project member or owner
-  const isMember = task.project.members.some(member => member.userId === authorId);
-  const isOwner = task.project.ownerId === authorId;
+  // Access rules:
+  // - Project task: user must be project owner or project member
+  // - Standalone task (no project): user must be creator or assignee
+  if (task.project) {
+    const isMember = task.project.members.some(
+      (member) => member.userId === authorId
+    );
+    const isOwner = task.project.ownerId === authorId;
 
-  if (!isMember && !isOwner) {
-    throw new Error('Access denied: You are not a member of this project');
+    if (!isMember && !isOwner) {
+      throw new AuthorizationError('You are not a member of this project');
+    }
+  } else {
+    const isCreator = task.creatorId === authorId;
+    const isAssignee = task.assigneeId === authorId;
+
+    if (!isCreator && !isAssignee) {
+      throw new AuthorizationError('You are not allowed to comment on this task');
+    }
   }
 
   const comment = await prisma.comment.create({
@@ -44,6 +58,7 @@ const createComment = async ({ taskId, content, authorId }) => {
       task: {
         select: {
           title: true,
+          creatorId: true,
           assignee: {
             select: {
               id: true,
@@ -84,8 +99,12 @@ const createComment = async ({ taskId, content, authorId }) => {
     }
 
     // Notify project members (except author and assignee)
-    comment.task.project.members.forEach(member => {
-      if (member.userId !== authorId && member.userId !== comment.task.assignee?.id && member.user.pushToken) {
+    comment.task.project?.members?.forEach((member) => {
+      if (
+        member.userId !== authorId &&
+        member.userId !== comment.task.assignee?.id &&
+        member.user.pushToken
+      ) {
         notifications.push({
           token: member.user.pushToken,
           title: "New Comment",
@@ -141,11 +160,11 @@ const updateComment = async (commentId, content, userId) => {
   });
 
   if (!comment) {
-    throw new Error('Comment not found');
+    throw new NotFoundError('Comment not found');
   }
 
   if (comment.authorId !== userId) {
-    throw new Error('Access denied: You can only edit your own comments');
+    throw new AuthorizationError('You can only edit your own comments');
   }
 
   const updatedComment = await prisma.comment.update({
@@ -175,11 +194,11 @@ const deleteComment = async (commentId, userId) => {
   });
 
   if (!comment) {
-    throw new Error('Comment not found');
+    throw new NotFoundError('Comment not found');
   }
 
   if (comment.authorId !== userId) {
-    throw new Error('Access denied: You can only delete your own comments');
+    throw new AuthorizationError('You can only delete your own comments');
   }
 
   await prisma.comment.delete({

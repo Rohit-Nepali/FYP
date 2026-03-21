@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, Image, ScrollView } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 interface Assignee {
   id: string;
@@ -25,11 +26,11 @@ export default function TeamWorkloadSection({
 }: TeamWorkloadSectionProps) {
   if (assigneeBreakdown.length === 0) {
     return (
-      <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-        <Text className="text-white font-semibold text-base mb-3">
+      <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700/50">
+        <Text className="text-white font-bold text-base mb-4">
           Team Workload
         </Text>
-        <View className="items-center py-4">
+        <View className="items-center py-6">
           <Text className="text-gray-400 text-sm">No assigned tasks</Text>
         </View>
       </View>
@@ -46,12 +47,12 @@ export default function TeamWorkloadSection({
   };
 
   return (
-    <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-      <Text className="text-white font-semibold text-base mb-3">
+    <View className="bg-gray-800 rounded-2xl p-4 border border-gray-700/50 overflow-hidden">
+      <Text className="text-white font-bold text-base mb-4">
         Team Workload
       </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View className="flex-row space-x-3">
+        <View className="flex-row gap-3">
           {assigneeBreakdown.map((workload, index) => {
             const completionRate =
               workload.total > 0
@@ -59,27 +60,30 @@ export default function TeamWorkloadSection({
                 : 0;
 
             return (
-              <View
+              <LinearGradient
                 key={workload.assignee.id || index}
-                className="bg-gray-900/60 rounded-xl p-3 min-w-[160px]"
+                colors={["#1F2937", "#111827"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                className="rounded-xl p-3 min-w-[165] border border-gray-700/50"
               >
                 {/* Assignee Info */}
                 <View className="flex-row items-center mb-3">
                   {workload.assignee.profileImage ? (
                     <Image
                       source={{ uri: workload.assignee.profileImage }}
-                      className="w-10 h-10 rounded-full mr-2"
+                      className="w-10 h-10 rounded-full border border-gray-600/50 mr-2"
                     />
                   ) : (
-                    <View className="w-10 h-10 rounded-full bg-gray-700 items-center justify-center mr-2">
-                      <Text className="text-white text-sm font-semibold">
+                    <View className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 items-center justify-center mr-2 border border-purple-500/30">
+                      <Text className="text-white text-xs font-bold">
                         {getInitials(workload.assignee.name)}
                       </Text>
                     </View>
                   )}
                   <View className="flex-1">
                     <Text
-                      className="text-white font-medium text-sm"
+                      className="text-white font-semibold text-sm"
                       numberOfLines={1}
                     >
                       {workload.assignee.name}
@@ -91,45 +95,51 @@ export default function TeamWorkloadSection({
                 </View>
 
                 {/* Stats */}
-                <View className="space-y-2">
+                <View className="space-y-2 mb-3 pb-3 border-b border-gray-700/30">
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-gray-400 text-xs">Completed</Text>
-                    <Text className="text-green-400 font-semibold text-sm">
-                      {workload.completed}
-                    </Text>
+                    <Text className="text-gray-400 text-xs font-medium">Completed</Text>
+                    <View className="bg-green-500/15 rounded px-2 py-0.5">
+                      <Text className="text-green-400 font-bold text-xs">
+                        {workload.completed}
+                      </Text>
+                    </View>
                   </View>
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-gray-400 text-xs">In Progress</Text>
-                    <Text className="text-blue-400 font-semibold text-sm">
-                      {workload.inProgress}
-                    </Text>
+                    <Text className="text-gray-400 text-xs font-medium">In Progress</Text>
+                    <View className="bg-blue-500/15 rounded px-2 py-0.5">
+                      <Text className="text-blue-400 font-bold text-xs">
+                        {workload.inProgress}
+                      </Text>
+                    </View>
                   </View>
                   {workload.overdue > 0 && (
                     <View className="flex-row items-center justify-between">
-                      <Text className="text-gray-400 text-xs">Overdue</Text>
-                      <Text className="text-red-400 font-semibold text-sm">
-                        {workload.overdue}
-                      </Text>
+                      <Text className="text-gray-400 text-xs font-medium">Overdue</Text>
+                      <View className="bg-red-500/15 rounded px-2 py-0.5">
+                        <Text className="text-red-400 font-bold text-xs">
+                          {workload.overdue}
+                        </Text>
+                      </View>
                     </View>
                   )}
                 </View>
 
                 {/* Completion Rate Bar */}
-                <View className="mt-3">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-gray-400 text-xs">Completion</Text>
-                    <Text className="text-white font-semibold text-xs">
+                <View>
+                  <View className="flex-row items-center justify-between mb-1.5">
+                    <Text className="text-gray-400 text-xs font-medium">Completion</Text>
+                    <Text className="text-green-400 font-bold text-xs">
                       {completionRate}%
                     </Text>
                   </View>
-                  <View className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <View className="h-2 bg-gray-700/50 rounded-full overflow-hidden border border-gray-600/30">
                     <View
-                      className="h-full rounded-full bg-green-500"
+                      className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-500"
                       style={{ width: `${completionRate}%` }}
                     />
                   </View>
                 </View>
-              </View>
+              </LinearGradient>
             );
           })}
         </View>

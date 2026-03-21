@@ -18,20 +18,26 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   required = false,
 }) => {
   return (
-    <View className="mb-2">
+    <View className="mb-3">
       <TouchableOpacity
         className="flex-row items-start"
         onPress={onToggle}
-        activeOpacity={0.7}
+        activeOpacity={0.6}
       >
         <View
-          className={`w-5 h-5 rounded border-2 mr-3 mt-0.5 justify-center items-center ${
-            error && !checked ? "border-red-500 bg-red-100" : "border-gray-400"
-          } ${checked ? "bg-blue-500 border-blue-500" : ""}`}
+          className={`w-5 h-5 rounded-md mr-3 mt-0.5 justify-center items-center border-2 transition-all ${
+            error && !checked
+              ? "border-red-500 bg-red-100/10"
+              : checked
+              ? "border-blue-500/50 bg-blue-500 "
+              : "border-gray-500/50 bg-gray-800"
+          }`}
         >
-          {checked && <Ionicons name="checkmark" size={16} color="white" />}
+          {checked && <Ionicons name="checkmark" size={14} color="white" />}
         </View>
-        <Text className="flex-1 text-xs text-gray-500 leading-4">
+        <Text className={`flex-1 text-xs leading-4 ${
+          checked ? "text-gray-200 font-medium" : "text-gray-400"
+        }`}>
           {label}
           {required && <Text className="text-red-500"> *</Text>}
         </Text>

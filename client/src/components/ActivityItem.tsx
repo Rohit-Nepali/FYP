@@ -57,6 +57,21 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
 
   const icon = getActivityIcon();
 
+  const getActivityAccentColor = () => {
+    switch (activity.type) {
+      case "TASK_CREATED":
+        return { bg: "#3B82F615", border: "#3B82F640" };
+      case "TASK_UPDATED":
+        return { bg: "#F9731615", border: "#F9731640" };
+      case "COMMENT_ADDED":
+        return { bg: "#10B98115", border: "#10B98140" };
+      default:
+        return { bg: "#6B728015", border: "#6B728040" };
+    }
+  };
+
+  const accentColor = getActivityAccentColor();
+
   return (
     <TouchableOpacity
       onPress={() => {
@@ -64,8 +79,12 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
           router.push(`/tasks/${activity.task.id}`);
         }
       }}
-      className="flex-row items-start bg-gray-800/50 rounded-xl p-3 mb-2 border border-gray-700"
-      activeOpacity={0.7}
+      className="flex-row items-start rounded-xl p-4 mb-3 border"
+      style={{
+        backgroundColor: accentColor.bg,
+        borderColor: accentColor.border,
+      }}
+      activeOpacity={0.6}
     >
       {/* User Avatar */}
       <View className="mr-3">
@@ -75,8 +94,8 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
             className="w-10 h-10 rounded-full border-2 border-gray-700"
           />
         ) : (
-          <View className="w-10 h-10 rounded-full bg-blue-600 items-center justify-center border-2 border-gray-700">
-            <Text className="text-white text-sm font-semibold">
+          <View className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 items-center justify-center border-2 border-gray-700/50">
+            <Text className="text-white text-sm font-bold">
               {activity.user.name.charAt(0).toUpperCase()}
             </Text>
           </View>
@@ -85,30 +104,34 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
 
       {/* Activity Content */}
       <View className="flex-1">
-        <View className="flex-row items-center mb-1">
+        <View className="flex-row items-center mb-2">
           {/* Activity Icon */}
           <View
             className="w-6 h-6 rounded-full items-center justify-center mr-2"
-            style={{ backgroundColor: icon.color }}
+            style={{
+              backgroundColor: icon.color + "20",
+              borderWidth: 1,
+              borderColor: icon.color + "40",
+            }}
           >
-            <Ionicons name={icon.name} size={12} color="#fff" />
+            <Ionicons name={icon.name} size={13} color={icon.color} />
           </View>
 
           {/* Activity Text */}
-          <Text className="text-gray-200 text-sm flex-1">
+          <Text className="text-gray-100 text-sm flex-1 font-medium">
             {getActivityText()}
           </Text>
         </View>
 
         {/* Timestamp */}
-        <Text className="text-gray-500 text-xs mt-1">
+        <Text className="text-gray-500 text-xs ml-8">
           {formatRelativeTime(activity.createdAt)}
         </Text>
 
         {/* Comment Preview (if applicable) */}
         {activity.type === "COMMENT_ADDED" && activity.metadata?.commentPreview && (
-          <View className="mt-2 bg-gray-700/50 rounded-lg px-3 py-2">
-            <Text className="text-gray-400 text-xs italic">
+          <View className="mt-2 ml-8 bg-gray-700/40 rounded-lg px-3 py-2 border border-gray-600/30">
+            <Text className="text-gray-300 text-xs italic">
               "{activity.metadata.commentPreview}..."
             </Text>
           </View>

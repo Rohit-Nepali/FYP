@@ -1,5 +1,6 @@
 import React from "react";
 import { TouchableOpacity, Text, ActivityIndicator, View, ViewStyle } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
 interface ButtonProps {
@@ -49,23 +50,24 @@ export const Button: React.FC<ButtonProps> = ({
     }
   };
 
-  const getVariantStyles = (): { container: string; text: string; border?: string } => {
+  const getVariantStyles = (): { container: string; text: string; border?: string; gradient?: [string, string] } => {
     const isDisabled = disabled || loading;
 
     switch (variant) {
       case "secondary":
         return {
-          container: isDisabled ? "bg-gray-700" : "bg-gray-800 border border-gray-600",
+          container: isDisabled ? "bg-gray-700" : "bg-gray-800 border border-gray-600/50",
           text: isDisabled ? "text-gray-500" : "text-gray-200",
         };
       case "danger":
         return {
-          container: isDisabled ? "bg-red-600/50" : "bg-red-600",
+          container: isDisabled ? "bg-red-600/50" : "bg-red-600 shadow-lg",
           text: "text-white",
+          gradient: ["#DC2626", "#991B1B"],
         };
       case "danger-ghost":
         return {
-          container: "border border-red-500 bg-transparent",
+          container: "border border-red-500/40 bg-red-500/10",
           text: isDisabled ? "text-red-400/50" : "text-red-500",
         };
       case "primary":
@@ -73,6 +75,7 @@ export const Button: React.FC<ButtonProps> = ({
         return {
           container: isDisabled ? "bg-blue-600/50" : "bg-blue-600",
           text: "text-white",
+          gradient: ["#3B82F6", "#1D4ED8"],
         };
     }
   };
@@ -101,7 +104,7 @@ export const Button: React.FC<ButtonProps> = ({
         {icon && iconPosition === "left" && (
           <View className="mr-2">{renderIcon()}</View>
         )}
-        <Text className={`font-medium ${sizeStyles.text} ${variantStyles.text}`}>
+        <Text className={`font-bold ${sizeStyles.text} ${variantStyles.text}`}>
           {title}
         </Text>
         {icon && iconPosition === "right" && (
@@ -110,6 +113,27 @@ export const Button: React.FC<ButtonProps> = ({
       </View>
     );
   };
+
+  // Use gradient for primary and danger variants
+  if ((variant === "primary" || variant === "danger") && !disabled && !loading && variantStyles.gradient) {
+    return (
+      <LinearGradient
+        colors={variantStyles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className={`${sizeStyles.container} justify-center items-center flex-row rounded-xl overflow-hidden ${className}`}
+      >
+        <TouchableOpacity
+          className="w-full h-full justify-center items-center flex-row"
+          onPress={onPress}
+          disabled={disabled || loading}
+          activeOpacity={0.8}
+        >
+          {renderContent()}
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  }
 
   return (
     <TouchableOpacity

@@ -1,6 +1,7 @@
 import { useRouter, usePathname } from "expo-router";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 export function BottomNavigation() {
   const router = useRouter();
@@ -40,7 +41,12 @@ export function BottomNavigation() {
   const activeTab = getActiveTab();
 
   return (
-    <View className="absolute bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700">
+    <LinearGradient
+      colors={["#111827", "#0B0F14"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      className="absolute bottom-0 left-0 right-0 border-t border-gray-700/50"
+    >
       <View className="flex-row justify-around py-3">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.name.toLowerCase();
@@ -48,21 +54,28 @@ export function BottomNavigation() {
           return (
             <TouchableOpacity
               key={tab.name}
-              className="items-center justify-center py-2 flex-1"
+              className="items-center justify-center py-2 flex-1 gap-1"
               onPress={() => {
                 if (pathname !== tab.route) {
                   router.replace(tab.route);
                 }
               }}
             >
-              <Ionicons
-                name={tab.icon as any}
-                size={24}
-                color={isActive ? "#8b5cf6" : "#6b7280"}
-              />
+              <View
+                className={`w-10 h-10 rounded-lg items-center justify-center transition-all ${
+                  isActive ? "bg-purple-500/20 border border-purple-500/40" : "bg-transparent"
+                }`}
+              >
+                <Ionicons
+                  name={tab.icon as any}
+                  size={24}
+                  color={isActive ? "#a78bfa" : "#6b7280"}
+                />
+              </View>
               <Text
-                className={`text-xs mt-1 ${isActive ? "text-purple-400" : "text-gray-500"
-                  }`}
+                className={`text-xs font-medium ${
+                  isActive ? "text-purple-400" : "text-gray-500"
+                }`}
               >
                 {tab.name}
               </Text>
@@ -70,6 +83,6 @@ export function BottomNavigation() {
           );
         })}
       </View>
-    </View>
+    </LinearGradient>
   );
 }

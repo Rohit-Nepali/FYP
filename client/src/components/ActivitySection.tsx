@@ -114,23 +114,27 @@ export default function ActivitySection({ projectId }: ActivitySectionProps) {
         }
       >
         {groupedActivities.length === 0 ? (
-          <View className="items-center py-8">
-            <Ionicons name="time-outline" size={40} color="#6B7280" />
-            <Text className="text-gray-400 text-sm mt-2">No recent activity</Text>
-            <Text className="text-gray-500 text-xs mt-1 text-center">
+          <View className="items-center py-12">
+            <View className="w-16 h-16 rounded-full bg-gray-800/50 items-center justify-center mb-3">
+              <Ionicons name="time-outline" size={32} color="#8B5CF6" />
+            </View>
+            <Text className="text-gray-300 text-base font-semibold mt-2">No activity yet</Text>
+            <Text className="text-gray-500 text-xs mt-2 text-center px-4">
               Create tasks or add comments to see activity here
             </Text>
           </View>
         ) : (
           groupedActivities.map((group, groupIndex) => (
-            <View key={groupIndex} className="mb-4">
+            <View key={groupIndex} className="mb-6">
               {/* Day Header */}
-              <View className="flex-row items-center mb-2">
-                <View className="flex-1 h-px bg-gray-700" />
-                <Text className="text-gray-400 text-xs font-medium mx-3">
-                  {group.date}
-                </Text>
-                <View className="flex-1 h-px bg-gray-700" />
+              <View className="flex-row items-center mb-4 px-1">
+                <View className="flex-1 h-px bg-gradient-to-r from-gray-700 via-gray-700 to-transparent" />
+                <View className="bg-purple-500/10 rounded-full px-3 py-1.5 mx-3 border border-purple-500/20">
+                  <Text className="text-purple-300 text-xs font-bold">
+                    {group.date}
+                  </Text>
+                </View>
+                <View className="flex-1 h-px bg-gradient-to-l from-gray-700 via-gray-700 to-transparent" />
               </View>
 
               {/* Activities for this day */}
@@ -146,14 +150,14 @@ export default function ActivitySection({ projectId }: ActivitySectionProps) {
           <TouchableOpacity
             onPress={onLoadMore}
             disabled={loading}
-            className="items-center py-4"
+            className="items-center py-6"
           >
             {loading ? (
-              <ActivityIndicator size="small" color="#60A5FA" />
+              <ActivityIndicator size="small" color="#A78BFA" />
             ) : (
-              <View className="flex-row items-center">
-                <Text className="text-blue-400 text-sm font-medium">Load More</Text>
-                <Ionicons name="chevron-down" size={16} color="#60A5FA" />
+              <View className="bg-purple-500/10 border border-purple-500/30 rounded-lg flex-row items-center gap-2 px-4 py-2">
+                <Text className="text-purple-400 text-sm font-semibold">Load More</Text>
+                <Ionicons name="chevron-down" size={16} color="#A78BFA" />
               </View>
             )}
           </TouchableOpacity>

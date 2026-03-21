@@ -30,15 +30,21 @@ export const FormInput: React.FC<FormInputProps> = ({
   onTogglePassword,
 }) => {
   return (
-    <View className="mb-4">
+    <View className="mb-5">
       <View
-        className={`flex-row items-center bg-gray-800 rounded-xl px-4 h-14 border ${
-          error ? "border-red-500" : "border-gray-700"
+        className={`flex-row items-center rounded-xl px-4 h-14 border transition-all ${
+          error 
+            ? "bg-red-500/5 border-red-500/40" 
+            : "bg-gray-800/50 border-gray-700/50"
         }`}
       >
-        <Ionicons name={icon} size={20} color={error ? "#EF4444" : "#9CA3AF"} />
+        <Ionicons 
+          name={icon} 
+          size={20} 
+          color={error ? "#EF4444" : "#8B5CF6"} 
+        />
         <TextInput
-          className="flex-1 text-base text-gray-200 ml-3"
+          className="flex-1 text-base text-gray-100 ml-3 font-medium"
           placeholder={placeholder}
           placeholderTextColor="#6B7280"
           value={value}
@@ -49,16 +55,21 @@ export const FormInput: React.FC<FormInputProps> = ({
           autoCorrect={false}
         />
         {showPasswordToggle && onTogglePassword && (
-          <TouchableOpacity onPress={onTogglePassword} className="p-1">
+          <TouchableOpacity onPress={onTogglePassword} className="p-2">
             <Ionicons
               name={isPasswordVisible ? "eye-outline" : "eye-off-outline"}
               size={20}
-              color={error ? "#EF4444" : "#9CA3AF"}
+              color={error ? "#EF4444" : "#8B5CF6"}
             />
           </TouchableOpacity>
         )}
       </View>
-      {error && <Text className="text-red-400 text-xs mt-1 ml-1">{error}</Text>}
+      {error && (
+        <View className="flex-row items-center mt-2 ml-1">
+          <Ionicons name="alert-circle" size={14} color="#EF4444" />
+          <Text className="text-red-400 text-xs ml-1 font-medium">{error}</Text>
+        </View>
+      )}
     </View>
   );
 };

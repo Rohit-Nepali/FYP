@@ -188,10 +188,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
         ) : (
           <View className="space-y-2">
             {project.tasks!.map((task: any, index: number) => {
-              const isDone =
-                task.status?.name &&
-                (task.status.name.toLowerCase().includes("complete") ||
-                  task.status.name.toLowerCase().includes("done"));
+              const isDone = Boolean(task.isCompleted);
 
               return (
                 <TouchableOpacity

@@ -59,8 +59,7 @@ const getDaysOverdue = (dueDate: string | undefined): number => {
 };
 
 const isCompleted = (task: Task): boolean => {
-  const statusName = task.status?.name?.toLowerCase() || "";
-  return statusName.includes("complete") || statusName.includes("done");
+  return Boolean(task.isCompleted);
 };
 
 // Bot Avatar Component

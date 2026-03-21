@@ -179,9 +179,7 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
   // Don't render if not visible
   if (!visible) return null;
 
-  const isDone = task?.status?.name &&
-    (task.status.name.toLowerCase().includes("complete") ||
-      task.status.name.toLowerCase().includes("done"));
+  const isDone = Boolean(task?.isCompleted);
 
   return (
     <Modal

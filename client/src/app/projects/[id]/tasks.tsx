@@ -175,10 +175,7 @@ export default function ProjectTasks() {
           ) : (
             <View className="space-y-2">
               {project.tasks!.slice(0, 10).map((task: any, index: number) => {
-                const isDone =
-                  task.status?.name &&
-                  (task.status.name.toLowerCase().includes("complete") ||
-                    task.status.name.toLowerCase().includes("done"));
+                const isDone = Boolean(task.isCompleted);
 
                 return (
                   <TouchableOpacity

@@ -108,6 +108,7 @@ model Task {
   id          String    @id @default(cuid())
   title       String
   description String?
+  isCompleted Boolean   @default(false)
   statusId    String?
   status      Status?   @relation(fields: [statusId], references: [id], onDelete: Restrict)
   priorityId  String?

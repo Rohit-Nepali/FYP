@@ -419,10 +419,7 @@ export const projectService = {
 
         const now = new Date();
         const totalTasks = tasks.length;
-        const completedTasks = tasks.filter(task => {
-            const statusName = task.status?.name?.toLowerCase() || '';
-            return statusName.includes('done') || statusName.includes('complete') || statusName.includes('finished');
-        }).length;
+        const completedTasks = tasks.filter(task => task.isCompleted).length;
         const inProgressTasks = tasks.filter(task => {
             const statusName = task.status?.name?.toLowerCase() || '';
             return statusName.includes('progress') || statusName.includes('working');
@@ -430,9 +427,7 @@ export const projectService = {
         const overdueTasks = tasks.filter(task => {
             if (!task.dueDate) return false;
             const dueDate = new Date(task.dueDate);
-            const statusName = task.status?.name?.toLowerCase() || '';
-            const isCompleted = statusName.includes('done') || statusName.includes('complete') || statusName.includes('finished');
-            return dueDate < now && !isCompleted;
+            return dueDate < now && !task.isCompleted;
         }).length;
         const unassignedTasks = tasks.filter(task => !task.assigneeId).length;
         const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -482,7 +477,7 @@ export const projectService = {
                 assigneeBreakdown[assigneeId].total++;
                 
                 const statusName = task.status?.name?.toLowerCase() || '';
-                if (statusName.includes('done') || statusName.includes('complete') || statusName.includes('finished')) {
+                if (task.isCompleted) {
                     assigneeBreakdown[assigneeId].completed++;
                 } else if (statusName.includes('progress') || statusName.includes('working')) {
                     assigneeBreakdown[assigneeId].inProgress++;
@@ -490,7 +485,7 @@ export const projectService = {
                 
                 if (task.dueDate) {
                     const dueDate = new Date(task.dueDate);
-                    if (dueDate < now && !statusName.includes('done') && !statusName.includes('complete') && !statusName.includes('finished')) {
+                    if (dueDate < now && !task.isCompleted) {
                         assigneeBreakdown[assigneeId].overdue++;
                     }
                 }

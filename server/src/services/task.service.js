@@ -5,7 +5,7 @@ import { sendPushNotification } from "./notification.service.js";
 
 export const taskService = {
   create: async (taskData, userId) => {
-    const { title, description, statusId, priorityId, dueDate, projectId, assigneeId } = taskData;
+    const { title, description, isCompleted, statusId, priorityId, dueDate, projectId, assigneeId } = taskData;
     const normalizedStatusId = statusId || null;
     const normalizedPriorityId = priorityId || null;
 
@@ -66,6 +66,7 @@ export const taskService = {
       data: {
         title,
         description,
+        isCompleted: isCompleted ?? false,
         statusId: normalizedStatusId,
         priorityId: normalizedPriorityId,
         dueDate: dueDate ? new Date(dueDate) : null,
@@ -220,6 +221,7 @@ export const taskService = {
     const {
       title,
       description,
+      isCompleted,
       statusId,
       priorityId,
       dueDate,
@@ -231,6 +233,7 @@ export const taskService = {
     if (isCreator || isOwner) {
       if (title !== undefined) data.title = title;
       if (description !== undefined) data.description = description;
+      if (isCompleted !== undefined) data.isCompleted = isCompleted;
 
       if (statusId !== undefined) {
         if (statusId === null || statusId === "") {
@@ -280,6 +283,7 @@ export const taskService = {
       }
     } else if (isAssignee) {
       if (title !== undefined) data.title = title;
+      if (isCompleted !== undefined) data.isCompleted = isCompleted;
       if (statusId !== undefined) {
         if (statusId === null || statusId === "") {
           data.statusId = null;

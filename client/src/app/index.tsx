@@ -323,9 +323,7 @@ export default function Index() {
                   >
                     <View>
                       {(() => {
-                        const statusName = task.status?.name?.toLowerCase() || "";
-                        const isDone =
-                          statusName.includes("complete") || statusName.includes("done");
+                        const isDone = Boolean(task.isCompleted);
 
                         return (
                       <Ionicons
@@ -346,9 +344,7 @@ export default function Index() {
                     </View>
                     <View className="flex-1">
                       {(() => {
-                        const statusName = task.status?.name?.toLowerCase() || "";
-                        const isDone =
-                          statusName.includes("complete") || statusName.includes("done");
+                        const isDone = Boolean(task.isCompleted);
 
                         return (
                       <Text

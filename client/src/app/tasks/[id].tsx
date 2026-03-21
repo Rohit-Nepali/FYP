@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Task, getTaskById } from "@/src/services/taskService";
+import { Task, getTaskById, updateTask } from "@/src/services/taskService";
 import { Comment, createComment, getCommentsByTask } from "@/src/services/commentService";
 import { Button } from "@/src/components/UI/Buttons";
 import {
@@ -35,6 +35,7 @@ export default function TaskDetail() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+  const [togglingComplete, setTogglingComplete] = useState(false);
   const { showError, AlertComponent } = useAlert();
 
   // Calendar sync state
@@ -130,6 +131,30 @@ export default function TaskDetail() {
     }
   };
 
+  const handleToggleComplete = async () => {
+    if (!task || togglingComplete) return;
+
+    const nextValue = !task.isCompleted;
+    const previousTask = task;
+
+    try {
+      setTogglingComplete(true);
+      setTask({ ...task, isCompleted: nextValue });
+      const updated = await updateTask(task.id, { isCompleted: nextValue });
+      setTask(updated);
+    } catch (err) {
+      setTask(previousTask);
+      showError(
+        err instanceof Error
+          ? err.message
+          : "Failed to update task completion",
+        "Task Update Error"
+      );
+    } finally {
+      setTogglingComplete(false);
+    }
+  };
+
   // Handle sync to Google Calendar
   const handleSyncToCalendar = async () => {
     if (!task) return;
@@ -190,11 +215,7 @@ export default function TaskDetail() {
     );
   }
 
-  const isDone =
-    task &&
-    task.status &&
-    (task.status.name.toLowerCase().includes("complete") ||
-      task.status.name.toLowerCase().includes("done"));
+  const isDone = Boolean(task?.isCompleted);
 
   const description = (task as any)?.description as string | undefined;
   const projectTitle =
@@ -319,12 +340,17 @@ export default function TaskDetail() {
               <>
                 <View className="bg-gray-800/90 rounded-3xl p-5">
                   <View className="flex-row items-start">
-                    <Ionicons
-                      name={isDone ? "checkmark-circle" : "ellipse-outline"}
-                      size={26}
-                      color={isDone ? "#10B981" : "#9CA3AF"}
-                      style={{ marginTop: 2 }}
-                    />
+                    <TouchableOpacity
+                      onPress={handleToggleComplete}
+                      disabled={togglingComplete}
+                      className="mt-0.5"
+                    >
+                      <Ionicons
+                        name={isDone ? "checkmark-circle" : "ellipse-outline"}
+                        size={26}
+                        color={isDone ? "#10B981" : "#9CA3AF"}
+                      />
+                    </TouchableOpacity>
 
                     <View className="flex-1 ml-4">
                       <Text className="text-white font-semibold text-xl leading-snug">

@@ -8,6 +8,7 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
+  isCompleted: boolean;
   statusId?: string | null;
   status?: Status | null;
   priorityId?: string | null;
@@ -29,6 +30,7 @@ export interface Task {
 export interface CreateTaskData {
   title: string;
   description?: string;
+  isCompleted?: boolean;
   statusId?: string;
   priorityId?: string;
   dueDate?: string;
@@ -39,6 +41,7 @@ export interface CreateTaskData {
 export interface UpdateTaskData {
   title?: string;
   description?: string;
+  isCompleted?: boolean;
   statusId?: string;
   priorityId?: string;
   dueDate?: string | null;

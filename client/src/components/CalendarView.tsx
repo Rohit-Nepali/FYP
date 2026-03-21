@@ -48,8 +48,7 @@ const formatTime = (dateTimeString: string): string => {
 };
 
 const isCompleted = (task: Task): boolean => {
-    const statusName = task.status?.name?.toLowerCase() || "";
-    return statusName.includes("complete") || statusName.includes("done");
+    return Boolean(task.isCompleted);
 };
 
 // ─── Calendar Theme ──────────────────────────────────────────────────────────

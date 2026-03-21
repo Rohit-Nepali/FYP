@@ -68,8 +68,7 @@ const isTomorrow = (dueDate: string | undefined): boolean => {
 };
 
 const isCompleted = (task: Task): boolean => {
-    const statusName = task.status?.name?.toLowerCase() || "";
-    return statusName.includes("complete") || statusName.includes("done");
+    return Boolean(task.isCompleted);
 };
 
 const isFuture = (dueDate: string | undefined): boolean => {

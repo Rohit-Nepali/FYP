@@ -17,6 +17,7 @@ import { theme } from "@/src/config/theme";
 import * as DocumentPicker from "expo-document-picker";
 import { Button } from "@/src/components/UI/Buttons";
 import { updateProfile, uploadAvatar } from "@/src/services/userService";
+import { resolveFileUrl } from "@/src/utils/url";
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -137,7 +138,7 @@ export default function EditProfileScreen() {
             <View className="relative mb-3">
               {localAvatarUri ? (
                 <Image
-                  source={{ uri: localAvatarUri }}
+                  source={{ uri: resolveFileUrl(localAvatarUri) }}
                   className="w-20 h-20 rounded-full"
                 />
               ) : (

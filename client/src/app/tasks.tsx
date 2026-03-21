@@ -22,6 +22,7 @@ import TaskModal from "@/src/components/UI/modals/TaskModal";
 import { Button } from "@/src/components/UI/Buttons";
 import CalendarView from "@/src/components/CalendarView";
 import { useAuth } from "@/src/contexts/AuthContext";
+import { resolveFileUrl } from "@/src/utils/url";
 
 // Types
 interface GroupedTasks {
@@ -217,7 +218,7 @@ const TaskCard: React.FC<TaskCardProps> = React.memo(
                     <View className="ml-2">
                         {task.assignee.profileImage ? (
                             <Image
-                                source={{ uri: task.assignee.profileImage }}
+                                source={{ uri: resolveFileUrl(task.assignee.profileImage) }}
                                 className="w-8 h-8 rounded-full"
                             />
                         ) : (

@@ -17,6 +17,7 @@ import {
     CalendarEvent,
     CalendarConnectionStatus,
 } from "../services/calendarService";
+import { resolveFileUrl } from "@/src/utils/url";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ const AgendaTaskCard: React.FC<{ task: Task; onPress: () => void }> = ({
                 <View className="ml-2">
                     {task.assignee.profileImage ? (
                         <Image
-                            source={{ uri: task.assignee.profileImage }}
+                            source={{ uri: resolveFileUrl(task.assignee.profileImage) }}
                             className="w-7 h-7 rounded-full"
                         />
                     ) : (

@@ -19,6 +19,7 @@ import { Platform } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Task, uploadAttachments } from "@/src/services/taskService";
 import useAlert from "@/src/hooks/useAlert";
+import { resolveFileUrl } from "@/src/utils/url";
 
 interface InitialValues {
   title?: string;
@@ -339,7 +340,7 @@ export default function TaskModal({
                         >
                           {member.profileImage ? (
                             <Image
-                              source={{ uri: member.profileImage }}
+                              source={{ uri: resolveFileUrl(member.profileImage) }}
                               className="w-10 h-10 rounded-full mb-1"
                             />
                           ) : (

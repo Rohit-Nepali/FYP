@@ -28,6 +28,7 @@ import {
 import { useAuth } from "@/src/contexts/AuthContext";
 import AddMembersModal from "@/src/components/UI/modals/AddMembersModal";
 import CustomAlert from "@/src/components/UI/CustomAlert";
+import { resolveFileUrl } from "@/src/utils/url";
 
 // ─── Types ─────────────────────────────────────────────────────────
 interface MemberUser {
@@ -95,7 +96,7 @@ function MemberAvatar({
     <View style={{ position: "relative" }}>
       {imageUrl ? (
         <Image
-          source={{ uri: imageUrl }}
+          source={{ uri: resolveFileUrl(imageUrl) }}
           style={{
             width: size,
             height: size,

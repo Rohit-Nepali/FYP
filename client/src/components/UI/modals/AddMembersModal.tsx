@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { addProjectMembers, searchUsers, UserLite } from "@/src/services/userService";
 import useAlert from "@/src/hooks/useAlert";
+import { resolveFileUrl } from "@/src/utils/url";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -193,7 +194,7 @@ export default function AddMembersModal({
         {/* Avatar */}
         {item.avatarUrl ? (
           <Image
-            source={{ uri: item.avatarUrl }}
+            source={{ uri: resolveFileUrl(item.avatarUrl) }}
             className="w-10 h-10 rounded-full mr-3"
           />
         ) : (

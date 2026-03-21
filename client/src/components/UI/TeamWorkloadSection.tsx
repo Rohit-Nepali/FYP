@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, Image, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { resolveFileUrl } from "@/src/utils/url";
 
 interface Assignee {
   id: string;
@@ -71,7 +72,7 @@ export default function TeamWorkloadSection({
                 <View className="flex-row items-center mb-3">
                   {workload.assignee.profileImage ? (
                     <Image
-                      source={{ uri: workload.assignee.profileImage }}
+                      source={{ uri: resolveFileUrl(workload.assignee.profileImage) }}
                       className="w-10 h-10 rounded-full border border-gray-600/50 mr-2"
                     />
                   ) : (

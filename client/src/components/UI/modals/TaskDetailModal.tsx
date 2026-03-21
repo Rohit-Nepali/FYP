@@ -22,6 +22,7 @@ import { Status } from "@/src/services/statusService";
 import { Priority } from "@/src/services/priorityService";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useAlert from "@/src/hooks/useAlert";
+import { resolveFileUrl } from "@/src/utils/url";
 
 interface Props {
   visible: boolean;
@@ -332,7 +333,7 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
                             >
                                {member.profileImage ? (
                                 <Image
-                                  source={{ uri: member.profileImage }}
+                                  source={{ uri: resolveFileUrl(member.profileImage) }}
                                   className="w-8 h-8 rounded-full mb-1"
                                 />
                               ) : (
@@ -354,7 +355,7 @@ export default function TaskDetailModal({ visible, taskId, onClose, projectMembe
                             <>
                               {task.assignee.profileImage ? (
                                 <Image
-                                  source={{ uri: task.assignee.profileImage }}
+                                  source={{ uri: resolveFileUrl(task.assignee.profileImage) }}
                                   className="w-10 h-10 rounded-full border-2 border-gray-700"
                                 />
                               ) : (

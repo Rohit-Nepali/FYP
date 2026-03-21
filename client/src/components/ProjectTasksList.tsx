@@ -15,6 +15,7 @@ import { getAllPriorities, Priority } from "@/src/services/priorityService";
 import { createTask } from "@/src/services/taskService";
 import useAlert from "@/src/hooks/useAlert";
 import TaskDetailModal from "./UI/modals/TaskDetailModal";
+import { resolveFileUrl } from "@/src/utils/url";
 
 interface ProjectDetail extends Project {
   tasks?: any[];
@@ -193,7 +194,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
               return (
                 <TouchableOpacity
                   key={task.id || index}
-                  className="flex-row items-center bg-gray-900/60 rounded-xl px-3 py-3"
+                  className="flex-row items-center bg-gray-900/60 rounded-xl px-3 py-3 mb-2"
                   onPress={() => task.id && handleTaskClick(task.id)}
                 >
                   <Ionicons
@@ -225,7 +226,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
                         <View className="flex-row items-center mr-2">
                           {task.assignee.profileImage ? (
                             <Image
-                              source={{ uri: task.assignee.profileImage }}
+                              source={{ uri: resolveFileUrl(task.assignee.profileImage) }}
                               className="w-5 h-5 rounded-full mr-1"
                             />
                           ) : (

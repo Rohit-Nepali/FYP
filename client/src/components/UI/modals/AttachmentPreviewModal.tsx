@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Attachment, getAttachmentType, formatFileSize } from "../../../services/attachmentService";
+import { resolveFileUrl } from "@/src/utils/url";
 
 interface AttachmentPreviewModalProps {
   visible: boolean;
@@ -31,6 +32,7 @@ export default function AttachmentPreviewModal({
 
   const type = getAttachmentType(attachment.fileType);
   const isProjectAttachment = attachment.projectId !== null && attachment.taskId === "";
+  const resolvedFileUrl = resolveFileUrl(attachment.fileUrl);
   const fileDate = new Date(attachment.createdAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -38,20 +40,16 @@ export default function AttachmentPreviewModal({
   });
 
   const handleOpenExternal = async () => {
+    if (!resolvedFileUrl) return;
+
     setLoading(true);
     try {
-      // Construct the full URL - adjust based on your server setup
-      const fullUrl = attachment.fileUrl.startsWith("http") 
-        ? attachment.fileUrl 
-        : `http://localhost:3000${attachment.fileUrl}`;
-      
-      const supported = await Linking.canOpenURL(fullUrl);
+      const supported = await Linking.canOpenURL(resolvedFileUrl);
       
       if (supported) {
-        await Linking.openURL(fullUrl);
+        await Linking.openURL(resolvedFileUrl);
       } else {
-        // For local files, try to copy URL to clipboard or show options
-        await Linking.openURL(fullUrl);
+        await Linking.openURL(resolvedFileUrl);
       }
     } catch (error) {
       console.error("Error opening file:", error);
@@ -92,9 +90,9 @@ export default function AttachmentPreviewModal({
 
           {/* Preview */}
           <View style={styles.previewContainer}>
-            {type === "image" && attachment.fileUrl ? (
+            {type === "image" && resolvedFileUrl ? (
               <Image
-                source={{ uri: attachment.fileUrl }}
+                source={{ uri: resolvedFileUrl }}
                 style={styles.previewImage}
                 resizeMode="contain"
               />
@@ -165,7 +163,7 @@ export default function AttachmentPreviewModal({
             <TouchableOpacity
               style={styles.actionButton}
               onPress={handleOpenExternal}
-              disabled={loading}
+              disabled={loading || !resolvedFileUrl}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#fff" />

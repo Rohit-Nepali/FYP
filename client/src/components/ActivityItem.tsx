@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Activity } from "@/src/types/activity";
 import { useRouter } from "expo-router";
+import { resolveFileUrl } from "@/src/utils/url";
 
 interface ActivityItemProps {
   activity: Activity;
@@ -90,7 +91,7 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
       <View className="mr-3">
         {activity.user.profileImage ? (
           <Image
-            source={{ uri: activity.user.profileImage }}
+            source={{ uri: resolveFileUrl(activity.user.profileImage) }}
             className="w-10 h-10 rounded-full border-2 border-gray-700"
           />
         ) : (

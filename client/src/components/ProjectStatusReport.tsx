@@ -75,7 +75,7 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
     >
       <View className="space-y-4 pb-4">
         {/* Statistics Cards Grid */}
-        <View className="space-y-3">
+        <View className="space-y-3 mb-2">
           <Text className="text-white font-semibold text-lg px-1">Overview</Text>
           <View className="flex-row flex-wrap justify-between">
             {statCards.map((card, i) => (
@@ -95,7 +95,7 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
             colors={["#2563EB", "#7C3AED"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            className="rounded-xl p-4 border border-gray-700"
+            className="rounded-xl p-4 border border-gray-700 overflow-hidden"
           >
             <View className="flex-row items-center justify-between">
               <View>

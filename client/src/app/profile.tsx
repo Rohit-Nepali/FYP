@@ -7,6 +7,7 @@ import {
   Alert,
   Switch,
   Modal,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +15,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { theme } from "../config/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/src/components/UI/Buttons";
+import { resolveFileUrl } from "@/src/utils/url";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -115,11 +117,18 @@ export default function ProfileScreen() {
           <View className="items-center mb-4">
             {/* Avatar with gradient and camera overlay */}
             <View className="relative mb-3">
-              <View className="w-20 h-20 bg-gray-800 rounded-full items-center justify-center">
-                <Text className="text-white font-bold text-3xl">
-                  {user?.name?.charAt(0).toUpperCase() || "U"}
-                </Text>
-              </View>
+              {resolveFileUrl(user?.profileImage) ? (
+                <Image
+                  source={{ uri: resolveFileUrl(user?.profileImage) }}
+                  className="w-20 h-20 rounded-full"
+                />
+              ) : (
+                <View className="w-20 h-20 bg-gray-800 rounded-full items-center justify-center">
+                  <Text className="text-white font-bold text-3xl">
+                    {user?.name?.charAt(0).toUpperCase() || "U"}
+                  </Text>
+                </View>
+              )}
               {/* Camera icon overlay */}
               <TouchableOpacity
                 onPress={() => router.push("/settings/EditProfile")}

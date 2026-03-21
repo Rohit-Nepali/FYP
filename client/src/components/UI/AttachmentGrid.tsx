@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Attachment, getAttachmentType, formatFileSize } from "../../services/attachmentService";
+import { resolveFileUrl } from "@/src/utils/url";
 
 interface AttachmentGridProps {
   attachments: Attachment[];
@@ -67,7 +68,7 @@ export default function AttachmentGrid({
             <View style={styles.thumbnailContainer}>
               {type === "image" && attachment.fileUrl ? (
                 <Image
-                  source={{ uri: attachment.fileUrl }}
+                  source={{ uri: resolveFileUrl(attachment.fileUrl) }}
                   style={styles.thumbnail}
                   resizeMode="cover"
                 />

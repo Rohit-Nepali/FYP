@@ -36,6 +36,7 @@ import ActivitySection from "../../components/ActivitySection";
 import ProjectStatusReport from "../../components/ProjectStatusReport";
 import CustomAlert from "../../components/UI/CustomAlert";
 import { Button } from "@/src/components/UI/Buttons";
+import { resolveFileUrl } from "@/src/utils/url";
 
 interface ProjectMember {
   id: string;
@@ -200,7 +201,7 @@ function AvatarGroup({
           >
             {member.avatarUrl ? (
               <Image
-                source={{ uri: member.avatarUrl }}
+                source={{ uri: resolveFileUrl(member.avatarUrl) }}
                 className="w-8 h-8 rounded-full border-2 border-gray-900"
               />
             ) : (

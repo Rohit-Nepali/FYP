@@ -317,6 +317,12 @@ export const createProjectAttachmentController = async (req, res, next) => {
       throw new ApiError("No file uploaded", HTTP_STATUS.BAD_REQUEST);
     }
 
+    // Verify user has access to the project
+    const project = await projectService.getById(id, userId);
+    if (!project) {
+      throw new ApiError("Project not found or you don't have access", HTTP_STATUS.FORBIDDEN);
+    }
+
     const attachment = await attachmentService.createProjectAttachment({
       file,
       projectId: id,
@@ -347,24 +353,37 @@ export const deleteProjectAttachmentController = async (req, res, next) => {
     const userId = req.user.id;
     const { id, attachmentId } = req.params; // projectId, attachmentId
 
+    // Verify user has access to the project
+    const project = await projectService.getById(id, userId);
+    if (!project) {
+      throw new ApiError("Project not found or you don't have access", HTTP_STATUS.FORBIDDEN);
+    }
+
     // Get attachment details before deletion for activity logging
     const attachment = await prisma.attachment.findUnique({
       where: { id: attachmentId },
-      select: { id: true, fileName: true, taskId: true }
+      select: { id: true, fileName: true, taskId: true, projectId: true }
     });
+
+    if (!attachment) {
+      throw new ApiError("Attachment not found", HTTP_STATUS.NOT_FOUND);
+    }
+
+    // Verify attachment belongs to this project
+    if (attachment.projectId !== id) {
+      throw new ApiError("Attachment does not belong to this project", HTTP_STATUS.FORBIDDEN);
+    }
 
     await attachmentService.delete(attachmentId, userId);
 
     // Log activity
-    if (attachment) {
-      await logActivity({
-        type: 'ATTACHMENT_DELETED',
-        projectId: id,
-        userId,
-        taskId: attachment.taskId || undefined,
-        metadata: { fileName: attachment.fileName, attachmentId: attachment.id }
-      });
-    }
+    await logActivity({
+      type: 'ATTACHMENT_DELETED',
+      projectId: id,
+      userId,
+      taskId: attachment.taskId || undefined,
+      metadata: { fileName: attachment.fileName, attachmentId: attachment.id }
+    });
 
     return ApiResponse.sendSuccessResponse(
       res,

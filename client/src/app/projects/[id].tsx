@@ -511,7 +511,7 @@ export default function ProjectDetail() {
   // ─── Not Found ─────────────────────────────────────────────────
   if (!project) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-950">
+      <SafeAreaView className="flex-1 bg-gray-900">
         <View className="flex-1 justify-center items-center px-6">
           <View className="bg-red-500/10 rounded-full p-6 mb-4">
             <Ionicons name="alert-circle-outline" size={48} color="#F87171" />

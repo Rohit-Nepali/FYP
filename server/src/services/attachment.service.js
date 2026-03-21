@@ -92,7 +92,7 @@ export const attachmentService = {
 
     const attachment = await prisma.attachment.create({
       data: {
-        taskId: "", // Empty string for project-only attachments
+        taskId: null, // Null for project-only attachments
         projectId: projectId,
         fileName: file.originalname,
         fileType: file.mimetype,

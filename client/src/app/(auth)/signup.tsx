@@ -25,7 +25,7 @@ import { validateField, signupValidationRules } from "../../utils/validation";
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { register, isLoading } = useAuth();
+  const { register, isAuthChecking } = useAuth();
 
   // Use our custom hook for form state management
   const {
@@ -176,8 +176,8 @@ export default function SignupScreen() {
 
   // Memoized computed values
   const isSubmitDisabled = useMemo(
-    () => isLoading || isSubmitting,
-    [isLoading, isSubmitting]
+    () => isAuthChecking || isSubmitting,
+    [isAuthChecking, isSubmitting]
   );
 
   const submitButtonText = useMemo(

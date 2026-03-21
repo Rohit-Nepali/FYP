@@ -911,7 +911,7 @@ export default function TasksPage() {
                 )}
 
                 {/* Recent Group */}
-                {(groupedTasks.recent.length > 0 || totalIncompleteTasks === 0) && (
+                {(groupedTasks.recent.length > 0 ) && (
                     <TaskGroup
                         title="Recent"
                         icon="time"

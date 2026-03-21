@@ -223,9 +223,9 @@ model Activity {
 }
 
 model Attachment {
-  id     String @id @default(cuid())
-  taskId String
-  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id     String  @id @default(cuid())
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   projectId String?  // Optional: directly linked to project
   project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)

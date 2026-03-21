@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../config/theme";
 import { FormInput } from "@/src/components/common/FormInput";
 import { PrimaryButton } from "@/src/components/UI/Buttons";
@@ -32,8 +31,6 @@ export default function LoginScreen() {
   const [alertType, setAlertType] = useState<
     "default" | "success" | "error" | "warning" | "info"
   >("default");
-
-  // Google Sign-In loading state
 
   // Use our custom hook for form state management
   const {

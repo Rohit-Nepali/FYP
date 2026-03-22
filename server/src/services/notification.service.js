@@ -47,10 +47,11 @@ export async function createInAppNotification({ userId, type, title, message, da
   });
 }
 
-export async function getInAppNotifications(userId, { unreadOnly = false } = {}) {
+export async function getInAppNotifications(userId, { unreadOnly = false, archivedOnly = false } = {}) {
   return prisma.notification.findMany({
     where: {
       userId,
+      isArchived: archivedOnly,
       ...(unreadOnly ? { isRead: false } : {}),
     },
     orderBy: {
@@ -64,6 +65,44 @@ export async function getUnreadNotificationCount(userId) {
     where: {
       userId,
       isRead: false,
+      isArchived: false,
+    },
+  });
+}
+
+export async function archiveInAppNotification(notificationId, userId) {
+  return prisma.notification.updateMany({
+    where: {
+      id: notificationId,
+      userId,
+      isArchived: false,
+    },
+    data: {
+      isArchived: true,
+      archivedAt: new Date(),
+    },
+  });
+}
+
+export async function unarchiveInAppNotification(notificationId, userId) {
+  return prisma.notification.updateMany({
+    where: {
+      id: notificationId,
+      userId,
+      isArchived: true,
+    },
+    data: {
+      isArchived: false,
+      archivedAt: null,
+    },
+  });
+}
+
+export async function deleteInAppNotification(notificationId, userId) {
+  return prisma.notification.deleteMany({
+    where: {
+      id: notificationId,
+      userId,
     },
   });
 }
@@ -87,6 +126,7 @@ export async function markAllNotificationsAsRead(userId) {
     where: {
       userId,
       isRead: false,
+      isArchived: false,
     },
     data: {
       isRead: true,

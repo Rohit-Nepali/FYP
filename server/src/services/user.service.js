@@ -2,10 +2,13 @@ import { HTTP_STATUS } from "#utils/response.utils.js";
 import { prisma } from "../config/db.js";
 import { ApiError } from "#utils/error.utils.js";
 import {
+    archiveInAppNotification,
+    deleteInAppNotification,
     getInAppNotifications,
     getUnreadNotificationCount,
     markAllNotificationsAsRead,
     markNotificationAsRead,
+    unarchiveInAppNotification,
 } from "./notification.service.js";
 
 export const userService = {
@@ -152,8 +155,8 @@ export const userService = {
         return updatedUser;
     },
 
-    getNotifications: async (userId, unreadOnly = false) => {
-        return getInAppNotifications(userId, { unreadOnly });
+    getNotifications: async (userId, unreadOnly = false, archivedOnly = false) => {
+        return getInAppNotifications(userId, { unreadOnly, archivedOnly });
     },
 
     getNotificationUnreadCount: async (userId) => {
@@ -172,6 +175,36 @@ export const userService = {
 
     markAllNotificationsRead: async (userId) => {
         await markAllNotificationsAsRead(userId);
+        return true;
+    },
+
+    archiveNotification: async (notificationId, userId) => {
+        const result = await archiveInAppNotification(notificationId, userId);
+
+        if (!result.count) {
+            throw new ApiError("Notification not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        return true;
+    },
+
+    unarchiveNotification: async (notificationId, userId) => {
+        const result = await unarchiveInAppNotification(notificationId, userId);
+
+        if (!result.count) {
+            throw new ApiError("Notification not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        return true;
+    },
+
+    deleteNotification: async (notificationId, userId) => {
+        const result = await deleteInAppNotification(notificationId, userId);
+
+        if (!result.count) {
+            throw new ApiError("Notification not found", HTTP_STATUS.NOT_FOUND);
+        }
+
         return true;
     }
 };

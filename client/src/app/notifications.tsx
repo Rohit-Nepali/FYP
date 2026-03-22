@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
   SectionList,
   Text,
   TouchableOpacity,
@@ -12,16 +13,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import {
+  archiveNotification,
+  deleteNotification,
   getNotifications,
   InAppNotification,
   markAllNotificationsAsRead,
   markNotificationAsRead,
-  // deleteNotification,
+  unarchiveNotification,
 } from "../services/userService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type FilterType = "all" | "invite" | "comment" | "assign" | "alert";
+type FilterType = "all" | "invite" | "comment" | "assign" | "alert" | "archived";
 
 interface NotificationMeta {
   icon: React.ComponentProps<typeof Ionicons>["name"];
@@ -157,19 +160,26 @@ const FILTERS: { key: FilterType; label: string }[] = [
   { key: "comment", label: "Comments" },
   { key: "assign", label: "Assigned" },
   { key: "alert", label: "Alerts" },
+  { key: "archived", label: "Archived" },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function FilterChips({
   activeFilter,
+  archivedCount,
   onSelect,
 }: {
   activeFilter: FilterType;
+  archivedCount: number;
   onSelect: (f: FilterType) => void;
 }) {
   return (
-    <View className="flex-row pb-3 gap-2">
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 12, gap: 8 }}
+    >
       {FILTERS.map((f) => (
         <TouchableOpacity
           key={f.key}
@@ -188,22 +198,47 @@ function FilterChips({
           >
             {f.label}
           </Text>
+
+          {f.key === "archived" && archivedCount > 0 && (
+            <View className="px-1.5 py-0.5 rounded-full bg-blue-500/20 ml-1">
+              <Text className="text-[10px] font-semibold text-blue-300">{archivedCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
-function SwipeDeleteAction({ onDelete }: { onDelete: () => void }) {
+function SwipeActions({
+  onArchiveOrRestore,
+  onDelete,
+  isArchived,
+}: {
+  onArchiveOrRestore: () => void;
+  onDelete: () => void;
+  isArchived: boolean;
+}) {
   return (
-    <TouchableOpacity
-      onPress={onDelete}
-      className="justify-center items-center w-20 bg-red-500/15 rounded-xl mb-0.5"
-      activeOpacity={0.8}
-    >
-      <Ionicons name="trash-outline" size={18} color="#f87171" />
-      <Text className="text-red-300 text-xs mt-1 font-medium">Remove</Text>
-    </TouchableOpacity>
+    <View className="flex-row gap-2 pr-3 items-center">
+      <TouchableOpacity
+        onPress={onArchiveOrRestore}
+        className="justify-center items-center w-20 h-full bg-blue-500/15 rounded-xl"
+        activeOpacity={0.8}
+      >
+        <Ionicons name={isArchived ? "arrow-undo-outline" : "archive-outline"} size={18} color="#60a5fa" />
+        <Text className="text-blue-300 text-xs mt-1 font-medium">{isArchived ? "Restore" : "Archive"}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={onDelete}
+        className="justify-center items-center w-20 h-full bg-red-500/15 rounded-xl"
+        activeOpacity={0.8}
+      >
+        <Ionicons name="trash-outline" size={18} color="#f87171" />
+        <Text className="text-red-300 text-xs mt-1 font-medium">Delete</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -217,13 +252,14 @@ export default function NotificationsScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [archivedCount, setArchivedCount] = useState(0);
 
   // ─── Data fetching ──────────────────────────────────────────────────────────
 
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (archivedOnly = false) => {
     try {
       setErrorMessage(null);
-      const data = await getNotifications({ unreadOnly: false });
+      const data = await getNotifications({ unreadOnly: false, archivedOnly });
       setNotifications(data);
     } catch {
       setErrorMessage("Couldn't load notifications. Pull down to retry.");
@@ -231,16 +267,28 @@ export default function NotificationsScreen() {
     }
   }, []);
 
+  const loadArchivedCount = useCallback(async () => {
+    try {
+      const archived = await getNotifications({ unreadOnly: false, archivedOnly: true });
+      setArchivedCount(archived.length);
+    } catch {
+      // non-blocking badge refresh
+    }
+  }, []);
+
   const initialize = useCallback(async () => {
     try {
       setIsLoading(true);
-      await loadNotifications();
+      await Promise.all([
+        loadNotifications(activeFilter === "archived"),
+        loadArchivedCount(),
+      ]);
     } catch {
       // error state handled in loadNotifications
     } finally {
       setIsLoading(false);
     }
-  }, [loadNotifications]);
+  }, [activeFilter, loadArchivedCount, loadNotifications]);
 
   useEffect(() => {
     initialize();
@@ -249,13 +297,16 @@ export default function NotificationsScreen() {
   const onRefresh = useCallback(async () => {
     try {
       setIsRefreshing(true);
-      await loadNotifications();
+      await Promise.all([
+        loadNotifications(activeFilter === "archived"),
+        loadArchivedCount(),
+      ]);
     } catch {
       // error state handled in loadNotifications
     } finally {
       setIsRefreshing(false);
     }
-  }, [loadNotifications]);
+  }, [activeFilter, loadArchivedCount, loadNotifications]);
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
@@ -323,15 +374,49 @@ export default function NotificationsScreen() {
     [openNotificationTarget]
   );
 
-  const handleDismiss = useCallback((id: string) => {
+  const handleArchive = useCallback((id: string) => {
+    // Optimistic remove from active list
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setArchivedCount((prev) => prev + 1);
+
+    archiveNotification(id).catch(() => {
+      // Rollback: re-fetch silently if archive fails
+      Promise.all([
+        loadNotifications(activeFilter === "archived"),
+        loadArchivedCount(),
+      ]).catch(() => {});
+    });
+  }, [activeFilter, loadArchivedCount, loadNotifications]);
+
+  const handleRestore = useCallback((id: string) => {
+    // Optimistic remove from archived view
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setArchivedCount((prev) => Math.max(0, prev - 1));
+
+    unarchiveNotification(id).catch(() => {
+      // Rollback: re-fetch silently if restore fails
+      Promise.all([
+        loadNotifications(activeFilter === "archived"),
+        loadArchivedCount(),
+      ]).catch(() => {});
+    });
+  }, [activeFilter, loadArchivedCount, loadNotifications]);
+
+  const handleDelete = useCallback((id: string) => {
     // Optimistic remove
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (activeFilter === "archived") {
+      setArchivedCount((prev) => Math.max(0, prev - 1));
+    }
 
-    // deleteNotification(id).catch(() => {
-    //   // Rollback: re-fetch silently if delete fails
-    //   loadNotifications().catch(() => {});
-    // });
-  }, [loadNotifications]);
+    deleteNotification(id).catch(() => {
+      // Rollback: re-fetch silently if delete fails
+      Promise.all([
+        loadNotifications(activeFilter === "archived"),
+        loadArchivedCount(),
+      ]).catch(() => {});
+    });
+  }, [activeFilter, loadArchivedCount, loadNotifications]);
 
   // ─── Derived state ──────────────────────────────────────────────────────────
 
@@ -342,7 +427,7 @@ export default function NotificationsScreen() {
 
   const sections = useMemo<SectionData[]>(() => {
     const filtered =
-      activeFilter === "all"
+      activeFilter === "all" || activeFilter === "archived"
         ? notifications
         : notifications.filter(
             (n) => getNotificationMeta(n.type).filterKey === activeFilter
@@ -368,7 +453,11 @@ export default function NotificationsScreen() {
       return (
         <Swipeable
           renderRightActions={() => (
-            <SwipeDeleteAction onDelete={() => handleDismiss(item.id)} />
+            <SwipeActions
+              onArchiveOrRestore={() => item.isArchived ? handleRestore(item.id) : handleArchive(item.id)}
+              onDelete={() => handleDelete(item.id)}
+              isArchived={Boolean(item.isArchived)}
+            />
           )}
           overshootRight={false}
         >
@@ -414,14 +503,14 @@ export default function NotificationsScreen() {
             </View>
 
             {/* Unread dot */}
-            {!item.isRead && (
+            {!item.isRead && !item.isArchived && (
               <View className="w-2 h-2 rounded-full bg-purple-400 mt-1 flex-shrink-0" />
             )}
           </TouchableOpacity>
         </Swipeable>
       );
     },
-    [handleOpenNotification, handleDismiss]
+    [handleOpenNotification, handleArchive, handleDelete, handleRestore]
   );
 
   const renderEmpty = useCallback(() => {
@@ -451,11 +540,17 @@ export default function NotificationsScreen() {
           <Ionicons name="notifications-off-outline" size={24} color="#4b5563" />
         </View>
         <Text className="text-gray-300 font-semibold text-base">
-          {activeFilter === "all" ? "No notifications yet" : `No ${activeFilter} notifications`}
+          {activeFilter === "all"
+            ? "No notifications yet"
+            : activeFilter === "archived"
+            ? "No archived notifications"
+            : `No ${activeFilter} notifications`}
         </Text>
         <Text className="text-gray-600 text-sm text-center mt-1">
           {activeFilter === "all"
             ? "Invites, assignments, and comments will appear here."
+            : activeFilter === "archived"
+            ? "Archived notifications will appear here."
             : "Switch filters or check back later."}
         </Text>
         {activeFilter === "all" && (
@@ -489,20 +584,22 @@ export default function NotificationsScreen() {
           </View>
 
           <TouchableOpacity
-            disabled={unreadCount === 0 || isUpdating}
+            disabled={activeFilter === "archived" || unreadCount === 0 || isUpdating}
             onPress={handleMarkAllRead}
             className={`px-3 py-1.5 rounded-lg ${
-              unreadCount === 0 || isUpdating
+              activeFilter === "archived" || unreadCount === 0 || isUpdating
                 ? "bg-white/5 border border-white/10"
                 : "bg-purple-500/15 border border-purple-500/30"
             }`}
           >
             <Text
               className={`text-xs font-semibold ${
-                unreadCount === 0 || isUpdating ? "text-gray-300" : "text-purple-300"
+                activeFilter === "archived" || unreadCount === 0 || isUpdating ? "text-gray-300" : "text-purple-300"
               }`}
             >
-              {isUpdating
+              {activeFilter === "archived"
+                ? "Archived"
+                : isUpdating
                 ? "Updating…"
                 : unreadCount > 0
                 ? `Mark ${unreadCount} read`
@@ -512,7 +609,11 @@ export default function NotificationsScreen() {
         </View>
 
         {/* Filter chips */}
-        <FilterChips activeFilter={activeFilter} onSelect={setActiveFilter} />
+        <FilterChips
+          activeFilter={activeFilter}
+          archivedCount={archivedCount}
+          onSelect={setActiveFilter}
+        />
       </View>
 
       {/* Body */}

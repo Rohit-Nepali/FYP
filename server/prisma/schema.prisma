@@ -263,12 +263,15 @@ model Notification {
   title     String
   message   String
   isRead    Boolean  @default(false)
+  isArchived Boolean @default(false)
   data      Json?
   createdAt DateTime @default(now())
   readAt    DateTime?
+  archivedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
+  @@index([userId, isArchived])
   @@index([createdAt])
 }

@@ -32,9 +32,11 @@ export interface InAppNotification {
   title: string;
   message: string;
   isRead: boolean;
+  isArchived?: boolean;
   data?: Record<string, any> | null;
   createdAt: string;
   readAt?: string | null;
+  archivedAt?: string | null;
 }
 
 // ─── Public API Functions ────────────────────────────────────────────────────
@@ -102,16 +104,17 @@ export async function uploadAvatar(file: {
 
 export interface GetNotificationsOptions {
   unreadOnly?: boolean;
+  archivedOnly?: boolean;
 }
 
 export async function getNotifications(
   options: GetNotificationsOptions = {}
 ): Promise<InAppNotification[]> {
-  const { unreadOnly = false } = options;
+  const { unreadOnly = false, archivedOnly = false } = options;
 
   return makeRequest<InAppNotification[]>(`/users/notifications`, {
     method: "GET",
-    params: { unreadOnly },
+    params: { unreadOnly, archivedOnly },
   });
 }
 
@@ -131,5 +134,23 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
 export async function markAllNotificationsAsRead(): Promise<void> {
   await makeRequest<void>(`/users/notifications/read-all`, {
     method: "PATCH",
+  });
+}
+
+export async function archiveNotification(notificationId: string): Promise<void> {
+  await makeRequest<void>(`/users/notifications/${notificationId}/archive`, {
+    method: "PATCH",
+  });
+}
+
+export async function unarchiveNotification(notificationId: string): Promise<void> {
+  await makeRequest<void>(`/users/notifications/${notificationId}/unarchive`, {
+    method: "PATCH",
+  });
+}
+
+export async function deleteNotification(notificationId: string): Promise<void> {
+  await makeRequest<void>(`/users/notifications/${notificationId}`, {
+    method: "DELETE",
   });
 }

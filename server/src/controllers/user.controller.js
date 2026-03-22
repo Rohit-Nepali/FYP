@@ -47,8 +47,9 @@ export const getNotificationsController = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const unreadOnly = req.query.unreadOnly === "true";
+        const archivedOnly = req.query.archivedOnly === "true";
 
-        const notifications = await userService.getNotifications(userId, unreadOnly);
+        const notifications = await userService.getNotifications(userId, unreadOnly, archivedOnly);
 
         return ApiResponse.sendSuccessResponse(
             res,
@@ -104,6 +105,57 @@ export const markAllNotificationsAsReadController = async (req, res, next) => {
             res,
             HTTP_STATUS.OK,
             SUCCESS_MESSAGES.UPDATED
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const archiveNotificationController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { notificationId } = req.params;
+
+        await userService.archiveNotification(notificationId, userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.UPDATED
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const unarchiveNotificationController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { notificationId } = req.params;
+
+        await userService.unarchiveNotification(notificationId, userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.UPDATED
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteNotificationController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { notificationId } = req.params;
+
+        await userService.deleteNotification(notificationId, userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.DELETED
         );
     } catch (error) {
         next(error);

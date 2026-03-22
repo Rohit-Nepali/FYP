@@ -8,6 +8,7 @@ import commentRouter from "./comment.router.js";
 import userRouter from "./user.router.js";
 import activityRouter from "./activity.router.js";
 import calendarRouter from "./calendar.router.js";
+import chatbotRouter from "./chatbot.router.js";
 
 const router = Router();
 
@@ -25,5 +26,6 @@ router.use("/api/users", userRouter);
 router.use("/api", activityRouter);
 
 router.use("/api/calendar", calendarRouter);
+router.use("/api/chatbot", chatbotRouter);
 
 export default router;

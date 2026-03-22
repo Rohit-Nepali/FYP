@@ -46,6 +46,7 @@ model User {
   pushToken           String?
   activities          Activity[]
   notifications       Notification[]
+  behaviorSignals     UserBehaviorSignal[]
 }
 
 model UserSession {
@@ -128,6 +129,7 @@ model Task {
   attachments Attachment[]
   comments    Comment[]
   activities  Activity[]
+  behaviorSignals UserBehaviorSignal[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -137,6 +139,23 @@ model Task {
   @@index([assigneeId])
   @@index([statusId])
   @@index([priorityId])
+}
+
+model UserBehaviorSignal {
+  id         String   @id @default(cuid())
+  userId     String
+  taskId     String?
+  label      String
+  confidence Float
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([taskId])
+  @@index([createdAt])
+  @@index([label])
 }
 
 model Project {

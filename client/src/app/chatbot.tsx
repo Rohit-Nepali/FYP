@@ -8,12 +8,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Task, getAllTasks } from "@/src/services/taskService";
+import {
+  MessageClassification,
+  ProductivityLabel,
+  sendChatbotMessage,
+} from "@/src/services/chatbotService";
 
 // Types
 interface ChatMessage {
@@ -21,6 +25,7 @@ interface ChatMessage {
   type: "bot" | "user";
   content: string;
   timestamp: Date;
+  classification?: MessageClassification | null;
   taskData?: {
     taskId: string;
     taskTitle: string;
@@ -36,6 +41,44 @@ interface QuickAction {
   action: "view_task" | "mark_complete" | "snooze" | "remind_later";
   taskId?: string;
 }
+
+const PRODUCTIVITY_BADGE_MAP: Record<
+  ProductivityLabel,
+  { text: string; classes: string }
+> = {
+  HIGH_MOTIVATION: {
+    text: "High motivation",
+    classes: "bg-emerald-500/20 border border-emerald-400/40 text-emerald-200",
+  },
+  CONSISTENT_PRODUCTIVITY: {
+    text: "Consistent productivity",
+    classes: "bg-teal-500/20 border border-teal-400/40 text-teal-200",
+  },
+  LOW_ENERGY: {
+    text: "Low energy",
+    classes: "bg-slate-500/20 border border-slate-300/40 text-slate-100",
+  },
+  WORK_OVERLOAD: {
+    text: "Work overload",
+    classes: "bg-red-500/20 border border-red-400/40 text-red-200",
+  },
+  DISTRACTION: {
+    text: "Distraction",
+    classes: "bg-yellow-500/20 border border-yellow-400/40 text-yellow-200",
+  },
+  PROCRASTINATION: {
+    text: "Procrastination",
+    classes: "bg-orange-500/20 border border-orange-400/40 text-orange-200",
+  },
+  POOR_PLANNING: {
+    text: "Poor planning",
+    classes: "bg-indigo-500/20 border border-indigo-400/40 text-indigo-200",
+  },
+  FORGETFULNESS: {
+    text: "Forgetfulness",
+    classes: "bg-purple-500/20 border border-purple-400/40 text-purple-200",
+  },
+};
 
 // Helper function to check if task is overdue
 const isOverdue = (dueDate: string | undefined): boolean => {
@@ -157,6 +200,22 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <Text className={`text-sm ${isBot ? "text-gray-200" : "text-white"}`}>
           {message.content}
         </Text>
+
+        {!isBot && message.classification && (
+          <View className="mt-2">
+            <View
+              className={`self-start px-2 py-1 rounded-full ${
+                PRODUCTIVITY_BADGE_MAP[message.classification.label].classes
+              }`}
+            >
+              <Text className="text-[10px] font-semibold">
+                {PRODUCTIVITY_BADGE_MAP[message.classification.label].text}
+                {" • "}
+                {(message.classification.confidence * 100).toFixed(0)}%
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Timestamp */}
         <Text
@@ -382,6 +441,14 @@ export default function Chatbot() {
           ],
         });
       }
+
+      initialMessages.push({
+        id: "missed-task-reason",
+        type: "bot",
+        content:
+          "Can you share why these task(s) were missed? Your answer helps me understand your productivity pattern.",
+        timestamp: new Date(Date.now() - 1000),
+      });
     } else {
       initialMessages.push({
         id: "all-good",
@@ -395,26 +462,51 @@ export default function Chatbot() {
     setMessages(initialMessages);
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputText.trim()) return;
 
+    const trimmedMessage = inputText.trim();
+    const userMessageId = Date.now().toString();
+
     const userMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: userMessageId,
       type: "user",
-      content: inputText.trim(),
+      content: trimmedMessage,
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInputText("");
 
-    // Simulate bot response
     setIsTyping(true);
-    setTimeout(() => {
-      const botResponse = generateBotResponse(inputText.trim());
+
+    try {
+      const response = await sendChatbotMessage({ message: trimmedMessage });
+
+      if (response.classification) {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === userMessageId
+              ? { ...message, classification: response.classification }
+              : message
+          )
+        );
+      }
+
+      const botResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: "bot",
+        content: response.reply,
+        timestamp: new Date(),
+      };
+
       setMessages((prev) => [...prev, botResponse]);
+    } catch (_error) {
+      const botResponse = generateBotResponse(trimmedMessage);
+      setMessages((prev) => [...prev, botResponse]);
+    } finally {
       setIsTyping(false);
-    }, 1000 + Math.random() * 1000);
+    }
   };
 
   const generateBotResponse = (userInput: string): ChatMessage => {

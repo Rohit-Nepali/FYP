@@ -9,6 +9,7 @@ import { useEffect } from "react";
 import { NotificationProvider } from "../providers/NotificationProvider";
 import { registerBackgroundHandler } from "../firebase/backgroundMessaging";
 import { GoogleAuthProvider } from '../providers/GoogleAuthProvider';
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function RootLayout() {
 
@@ -17,15 +18,17 @@ export default function RootLayout() {
   }, [])
 
   return (
-    <SafeAreaProvider>
-      <GoogleAuthProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <AppLayout />
-          </NotificationProvider>
-        </AuthProvider>
-      </GoogleAuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <GoogleAuthProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <AppLayout />
+            </NotificationProvider>
+          </AuthProvider>
+        </GoogleAuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

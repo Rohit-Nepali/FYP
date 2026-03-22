@@ -100,7 +100,15 @@ export async function uploadAvatar(file: {
   });
 }
 
-export async function getNotifications(unreadOnly = false): Promise<InAppNotification[]> {
+export interface GetNotificationsOptions {
+  unreadOnly?: boolean;
+}
+
+export async function getNotifications(
+  options: GetNotificationsOptions = {}
+): Promise<InAppNotification[]> {
+  const { unreadOnly = false } = options;
+
   return makeRequest<InAppNotification[]>(`/users/notifications`, {
     method: "GET",
     params: { unreadOnly },

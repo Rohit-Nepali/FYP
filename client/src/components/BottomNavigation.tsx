@@ -34,6 +34,11 @@ export function BottomNavigation() {
   const tabs = [
     { name: "Home", icon: "home" as const, route: "/" as const },
     {
+      name: "Alerts",
+      icon: "notifications" as const,
+      route: "/notifications" as const,
+    },
+    {
       name: "Tasks",
       icon: "checkmark-done" as const,
       route: "/tasks" as const,
@@ -44,30 +49,27 @@ export function BottomNavigation() {
       route: "/chatbot" as const,
     },
     {
-      name: "Alerts",
-      icon: "notifications" as const,
-      route: "/notifications" as const,
-    },
-    {
       name: "Profile",
       icon: "person" as const,
-      route: "/profile" as const
+      route: "/profile" as const,
     },
   ];
 
-  const getActiveTab = () => {
-    if (pathname === "/") return "home";
-    
-    // Check if we're in the profile or settings section
+  const getActiveRoute = () => {
+    if (pathname === "/") return "/";
+
     const normalizedPath = pathname.toLowerCase();
-    if (normalizedPath.includes("/profile") || normalizedPath.includes("/settings")) {
-      return "profile";
+    if (
+      normalizedPath.includes("/profile") ||
+      normalizedPath.includes("/settings")
+    ) {
+      return "/profile";
     }
-    
-    return pathname.replace("/", "").toLowerCase() || "home";
+
+    return normalizedPath;
   };
 
-  const activeTab = getActiveTab();
+  const activeRoute = getActiveRoute();
 
   return (
     <LinearGradient
@@ -78,7 +80,7 @@ export function BottomNavigation() {
     >
       <View className="flex-row justify-around py-3">
         {tabs.map((tab) => {
-          const isActive = activeTab === tab.name.toLowerCase();
+          const isActive = activeRoute === tab.route;
 
           return (
             <TouchableOpacity
@@ -91,8 +93,10 @@ export function BottomNavigation() {
               }}
             >
               <View
-                className={`w-10 h-10 rounded-lg items-center justify-center transition-all ${
-                  isActive ? "bg-purple-500/20 border border-purple-500/40" : "bg-transparent"
+                className={`w-10 h-10  items-center justify-center ${
+                  isActive
+                    ? "bg-purple-500/20 border border-purple-500/40 rounded-lg"
+                    : "bg-transparent"
                 }`}
               >
                 <Ionicons
@@ -108,13 +112,13 @@ export function BottomNavigation() {
                   </View>
                 )}
               </View>
-              <Text
-                className={`text-xs font-medium ${
-                  isActive ? "text-purple-400" : "text-gray-500"
-                }`}
-              >
-                {tab.name}
-              </Text>
+
+              {/* Only render label for the active tab */}
+              {isActive && (
+                <Text className="text-xs font-medium text-purple-400">
+                  {tab.name}
+                </Text>
+              )}
             </TouchableOpacity>
           );
         })}

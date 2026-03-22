@@ -3,6 +3,13 @@ import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
 import { createInAppNotification, sendPushNotification } from "./notification.service.js";
 
+const assignmentNotificationDelayMs = Number.parseInt(
+  process.env.ASSIGN_NOTIFICATION_DELAY_MS || "5000",
+  10
+);
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const taskService = {
   create: async (taskData, userId) => {
     const { title, description, isCompleted, statusId, priorityId, dueDate, projectId, assigneeId } = taskData;
@@ -307,7 +314,7 @@ export const taskService = {
         status: true,
         priority: true,
         assignee: {
-          select: { id: true, name: true, email: true, profileImage: true },
+          select: { id: true, name: true, email: true, profileImage: true, pushToken: true },
         },
         project: {
           select: { id: true, title: true, ownerId: true },
@@ -316,8 +323,18 @@ export const taskService = {
     });
 
     // Send notification if assignee was changed
-    if (assigneeId !== undefined && assigneeId !== existingTask.assigneeId && task.assignee) {
+    const assigneeChanged = assigneeId !== undefined && assigneeId !== existingTask.assigneeId;
+
+    if (assigneeChanged && task.assignee) {
       try {
+        console.log("[TaskAssignmentNotification] Triggered", {
+          taskId: task.id,
+          previousAssigneeId: existingTask.assigneeId,
+          nextAssigneeId: task.assignee.id,
+          hasPushToken: Boolean(task.assignee.pushToken),
+          delayMs: assignmentNotificationDelayMs,
+        });
+
         await createInAppNotification({
           userId: task.assignee.id,
           type: "TASK_ASSIGNED",
@@ -326,17 +343,58 @@ export const taskService = {
           data: { taskId: task.id, projectId: task.project?.id },
         });
 
+        console.log("[TaskAssignmentNotification] In-app notification created", {
+          taskId: task.id,
+          assigneeId: task.assignee.id,
+        });
+
         if (task.assignee.pushToken) {
+          if (assignmentNotificationDelayMs > 0) {
+            console.log("[TaskAssignmentNotification] Delaying push", {
+              taskId: task.id,
+              assigneeId: task.assignee.id,
+              delayMs: assignmentNotificationDelayMs,
+            });
+            await delay(assignmentNotificationDelayMs);
+          }
+
+          console.log("[TaskAssignmentNotification] Sending push", {
+            taskId: task.id,
+            assigneeId: task.assignee.id,
+          });
+
           await sendPushNotification(
             task.assignee.pushToken,
             "Task Assigned",
             `You have been assigned to task: ${task.title}`,
             { taskId: task.id, type: "task_assigned" }
           );
+
+          console.log("[TaskAssignmentNotification] Push sent", {
+            taskId: task.id,
+            assigneeId: task.assignee.id,
+          });
+        } else {
+          console.log("[TaskAssignmentNotification] Push skipped - no token", {
+            taskId: task.id,
+            assigneeId: task.assignee.id,
+          });
         }
       } catch (error) {
         console.error("Failed to send assignment notification:", error);
       }
+    } else if (assigneeChanged && !task.assignee) {
+      console.log("[TaskAssignmentNotification] Skipped - assignee object missing", {
+        taskId: task.id,
+        previousAssigneeId: existingTask.assigneeId,
+        requestedAssigneeId: assigneeId,
+      });
+    } else {
+      console.log("[TaskAssignmentNotification] Skipped - assignee unchanged or not provided", {
+        taskId: task.id,
+        previousAssigneeId: existingTask.assigneeId,
+        requestedAssigneeId: assigneeId,
+      });
     }
 
     return task;

@@ -45,6 +45,7 @@ model User {
   comments            Comment[]
   pushToken           String?
   activities          Activity[]
+  notifications       Notification[]
 }
 
 model UserSession {
@@ -253,4 +254,21 @@ model TaskCalendarLink {
   syncDirection   String   @default("both") // "to_google", "from_google", "both"
 
   @@index([taskId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
 }

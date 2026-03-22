@@ -1,5 +1,5 @@
 import { prisma } from "#config/db.js";
-import { sendPushNotification } from "./notification.service.js";
+import { createInAppNotification, sendPushNotification } from "./notification.service.js";
 import { NotFoundError, AuthorizationError } from "#utils/error.utils.js";
 
 const createComment = async ({ taskId, content, authorId }) => {
@@ -92,7 +92,15 @@ const createComment = async ({ taskId, content, authorId }) => {
     // Notify assignee if different from author
     if (comment.task.assignee && comment.task.assignee.id !== authorId && comment.task.assignee.pushToken) {
       notifications.push({
+        userId: comment.task.assignee.id,
         token: comment.task.assignee.pushToken,
+        title: "New Comment",
+        body: `${comment.author.name} commented on task: ${comment.task.title || 'Untitled'}`,
+      });
+    } else if (comment.task.assignee && comment.task.assignee.id !== authorId) {
+      notifications.push({
+        userId: comment.task.assignee.id,
+        token: null,
         title: "New Comment",
         body: `${comment.author.name} commented on task: ${comment.task.title || 'Untitled'}`,
       });
@@ -106,7 +114,18 @@ const createComment = async ({ taskId, content, authorId }) => {
         member.user.pushToken
       ) {
         notifications.push({
+          userId: member.userId,
           token: member.user.pushToken,
+          title: "New Comment",
+          body: `${comment.author.name} commented on task: ${comment.task.title || 'Untitled'}`,
+        });
+      } else if (
+        member.userId !== authorId &&
+        member.userId !== comment.task.assignee?.id
+      ) {
+        notifications.push({
+          userId: member.userId,
+          token: null,
           title: "New Comment",
           body: `${comment.author.name} commented on task: ${comment.task.title || 'Untitled'}`,
         });
@@ -115,12 +134,22 @@ const createComment = async ({ taskId, content, authorId }) => {
 
     // Send all notifications
     for (const notification of notifications) {
-      await sendPushNotification(
-        notification.token,
-        notification.title,
-        notification.body,
-        { taskId, commentId: comment.id, type: "new_comment" }
-      );
+      await createInAppNotification({
+        userId: notification.userId,
+        type: "COMMENT_ADDED",
+        title: notification.title,
+        message: notification.body,
+        data: { taskId, commentId: comment.id, type: "new_comment" },
+      });
+
+      if (notification.token) {
+        await sendPushNotification(
+          notification.token,
+          notification.title,
+          notification.body,
+          { taskId, commentId: comment.id, type: "new_comment" }
+        );
+      }
     }
   } catch (error) {
     console.error("Failed to send comment notifications:", error);

@@ -43,6 +43,73 @@ export const addPushTokenController = async (req, res, next) => {
     }
 }
 
+export const getNotificationsController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const unreadOnly = req.query.unreadOnly === "true";
+
+        const notifications = await userService.getNotifications(userId, unreadOnly);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.RETRIEVED,
+            notifications
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getUnreadNotificationCountController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const unreadCount = await userService.getNotificationUnreadCount(userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.RETRIEVED,
+            { unreadCount }
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const markNotificationAsReadController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { notificationId } = req.params;
+
+        await userService.markNotificationRead(notificationId, userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.UPDATED
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const markAllNotificationsAsReadController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+
+        await userService.markAllNotificationsRead(userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.UPDATED
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const updateProfileController = async (req, res, next) => {
     try {
         const userId = req.user.id;

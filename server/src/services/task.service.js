@@ -1,7 +1,7 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
-import { sendPushNotification } from "./notification.service.js";
+import { createInAppNotification, sendPushNotification } from "./notification.service.js";
 
 export const taskService = {
   create: async (taskData, userId) => {
@@ -78,7 +78,7 @@ export const taskService = {
         status: true,
         priority: true,
         assignee: {
-          select: { id: true, name: true, email: true, profileImage: true },
+          select: { id: true, name: true, email: true, profileImage: true, pushToken: true },
         },
         project: {
           select: { id: true, title: true, ownerId: true },
@@ -167,7 +167,7 @@ export const taskService = {
         status: true,
         priority: true,
         assignee: {
-          select: { id: true, name: true, email: true, profileImage: true },
+          select: { id: true, name: true, email: true, profileImage: true, pushToken: true },
         },
         project: {
           select: { id: true, title: true, ownerId: true },
@@ -316,14 +316,24 @@ export const taskService = {
     });
 
     // Send notification if assignee was changed
-    if (assigneeId !== undefined && assigneeId !== existingTask.assigneeId && task.assignee && task.assignee.pushToken) {
+    if (assigneeId !== undefined && assigneeId !== existingTask.assigneeId && task.assignee) {
       try {
-        await sendPushNotification(
-          task.assignee.pushToken,
-          "Task Assigned",
-          `You have been assigned to task: ${task.title}`,
-          { taskId: task.id, type: "task_assigned" }
-        );
+        await createInAppNotification({
+          userId: task.assignee.id,
+          type: "TASK_ASSIGNED",
+          title: "Task assigned",
+          message: `You have been assigned to: ${task.title}`,
+          data: { taskId: task.id, projectId: task.project?.id },
+        });
+
+        if (task.assignee.pushToken) {
+          await sendPushNotification(
+            task.assignee.pushToken,
+            "Task Assigned",
+            `You have been assigned to task: ${task.title}`,
+            { taskId: task.id, type: "task_assigned" }
+          );
+        }
       } catch (error) {
         console.error("Failed to send assignment notification:", error);
       }

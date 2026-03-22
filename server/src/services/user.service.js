@@ -1,6 +1,12 @@
 import { HTTP_STATUS } from "#utils/response.utils.js";
 import { prisma } from "../config/db.js";
 import { ApiError } from "#utils/error.utils.js";
+import {
+    getInAppNotifications,
+    getUnreadNotificationCount,
+    markAllNotificationsAsRead,
+    markNotificationAsRead,
+} from "./notification.service.js";
 
 export const userService = {
     searchUsers: async (query) => {
@@ -144,5 +150,28 @@ export const userService = {
         });
 
         return updatedUser;
+    },
+
+    getNotifications: async (userId, unreadOnly = false) => {
+        return getInAppNotifications(userId, { unreadOnly });
+    },
+
+    getNotificationUnreadCount: async (userId) => {
+        return getUnreadNotificationCount(userId);
+    },
+
+    markNotificationRead: async (notificationId, userId) => {
+        const result = await markNotificationAsRead(notificationId, userId);
+
+        if (!result.count) {
+            throw new ApiError("Notification not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        return true;
+    },
+
+    markAllNotificationsRead: async (userId) => {
+        await markAllNotificationsAsRead(userId);
+        return true;
     }
 };

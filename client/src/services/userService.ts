@@ -25,6 +25,18 @@ export interface UserProfile {
   googleId?: string;
 }
 
+export interface InAppNotification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  data?: Record<string, any> | null;
+  createdAt: string;
+  readAt?: string | null;
+}
+
 // ─── Public API Functions ────────────────────────────────────────────────────
 
 export async function searchUsers(query: string): Promise<UserLite[]> {
@@ -85,5 +97,31 @@ export async function uploadAvatar(file: {
     method: "POST",
     data: formData,
     isMultipart: true,
+  });
+}
+
+export async function getNotifications(unreadOnly = false): Promise<InAppNotification[]> {
+  return makeRequest<InAppNotification[]>(`/users/notifications`, {
+    method: "GET",
+    params: { unreadOnly },
+  });
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  const data = await makeRequest<{ unreadCount: number }>(`/users/notifications/unread-count`, {
+    method: "GET",
+  });
+  return data.unreadCount;
+}
+
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  await makeRequest<void>(`/users/notifications/${notificationId}/read`, {
+    method: "PATCH",
+  });
+}
+
+export async function markAllNotificationsAsRead(): Promise<void> {
+  await makeRequest<void>(`/users/notifications/read-all`, {
+    method: "PATCH",
   });
 }

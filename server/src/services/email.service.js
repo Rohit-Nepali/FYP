@@ -1,25 +1,44 @@
 import nodemailer from "nodemailer";
 import logger from "../config/logger.js";
 
-/**
- * Create an Ethereal transporter for testing emails
- */
-const createTransporter = async () => {
-  const testAccount = await nodemailer.createTestAccount();
+let transporter;
 
-  const transporter = nodemailer.createTransport({
-    host: "smtp.ethereal.email",
-    port: 587,
+const getRequiredEnv = (name) => {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required SMTP config: ${name}`);
+  }
+  return value;
+};
+
+const getTransporter = () => {
+  if (transporter) {
+    return transporter;
+  }
+
+  const host = getRequiredEnv("SMTP_HOST");
+  const port = Number(process.env.SMTP_PORT || 587);
+  const user = getRequiredEnv("SMTP_USER");
+  const pass = getRequiredEnv("SMTP_PASS");
+  const secure = process.env.SMTP_SECURE === "true" || port === 465;
+
+  transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
     auth: {
-      user: testAccount.user,
-      pass: testAccount.pass,
+      user,
+      pass,
     },
   });
 
-  console.log("Ethereal user:", testAccount.user);
-  console.log("Ethereal pass:", testAccount.pass);
-
   return transporter;
+};
+
+const getFromAddress = (appName = "Taskora") => {
+  const fromEmail = process.env.SMTP_FROM_EMAIL || "no-reply@taskora.com";
+  const fromName = process.env.SMTP_FROM_NAME || appName;
+  return `"${fromName}" <${fromEmail}>`;
 };
 
 export const emailService = {
@@ -31,10 +50,10 @@ export const emailService = {
    */
   sendPasswordResetEmail: async (email, otp, appName) => {
     try {
-      const transporter = await createTransporter();
+      const mailer = getTransporter();
 
       const mailOptions = {
-        from: `"${appName}" <no-reply@${appName.toLowerCase()}.com>`,
+        from: getFromAddress(appName),
         to: email,
         subject: `Password Reset OTP - ${appName}`,
         html: `
@@ -54,10 +73,9 @@ export const emailService = {
 
       console.log("OTP is :", otp)
 
-      const info = await transporter.sendMail(mailOptions);
+      await mailer.sendMail(mailOptions);
 
       logger.info(`Password reset email sent to ${email}`);
-      logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`); // view in browser
     } catch (error) {
       logger.error(`Failed to send password reset email: ${error.message}`);
       throw error;
@@ -71,10 +89,10 @@ export const emailService = {
    */
   sendPasswordResetConfirmationEmail: async (email, appName = "Taskora") => {
     try {
-      const transporter = await createTransporter();
+      const mailer = getTransporter();
 
       const mailOptions = {
-        from: `"${appName}" <no-reply@${appName.toLowerCase()}.com>`,
+        from: getFromAddress(appName),
         to: email,
         subject: `Password Changed Successfully - ${appName}`,
         html: `
@@ -90,10 +108,9 @@ export const emailService = {
         `,
       };
 
-      const info = await transporter.sendMail(mailOptions);
+      await mailer.sendMail(mailOptions);
 
       logger.info(`Password reset confirmation email sent to ${email}`);
-      logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`); // view in browser
     } catch (error) {
       logger.error(`Failed to send password reset confirmation email: ${error.message}`);
       throw error;
@@ -101,10 +118,10 @@ export const emailService = {
   },
 
   sendProjectInviteEmail: async (email, projectName, inviteLink, invitedBy) => {
-    const transporter = await createTransporter();
+    const mailer = getTransporter();
  
     const mailOptions = {
-      from: `"Taskora" <no-reply@taskora.com>`,
+      from: getFromAddress("Taskora"),
       to: email,
       subject: `You're invited to join ${projectName}`,
       html: `
@@ -116,8 +133,8 @@ export const emailService = {
     `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Invite preview:", nodemailer.getTestMessageUrl(info));
+    await mailer.sendMail(mailOptions);
+    logger.info(`Project invite email sent to ${email} for project ${projectName}`);
   }
 
 };

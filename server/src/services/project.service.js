@@ -3,6 +3,7 @@ import { ApiError } from "../utils/error.utils.js";
 import { ERROR_MESSAGES, HTTP_STATUS } from "../utils/response.utils.js";
 import crypto from "crypto";
 import { emailService } from "./email.service.js";
+import { createInAppNotification, sendPushNotification } from "./notification.service.js";
 
 export const projectService = {
     create: async (projectData, ownerId) => {
@@ -242,12 +243,31 @@ export const projectService = {
         });
 
         if (existingUser) {
-            return await projectService.addMember(
+            const updatedProject = await projectService.addMember(
                 projectId,
                 userId,
                 existingUser.id,
                 role
             );
+
+            await createInAppNotification({
+                userId: existingUser.id,
+                type: "PROJECT_MEMBER_ADDED",
+                title: "Added to project",
+                message: `You were added to ${project.title}`,
+                data: { projectId, role },
+            });
+
+            if (existingUser.pushToken) {
+                await sendPushNotification(
+                    existingUser.pushToken,
+                    "Added to project",
+                    `You were added to ${project.title}`,
+                    { projectId, type: "project_member_added" }
+                );
+            }
+
+            return updatedProject;
         }
 
         // Check for existing invite for this email
@@ -302,7 +322,7 @@ export const projectService = {
         const invitedBy = invite.invitedBy.name || 'A team member';
 
         // Send invite email
-        emailService.sendProjectInviteEmail(email, project.title, inviteLink, invitedBy);
+        await emailService.sendProjectInviteEmail(email, project.title, inviteLink, invitedBy);
 
         return invite;
 
@@ -347,6 +367,24 @@ export const projectService = {
         await prisma.projectInvite.delete({
             where: { id: invite.id },
         });
+
+        await createInAppNotification({
+            userId: invite.invitedById,
+            type: "PROJECT_INVITE_ACCEPTED",
+            title: "Invitation accepted",
+            message: `${user.name} accepted your invite to ${invite.project.title}`,
+            data: { projectId: invite.projectId, acceptedByUserId: userId },
+        });
+
+        if (invite.invitedById !== userId) {
+            await createInAppNotification({
+                userId,
+                type: "PROJECT_INVITE_ACCEPTED",
+                title: "Welcome to project",
+                message: `You joined ${invite.project.title}`,
+                data: { projectId: invite.projectId },
+            });
+        }
 
         // Return updated project
         return await projectService.getById(invite.projectId, userId);

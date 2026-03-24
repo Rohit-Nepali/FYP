@@ -20,6 +20,7 @@ statusRouter.use(authenticateToken);
 
 // Status routes
 statusRouter.get("/", getAllStatusesController);
+statusRouter.post("/", validate(createStatusSchema), createStatusController);
 statusRouter.post("/projects/:projectId/statuses", validate(createStatusSchema), createStatusController);
 statusRouter.get("/projects/:projectId/statuses", getAllStatusesController);
 statusRouter.get("/projects/:projectId/statuses/:id", getStatusByIdController);

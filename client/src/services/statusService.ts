@@ -7,7 +7,7 @@ export interface Status {
   name: string;
   color?: string;
   order: number;
-  projectId: string;
+  projectId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,8 +26,12 @@ export interface UpdateStatusData {
 
 // ─── Public API Functions ────────────────────────────────────────────────────
 
-export const createStatus = async (projectId: string, data: CreateStatusData): Promise<Status> => {
-  return makeRequest<Status>(`/status/projects/${projectId}/statuses`, {
+export const createStatus = async (projectId: string | undefined, data: CreateStatusData): Promise<Status> => {
+  const url = projectId
+    ? `/status/projects/${projectId}/statuses`
+    : `/status`;
+
+  return makeRequest<Status>(url, {
     method: "POST",
     data,
   });

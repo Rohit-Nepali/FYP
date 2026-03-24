@@ -1004,7 +1004,6 @@ export default function TasksPage() {
                     try {
                         const { createTask } = await import("@/src/services/taskService");
                         const newTask = await createTask(payload);
-                        setTaskModalVisible(false);
                         await loadTasks();
                         return newTask;
                     } catch (err) {

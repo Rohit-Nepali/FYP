@@ -23,6 +23,23 @@ export interface Task {
     email: string;
     profileImage?: string;
   };
+  attachments?: Array<{
+    id: string;
+    taskId: string;
+    projectId: string | null;
+    fileName: string;
+    fileType: string | null;
+    fileSize: number | null;
+    fileUrl: string;
+    uploadedBy: string;
+    createdAt: string;
+    uploader?: {
+      id: string;
+      name: string;
+      email: string;
+      profileImage: string | null;
+    };
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -143,4 +160,10 @@ export async function uploadAttachments(
       isMultipart: true,
     });
   }
+}
+
+export async function deleteTaskAttachment(taskId: string, attachmentId: string): Promise<void> {
+  return makeRequest<void>(`/tasks/${taskId}/attachments/${attachmentId}`, {
+    method: "DELETE",
+  });
 }

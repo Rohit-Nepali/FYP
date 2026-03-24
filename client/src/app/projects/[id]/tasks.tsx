@@ -34,7 +34,6 @@ export default function ProjectTasks() {
   const [selectedPriority, setSelectedPriority] = useState<string>("");
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [priorities, setPriorities] = useState<Priority[]>([]);
-  const [savingTask, setSavingTask] = useState(false);
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -253,10 +252,7 @@ export default function ProjectTasks() {
         onClose={resetModal}
         onSave={async (payload) => {
           try {
-            setSavingTask(true);
             const task = await createTask({ ...payload, projectId: id as string });
-            Alert.alert("Success", "Task created successfully");
-            resetModal();
             loadProjectDetail(id as string);
             return task;
           } catch (err) {
@@ -265,8 +261,6 @@ export default function ProjectTasks() {
               err instanceof Error ? err.message : "Failed to create task"
             );
             throw err;
-          } finally {
-            setSavingTask(false);
           }
         }}
         initialValues={{

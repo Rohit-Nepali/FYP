@@ -40,7 +40,7 @@ function AppLayout() {
   const { bottom } = useSafeAreaInsets();
 
   // Pages that should NOT show bottom navigation
-  const noNavPages = ["/login", "/signup", "/splash"];
+  const noNavPages = ["/login", "/signup", "/verify-email", "/splash"];
   const showBottomNav = isAuthenticated && !noNavPages.includes(pathname);
 
   const navHeight = 50;
@@ -50,7 +50,7 @@ function AppLayout() {
   useEffect(() => {
     if (isAuthChecking) return;
 
-    const isPublicPath = ["/login", "/signup", "/splash", "/verify-email", "/forgot-password", "/verify-reset-token"].includes(pathname);
+    const isPublicPath = ["/login", "/signup", "/splash", "/verify-email", "/forgot-password", "/verify-reset-token", "/reset-password"].includes(pathname);
 
     if (!isAuthenticated && !isPublicPath) {
       router.replace("/login");
@@ -83,6 +83,7 @@ function AppLayout() {
         <Stack.Screen name="splash" />
         <Stack.Screen name="(auth)/login" />
         <Stack.Screen name="(auth)/signup" />
+        <Stack.Screen name="(auth)/verify-email" />
         <Stack.Screen name="chatbot" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="index" />

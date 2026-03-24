@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../config/db.js";
+import { emailService } from "./email.service.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -7,6 +8,15 @@ import {
 } from "../utils/jwt.utils.js";
 import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
+
+const generateVerificationCode = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+const getExpiryTimeInMinutes = (minutes) => {
+  const expiresAt = new Date();
+  expiresAt.setMinutes(expiresAt.getMinutes() + minutes);
+  return expiresAt;
+};
 
 export const authService = {
   /**
@@ -42,6 +52,7 @@ export const authService = {
         name,
         email,
         passwordHash,
+        emailVerified: false,
       },
       select: {
         id: true,
@@ -49,41 +60,26 @@ export const authService = {
         name: true,
         role: true,
         profileImage: true,
+        emailVerified: true,
         createdAt: true,
       },
     });
 
-    // Generate tokens
-    const accessToken = generateAccessToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const verificationCode = generateVerificationCode();
 
-    const refreshToken = generateRefreshToken({
-      id: user.id,
-      email: user.email,
-    });
-
-    // Calculate expiration date (7 days from now)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    // Create session
-    await prisma.userSession.create({
+    await prisma.emailVerification.create({
       data: {
         userId: user.id,
-        refreshToken,
-        ipAddress,
-        deviceInfo,
-        expiresAt,
+        token: verificationCode,
+        expiresAt: getExpiryTimeInMinutes(15),
       },
     });
 
+    await emailService.sendEmailVerificationCode(user.email, verificationCode, "Taskora");
+
     return {
       user,
-      accessToken,
-      refreshToken,
+      requiresEmailVerification: true,
     };
   },
 
@@ -109,6 +105,10 @@ export const authService = {
         ERROR_MESSAGES.USER_DOES_NOT_EXIST,
         HTTP_STATUS.UNAUTHORIZED
       );
+    }
+
+    if (!user.emailVerified) {
+      throw new ApiError(ERROR_MESSAGES.EMAIL_NOT_VERIFIED, HTTP_STATUS.FORBIDDEN);
     }
 
     // Verify password
@@ -311,10 +311,11 @@ export const authService = {
     });
 
     if (!user) {
-      throw new ApiError(
-        ERROR_MESSAGES.USER_DOES_NOT_EXIST,
-        HTTP_STATUS.NOT_FOUND
-      );
+      return {
+        shouldSendEmail: false,
+        email,
+        message: "If an account exists for this email, a password reset code has been sent",
+      };
     }
 
     // Generate numeric OTP (6 digits)
@@ -334,9 +335,10 @@ export const authService = {
     });
 
     return {
+      shouldSendEmail: true,
       resetToken,
       email: user.email,
-      message: "Password reset email has been sent",
+      message: "If an account exists for this email, a password reset code has been sent",
     };
   },
 
@@ -474,6 +476,8 @@ export const authService = {
             googleId,
             profileImage: profileImage || user.profileImage,
             googleRefreshToken: refreshToken,
+            emailVerified: true,
+            emailVerifiedAt: new Date(),
           },
         });
       }
@@ -487,6 +491,8 @@ export const authService = {
           googleId,
           profileImage,
           googleRefreshToken: refreshToken,
+          emailVerified: true,
+          emailVerifiedAt: new Date(),
           // No password needed for Google users
         },
         select: {
@@ -625,6 +631,120 @@ export const authService = {
       },
       accessToken: accessTokenJWT,
       refreshToken: refreshTokenJWT,
+    };
+  },
+
+  /**
+   * Verify email verification code
+   * @param {string} email - User email
+   * @param {string} code - Verification code
+   * @returns {Promise<Object>} Verification result
+   */
+  verifyEmail: async (email, code) => {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new ApiError(ERROR_MESSAGES.USER_DOES_NOT_EXIST, HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (user.emailVerified) {
+      return {
+        verified: true,
+        alreadyVerified: true,
+        message: "Email is already verified",
+      };
+    }
+
+    const verificationRecord = await prisma.emailVerification.findFirst({
+      where: {
+        userId: user.id,
+        token: code,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    if (!verificationRecord) {
+      throw new ApiError("Invalid verification code", HTTP_STATUS.UNAUTHORIZED);
+    }
+
+    if (verificationRecord.expiresAt < new Date()) {
+      await prisma.emailVerification.delete({
+        where: { id: verificationRecord.id },
+      });
+      throw new ApiError("Verification code has expired", HTTP_STATUS.UNAUTHORIZED);
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
+
+    await prisma.emailVerification.deleteMany({
+      where: { userId: user.id },
+    });
+
+    return {
+      verified: true,
+      message: "Email verified successfully",
+    };
+  },
+
+  /**
+   * Resend verification code
+   * @param {string} email - User email
+   * @returns {Promise<Object>} resend status
+   */
+  resendVerification: async (email) => {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        emailVerified: true,
+      },
+    });
+
+    if (!user) {
+      return {
+        shouldSendEmail: false,
+        message: "If an account exists and is not verified, a verification code has been sent",
+      };
+    }
+
+    if (user.emailVerified) {
+      return {
+        shouldSendEmail: false,
+        alreadyVerified: true,
+        message: "Email is already verified",
+      };
+    }
+
+    await prisma.emailVerification.deleteMany({
+      where: { userId: user.id },
+    });
+
+    const verificationCode = generateVerificationCode();
+
+    await prisma.emailVerification.create({
+      data: {
+        userId: user.id,
+        token: verificationCode,
+        expiresAt: getExpiryTimeInMinutes(15),
+      },
+    });
+
+    await emailService.sendEmailVerificationCode(user.email, verificationCode, "Taskora");
+
+    return {
+      shouldSendEmail: true,
+      message: "Verification code sent",
     };
   },
 };

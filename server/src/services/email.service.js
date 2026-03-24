@@ -43,6 +43,43 @@ const getFromAddress = (appName = "Taskora") => {
 
 export const emailService = {
   /**
+   * Send email verification OTP email
+   * @param {string} email - Recipient email address
+   * @param {string} otp - One-time password
+   * @param {string} appName - Application name
+   */
+  sendEmailVerificationCode: async (email, otp, appName = "Taskora") => {
+    try {
+      const mailer = getTransporter();
+
+      const mailOptions = {
+        from: getFromAddress(appName),
+        to: email,
+        subject: `Verify Your Email - ${appName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Verify Your Email</h2>
+            <p>Hello,</p>
+            <p>Welcome to ${appName}! Please verify your email address using the code below:</p>
+            <div style="margin: 20px 0; font-size: 22px; font-weight: bold;">${otp}</div>
+            <p><strong>Note:</strong> This code will expire in 15 minutes.</p>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+            <p>If you didn't create this account, you can safely ignore this email.</p>
+            <p>Best regards,<br>The ${appName} Team</p>
+          </div>
+        `,
+      };
+
+      await mailer.sendMail(mailOptions);
+
+      logger.info(`Email verification code sent to ${email}`);
+    } catch (error) {
+      logger.error(`Failed to send email verification code: ${error.message}`);
+      throw error;
+    }
+  },
+
+  /**
    * Send password reset OTP email
    * @param {string} email - Recipient email address
    * @param {string} otp - One-time password

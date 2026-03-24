@@ -1,5 +1,6 @@
 export type AuthErrorType =
   | "INVALID_CREDENTIALS"
+  | "EMAIL_NOT_VERIFIED"
   | "NETWORK_ERROR"
   | "EMAIL_ERROR"
   | "UNKNOWN_ERROR";
@@ -13,6 +14,11 @@ export const handleAuthError = (error: unknown): AuthErrorType => {
       message.includes("invalid credentials")
     ) {
       return "INVALID_CREDENTIALS";
+    } else if (
+      message.includes("verify your email") ||
+      message.includes("email not verified")
+    ) {
+      return "EMAIL_NOT_VERIFIED";
     } else if (
       message.includes("network") ||
       message.includes("internet") ||
@@ -35,6 +41,11 @@ export const getAuthErrorMessage = (
       title: "Login Failed",
       message:
         "Invalid email or password. Please check your credentials and try again.",
+    },
+    EMAIL_NOT_VERIFIED: {
+      title: "Email Not Verified",
+      message:
+        "Please verify your email first. Check your inbox for the verification code.",
     },
     NETWORK_ERROR: {
       title: "Connection Error",

@@ -23,6 +23,8 @@ model User {
   email        String   @unique
   name         String
   passwordHash String?
+  emailVerified Boolean  @default(false)
+  emailVerifiedAt DateTime?
   role         userRole @default(USER)
   profileImage String?
   createdAt    DateTime @default(now())
@@ -35,6 +37,7 @@ model User {
 
   sessions            UserSession[]
   passwordResets     PasswordReset[]
+  emailVerifications EmailVerification[]
   projectsOwned      Project[]       @relation("ownerProjects")
   projectMemberships ProjectMember[]
   assignedTasks      Task[]          @relation("assignedTasks")
@@ -47,6 +50,18 @@ model User {
   activities          Activity[]
   notifications       Notification[]
   behaviorSignals     UserBehaviorSignal[]
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  token     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
 }
 
 model UserSession {

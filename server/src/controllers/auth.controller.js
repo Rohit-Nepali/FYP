@@ -4,6 +4,7 @@ import {
   SUCCESS_MESSAGES,
 } from "../utils/response.utils.js";
 import { authService } from "../services/auth.service.js";
+import { emailService } from "../services/email.service.js";
 
 export const signUpController = async (req, res, next) => {
   try {
@@ -44,6 +45,40 @@ export const signInController = async (req, res, next) => {
       res,
       HTTP_STATUS.OK,
       SUCCESS_MESSAGES.LOGIN_SUCCESS,
+      result
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyEmailController = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+
+    const result = await authService.verifyEmail(email, code);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      SUCCESS_MESSAGES.EMAIL_VERIFIED,
+      result
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resendVerificationController = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const result = await authService.resendVerification(email);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      result.message,
       result
     );
   } catch (error) {
@@ -124,16 +159,16 @@ export const forgotPasswordController = async (req, res, next) => {
 
     const result = await authService.forgotPassword(email);
 
-    // Send password reset email
-    const { emailService } = await import("../services/email.service.js");
-    await emailService.sendPasswordResetEmail(email, result.resetToken,"Taskora");
+    if (result.shouldSendEmail && result.resetToken) {
+      await emailService.sendPasswordResetEmail(email, result.resetToken, "Taskora");
+    }
 
     return ApiResponse.sendSuccessResponse(
       res,
       HTTP_STATUS.OK,
       SUCCESS_MESSAGES.PASSWORD_RESET,
       {
-        message: "Password reset email has been sent to your email address",
+        message: "If an account exists for this email, a password reset code has been sent",
         email: email,
       }
     );
@@ -166,7 +201,6 @@ export const resetPasswordController = async (req, res, next) => {
     const result = await authService.resetPassword(token, password);
 
     // Send password reset confirmation email
-    const { emailService } = await import("../services/email.service.js");
     await emailService.sendPasswordResetConfirmationEmail(result.user.email);
 
     return ApiResponse.sendSuccessResponse(

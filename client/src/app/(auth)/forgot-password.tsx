@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen() {
       const response = await authService.forgotPassword(email);
       showAlert(
         "Success",
-        "A password reset link has been sent to your email address. Please check your inbox.",
+        "If an account exists for this email, a password reset code has been sent. Please check your inbox.",
         "success"
       );
 

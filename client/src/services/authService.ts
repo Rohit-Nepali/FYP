@@ -33,10 +33,10 @@ interface RegisterResponse {
     email: string;
     name: string;
     role: string;
+    emailVerified: boolean;
     createdAt: string;
   };
-  accessToken: string;
-  refreshToken: string;
+  requiresEmailVerification: boolean;
 }
 
 interface RefreshTokenResponse {
@@ -64,6 +64,39 @@ export async function register(
   return makeRequest<RegisterResponse>("/auth/sign-up", {
     method: "POST",
     data: { name, email, password },
+  });
+}
+
+export async function verifyEmail(
+  email: string,
+  code: string
+): Promise<{
+  verified: boolean;
+  alreadyVerified?: boolean;
+  message: string;
+}> {
+  return makeRequest<{
+    verified: boolean;
+    alreadyVerified?: boolean;
+    message: string;
+  }>("/auth/verify-email", {
+    method: "POST",
+    data: { email, code },
+  });
+}
+
+export async function resendVerification(email: string): Promise<{
+  shouldSendEmail: boolean;
+  alreadyVerified?: boolean;
+  message: string;
+}> {
+  return makeRequest<{
+    shouldSendEmail: boolean;
+    alreadyVerified?: boolean;
+    message: string;
+  }>("/auth/resend-verification", {
+    method: "POST",
+    data: { email },
   });
 }
 
@@ -147,6 +180,8 @@ export async function resetPassword(
 export const authService = {
   login,
   register,
+  verifyEmail,
+  resendVerification,
   logout,
   refreshToken,
   getProfile,

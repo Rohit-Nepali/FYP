@@ -150,8 +150,15 @@ export default function SignupScreen() {
       const fullName = `${formData.firstName} ${formData.lastName}`;
       await register(fullName, formData.email, formData.password);
 
-      Alert.alert("Success", "Account created successfully!", [
-        { text: "OK", onPress: () => router.replace("/") },
+      Alert.alert("Success", "Account created. Please verify your email.", [
+        {
+          text: "OK",
+          onPress: () =>
+            router.replace({
+              pathname: "/verify-email",
+              params: { email: formData.email },
+            }),
+        },
       ]);
     } catch (error) {
       const errorType = handleSignupError(error);

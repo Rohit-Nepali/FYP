@@ -9,8 +9,6 @@ import {
     RefreshControl,
     Modal,
     Image,
-    Animated,
-    Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -19,7 +17,7 @@ import { Task, getAllTasks, CreateTaskData } from "@/src/services/taskService";
 import { Status, getAllStatuses } from "@/src/services/statusService";
 import { Priority, getAllPriorities } from "@/src/services/priorityService";
 import TaskModal from "@/src/components/UI/modals/TaskModal";
-import TaskDetailModal from "@/src/components/UI/modals/TaskDetailModal";
+import TaskDetailModal from "../components/UI/modals/TaskDetailModal";
 import { Button } from "@/src/components/UI/Buttons";
 import CalendarView from "@/src/components/CalendarView";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -941,18 +939,16 @@ export default function TasksPage() {
                 )}
 
                 {/* Tomorrow Group */}
-                {groupedTasks.tomorrow.length > 0 && (
-                    <TaskGroup
-                        title="Tomorrow"
-                        icon="sunny-outline"
-                        color={GROUP_CONFIG.tomorrow.color}
-                        bgColor={GROUP_CONFIG.tomorrow.bgColor}
-                        tasks={groupedTasks.tomorrow}
-                        expanded={expandedGroups.tomorrow}
-                        onToggle={() => toggleGroup("tomorrow")}
-                        onTaskPress={handleTaskPress}
-                    />
-                )}
+                <TaskGroup
+                    title="Tomorrow"
+                    icon="sunny-outline"
+                    color={GROUP_CONFIG.tomorrow.color}
+                    bgColor={GROUP_CONFIG.tomorrow.bgColor}
+                    tasks={groupedTasks.tomorrow}
+                    expanded={expandedGroups.tomorrow}
+                    onToggle={() => toggleGroup("tomorrow")}
+                    onTaskPress={handleTaskPress}
+                />
 
                 {/* Upcoming Group */}
                 {groupedTasks.upcoming.length > 0 && (

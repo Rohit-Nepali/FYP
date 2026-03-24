@@ -32,28 +32,16 @@ export const authService = {
   signUp: async (userData, ipAddress, deviceInfo) => {
     const { name, email, password } = userData;
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-    if (existingUser) {
+    if (!emailService.isSmtpConfigured()) {
       throw new ApiError(
-        ERROR_MESSAGES.USER_ALREADY_EXISTS,
-        HTTP_STATUS.CONFLICT
+        "Email verification service is unavailable. Please try again later.",
+        HTTP_STATUS.SERVICE_UNAVAILABLE
       );
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-        emailVerified: false,
-      },
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
       select: {
         id: true,
         email: true,
@@ -65,15 +53,75 @@ export const authService = {
       },
     });
 
-    const verificationCode = generateVerificationCode();
+    if (existingUser?.emailVerified) {
+      throw new ApiError(
+        ERROR_MESSAGES.USER_ALREADY_EXISTS,
+        HTTP_STATUS.CONFLICT
+      );
+    }
 
-    await prisma.emailVerification.create({
-      data: {
-        userId: user.id,
-        token: verificationCode,
-        expiresAt: getExpiryTimeInMinutes(15),
-      },
+    const passwordHash = await bcrypt.hash(password, 10);
+    const verificationCode = generateVerificationCode();
+    let user;
+
+    await prisma.$transaction(async (tx) => {
+      if (existingUser && !existingUser.emailVerified) {
+        await tx.emailVerification.deleteMany({
+          where: { userId: existingUser.id },
+        });
+
+        await tx.user.update({
+          where: { id: existingUser.id },
+          data: {
+            name,
+            passwordHash,
+          },
+        });
+
+        await tx.emailVerification.create({
+          data: {
+            userId: existingUser.id,
+            token: verificationCode,
+            expiresAt: getExpiryTimeInMinutes(15),
+          },
+        });
+
+        user = {
+          ...existingUser,
+          name,
+        };
+        return;
+      }
+
+      user = await tx.user.create({
+        data: {
+          name,
+          email,
+          passwordHash,
+          emailVerified: false,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          profileImage: true,
+          emailVerified: true,
+          createdAt: true,
+        },
+      });
+
+      await tx.emailVerification.create({
+        data: {
+          userId: user.id,
+          token: verificationCode,
+          expiresAt: getExpiryTimeInMinutes(15),
+        },
+      });
     });
+
+    // Log OTP for testing purposes
+    console.log(`\n📧 Email Verification OTP\n━━━━━━━━━━━━━━━━━━━━━━━━━\nEmail: ${user.email}\nOTP: ${verificationCode}\nExpires in: 15 minutes\n━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
     await emailService.sendEmailVerificationCode(user.email, verificationCode, "Taskora");
 
@@ -108,6 +156,22 @@ export const authService = {
     }
 
     if (!user.emailVerified) {
+      const verificationCode = generateVerificationCode();
+
+      await prisma.emailVerification.deleteMany({
+        where: { userId: user.id },
+      });
+
+      await prisma.emailVerification.create({
+        data: {
+          userId: user.id,
+          token: verificationCode,
+          expiresAt: getExpiryTimeInMinutes(15),
+        },
+      });
+
+      console.log(`\n📧 Email Verification Required (Sign In Attempt)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nEmail: ${user.email}\nOTP: ${verificationCode}\nExpires in: 15 minutes\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
       throw new ApiError(ERROR_MESSAGES.EMAIL_NOT_VERIFIED, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -739,6 +803,9 @@ export const authService = {
         expiresAt: getExpiryTimeInMinutes(15),
       },
     });
+
+    // Log OTP for testing purposes
+    console.log(`\n📧 Email Verification OTP (Resend)\n━━━━━━━━━━━━━━━━━━━━━━━━━\nEmail: ${user.email}\nOTP: ${verificationCode}\nExpires in: 15 minutes\n━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
     await emailService.sendEmailVerificationCode(user.email, verificationCode, "Taskora");
 

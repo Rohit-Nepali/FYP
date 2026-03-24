@@ -3,6 +3,11 @@ import logger from "../config/logger.js";
 
 let transporter;
 
+const REQUIRED_SMTP_ENV_KEYS = ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"];
+
+const getMissingSmtpConfig = () =>
+  REQUIRED_SMTP_ENV_KEYS.filter((key) => !process.env[key]);
+
 const getRequiredEnv = (name) => {
   const value = process.env[name];
   if (!value) {
@@ -42,6 +47,15 @@ const getFromAddress = (appName = "Taskora") => {
 };
 
 export const emailService = {
+  isSmtpConfigured: () => getMissingSmtpConfig().length === 0,
+
+  assertSmtpConfigured: () => {
+    const missing = getMissingSmtpConfig();
+    if (missing.length > 0) {
+      throw new Error(`Missing required SMTP config: ${missing[0]}`);
+    }
+  },
+
   /**
    * Send email verification OTP email
    * @param {string} email - Recipient email address

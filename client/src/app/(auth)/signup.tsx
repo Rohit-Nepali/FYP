@@ -1,10 +1,9 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ScrollView,
   Image,
   TouchableOpacity,
@@ -16,6 +15,7 @@ import { theme } from "../../config/theme";
 import { FormInput } from "@/src/components/common/FormInput";
 import { PrimaryButton } from "@/src/components/UI/Buttons";
 import { Checkbox } from "@/src/components/UI/CheckBox";
+import { CustomAlert } from "@/src/components/UI/CustomAlert";
 import { useSignupForm } from "../../hooks/useSignupForm";
 import {
   handleSignupError,
@@ -26,6 +26,16 @@ import { validateField, signupValidationRules } from "../../utils/validation";
 export default function SignupScreen() {
   const router = useRouter();
   const { register, isAuthChecking } = useAuth();
+
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertType, setAlertType] = useState<
+    "default" | "success" | "error" | "warning" | "info"
+  >("default");
+  const [onAlertConfirm, setOnAlertConfirm] = useState<(() => void) | undefined>(
+    undefined
+  );
 
   // Use our custom hook for form state management
   const {
@@ -141,6 +151,22 @@ export default function SignupScreen() {
   );
 
   // Memoized signup handler
+  const showAlert = useCallback(
+    (
+      title: string,
+      message: string,
+      type: "default" | "success" | "error" | "warning" | "info" = "default",
+      onConfirm?: () => void
+    ) => {
+      setAlertTitle(title);
+      setAlertMessage(message);
+      setAlertType(type);
+      setOnAlertConfirm(() => onConfirm);
+      setAlertVisible(true);
+    },
+    []
+  );
+
   const handleSignUp = useCallback(async () => {
     if (!validateForm()) return;
 
@@ -150,16 +176,16 @@ export default function SignupScreen() {
       const fullName = `${formData.firstName} ${formData.lastName}`;
       await register(fullName, formData.email, formData.password);
 
-      Alert.alert("Success", "Account created. Please verify your email.", [
-        {
-          text: "OK",
-          onPress: () =>
-            router.replace({
-              pathname: "/verify-email",
-              params: { email: formData.email },
-            }),
-        },
-      ]);
+      showAlert(
+        "Success",
+        "Account created. Please verify your email.",
+        "success",
+        () =>
+          router.replace({
+            pathname: "/verify-email",
+            params: { email: formData.email },
+          })
+      );
     } catch (error) {
       const errorType = handleSignupError(error);
       const errorInfo = getSignupErrorMessage(errorType);
@@ -170,12 +196,20 @@ export default function SignupScreen() {
           email: errorInfo.message,
         }));
       } else {
-        Alert.alert(errorInfo.title, errorInfo.message);
+        showAlert(errorInfo.title, errorInfo.message, "error");
       }
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, validateForm, register, router, setErrors, setIsSubmitting]);
+  }, [
+    formData,
+    validateForm,
+    register,
+    router,
+    setErrors,
+    setIsSubmitting,
+    showAlert,
+  ]);
 
   const handleSignIn = useCallback(() => {
     router.push("/login");
@@ -330,9 +364,10 @@ export default function SignupScreen() {
               <PrimaryButton
                 title="Continue with Google"
                 onPress={() => {
-                  Alert.alert(
+                  showAlert(
                     "Coming Soon",
-                    "Google signup will be available soon!"
+                    "Google signup will be available soon!",
+                    "info"
                   );
                 }}
                 variant="secondary"
@@ -352,6 +387,18 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        type={alertType}
+        onClose={() => {
+          setAlertVisible(false);
+          setOnAlertConfirm(undefined);
+        }}
+        onConfirm={onAlertConfirm}
+      />
     </LinearGradient>
   );
 }

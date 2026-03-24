@@ -68,6 +68,7 @@ export const getAuthErrorMessage = (
 // Add to existing errorHandler.ts
 export type SignupErrorType =
   | "EMAIL_TAKEN"
+  | "EMAIL_SERVICE_UNAVAILABLE"
   | "NETWORK_ERROR"
   | "INVALID_EMAIL"
   | "WEAK_PASSWORD"
@@ -82,6 +83,12 @@ export const handleSignupError = (error: unknown): SignupErrorType => {
       (message.includes("taken") || message.includes("already"))
     ) {
       return "EMAIL_TAKEN";
+    } else if (
+      message.includes("email verification service") ||
+      message.includes("smtp") ||
+      message.includes("service unavailable")
+    ) {
+      return "EMAIL_SERVICE_UNAVAILABLE";
     } else if (
       message.includes("network") ||
       message.includes("internet") ||
@@ -106,6 +113,11 @@ export const getSignupErrorMessage = (
       title: "Email Already Registered",
       message:
         "This email is already registered. Please use a different email or sign in.",
+    },
+    EMAIL_SERVICE_UNAVAILABLE: {
+      title: "Email Service Unavailable",
+      message:
+        "We couldn't send the verification email right now. Please try again later.",
     },
     NETWORK_ERROR: {
       title: "Connection Error",

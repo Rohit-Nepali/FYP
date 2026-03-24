@@ -181,7 +181,7 @@ export default function ProjectTasks() {
                     key={task.id || index}
                     className="flex-row items-center bg-gray-900/60 rounded-xl px-3 py-3"
                     onPress={() =>
-                      task.id && router.push(`/tasks/${task.id}`)
+                      task.id && router.push(`/tasks?taskId=${task.id}`)
                     }
                   >
                     <Ionicons

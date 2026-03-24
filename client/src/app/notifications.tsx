@@ -332,7 +332,7 @@ export default function NotificationsScreen() {
       const projectId = item.data?.projectId;
 
       if (typeof taskId === "string" && taskId) {
-        router.push(`/tasks/${taskId}`);
+        router.push(`/tasks?taskId=${taskId}`);
         return;
       }
       if (typeof projectId === "string" && projectId) {

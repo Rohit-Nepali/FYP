@@ -597,7 +597,7 @@ export default function Chatbot() {
 
   const handleQuickAction = (action: QuickAction) => {
     if (action.action === "view_task" && action.taskId) {
-      router.push(`/tasks/${action.taskId}`);
+      router.push(`/tasks?taskId=${action.taskId}`);
     } else if (action.action === "view_task") {
       router.push("/tasks");
     } else if (action.action === "mark_complete" && action.taskId) {

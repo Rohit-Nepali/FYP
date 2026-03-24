@@ -54,7 +54,8 @@ const createComment = async (req, res, next) => {
 const getCommentsByTask = async (req, res, next) => {
   try {
     const { taskId } = req.params;
-    const comments = await commentService.getCommentsByTask(taskId);
+    const userId = req.user.id;
+    const comments = await commentService.getCommentsByTask(taskId, userId);
     return ApiResponse.sendSuccessResponse(
       res,
       HTTP_STATUS.OK,

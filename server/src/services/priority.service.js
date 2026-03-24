@@ -6,7 +6,7 @@ export const priorityService = {
   create: async (priorityData, projectId, userId) => {
     const { name, color, order } = priorityData;
 
-    // If projectId is provided, check project access
+    // If projectId is provided, check project access (owner only)
     if (projectId) {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
@@ -17,8 +17,8 @@ export const priorityService = {
         throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
       }
 
-      if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
-        throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+      if (project.ownerId !== userId) {
+        throw new ApiError("Only project owner can create priorities", HTTP_STATUS.FORBIDDEN);
       }
 
       // Check if priority with same name already exists for this project
@@ -140,7 +140,7 @@ export const priorityService = {
   },
 
   update: async (priorityId, projectId, userId, updateData) => {
-    // If projectId is provided, check project access
+    // If projectId is provided, check project access (owner only)
     if (projectId) {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
@@ -151,8 +151,8 @@ export const priorityService = {
         throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
       }
 
-      if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
-        throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+      if (project.ownerId !== userId) {
+        throw new ApiError("Only project owner can update priorities", HTTP_STATUS.FORBIDDEN);
       }
 
       const existingPriority = await prisma.priority.findFirst({
@@ -246,7 +246,7 @@ export const priorityService = {
   },
 
   delete: async (priorityId, projectId, userId) => {
-    // If projectId is provided, check project access
+    // If projectId is provided, check project access (owner only)
     if (projectId) {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
@@ -257,8 +257,8 @@ export const priorityService = {
         throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
       }
 
-      if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
-        throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+      if (project.ownerId !== userId) {
+        throw new ApiError("Only project owner can delete priorities", HTTP_STATUS.FORBIDDEN);
       }
 
       const priority = await prisma.priority.findFirst({

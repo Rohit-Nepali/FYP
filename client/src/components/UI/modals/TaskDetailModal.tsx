@@ -15,6 +15,7 @@ import {
 import * as DocumentPicker from "expo-document-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@/src/contexts/AuthContext";
 import {
   Task,
   getTaskById,
@@ -28,6 +29,7 @@ import {
   getCommentsByTask,
 } from "@/src/services/commentService";
 import { Attachment } from "@/src/services/attachmentService";
+import { getTaskPermissions } from "@/src/utils/permissions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useAlert from "@/src/hooks/useAlert";
 import AttachmentPreviewModal from "./AttachmentPreviewModal";
@@ -63,6 +65,7 @@ export default function TaskDetailModal({
   statuses = [],
   priorities = [],
 }: Props) {
+  const { user } = useAuth();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +88,22 @@ export default function TaskDetailModal({
     Platform.OS === "ios"
       ? insets.bottom + 16
       : (StatusBar.currentHeight ?? 0) + 16;
+
+  // Compute permissions
+  const permissions = task && user ? getTaskPermissions({
+    creatorId: task.creatorId,
+    assigneeId: task.assigneeId,
+    projectId: task.projectId,
+  }, user.id) : null;
+  
+  const canEdit = permissions?.canEditTitle ?? false;
+  const canDelete = permissions?.canDelete ?? false;
+  const canManageAssignees = permissions?.canAssign ?? false;
+  const canManageStatus = permissions?.canEditStatus ?? false;
+  const canComment = permissions?.canComment ?? false;
+  const canViewAttachments = permissions?.canUploadAttachment ?? false;
+  const canUploadAttachments = permissions?.canUploadAttachment ?? false;
+  const canDeleteAttachments = permissions?.canDeleteAnyAttachment ?? false;
 
   useEffect(() => {
     if (visible && taskId) {
@@ -124,7 +143,10 @@ export default function TaskDetailModal({
   };
 
   const handleUpdateStatus = async (statusId: string) => {
-    if (!task) return;
+    if (!task || !canManageStatus) {
+      showError("You don't have permission to update task status");
+      return;
+    }
 
     try {
       setUpdatingStatus(true);
@@ -141,7 +163,10 @@ export default function TaskDetailModal({
   };
 
   const handleUpdatePriority = async (priorityId: string) => {
-    if (!task) return;
+    if (!task || !canEdit) {
+      showError("You don't have permission to update task priority");
+      return;
+    }
 
     try {
       setUpdatingPriority(true);
@@ -162,6 +187,11 @@ export default function TaskDetailModal({
   const handlePostComment = async () => {
     if (!newComment.trim() || !taskId) return;
 
+    if (!canComment) {
+      showError("You don't have permission to comment on this task");
+      return;
+    }
+
     try {
       setPostingComment(true);
       await createComment({
@@ -181,7 +211,10 @@ export default function TaskDetailModal({
   };
 
   const handleUpdateAssignee = async (memberId: string | undefined) => {
-    if (!task) return;
+    if (!task || !canManageAssignees) {
+      showError("You don't have permission to assign tasks");
+      return;
+    }
 
     try {
       const updatedTask = { ...task, assigneeId: memberId };
@@ -209,6 +242,11 @@ export default function TaskDetailModal({
   const handleDeleteAttachment = async () => {
     if (!task || !selectedAttachment) return;
 
+    if (!canDeleteAttachments) {
+      showError("You don't have permission to delete attachments");
+      return;
+    }
+
     try {
       setDeletingAttachment(true);
       await deleteTaskAttachment(task.id, selectedAttachment.id);
@@ -223,6 +261,11 @@ export default function TaskDetailModal({
 
   const handleUploadAttachment = async () => {
     if (!task) return;
+
+    if (!canUploadAttachments) {
+      showError("You don't have permission to upload attachments");
+      return;
+    }
 
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -285,6 +328,7 @@ export default function TaskDetailModal({
                   title={task?.title}
                   loading={loading}
                   onClose={onClose}
+                  canDelete={canDelete}
                 />
 
                 <TaskDetailTabBar
@@ -344,6 +388,7 @@ export default function TaskDetailModal({
                           setShowAssigneePicker(!showAssigneePicker)
                         }
                         onUpdateAssignee={handleUpdateAssignee}
+                        canManageAssignees={canManageAssignees}
                       />
                     )}
 
@@ -355,6 +400,7 @@ export default function TaskDetailModal({
                         onPostComment={handlePostComment}
                         comments={comments}
                         formatDate={formatDate}
+                        canComment={canComment}
                       />
                     )}
 
@@ -368,6 +414,8 @@ export default function TaskDetailModal({
                         onUpdateStatus={handleUpdateStatus}
                         onUpdatePriority={handleUpdatePriority}
                         formatDate={formatDate}
+                        canManageStatus={canManageStatus}
+                        canEdit={canEdit}
                       />
                     )}
 
@@ -378,6 +426,8 @@ export default function TaskDetailModal({
                         onUploadAttachment={handleUploadAttachment}
                         onSelectAttachment={setSelectedAttachment}
                         formatDate={formatDate}
+                        canUploadAttachments={canUploadAttachments}
+                        canViewAttachments={canViewAttachments}
                       />
                     )}
                   </ScrollView>
@@ -411,7 +461,7 @@ export default function TaskDetailModal({
         visible={!!selectedAttachment}
         attachment={selectedAttachment}
         onClose={() => setSelectedAttachment(null)}
-        onDelete={deletingAttachment ? undefined : handleDeleteAttachment}
+        onDelete={canDeleteAttachments && !deletingAttachment ? handleDeleteAttachment : undefined}
       />
 
       {AlertComponent}

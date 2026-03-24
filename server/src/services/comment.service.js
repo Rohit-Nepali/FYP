@@ -158,8 +158,47 @@ const createComment = async ({ taskId, content, authorId }) => {
   return comment;
 };
 
-const getCommentsByTask = async (taskId) => {
-  console.log("task id ", taskId)
+const getCommentsByTask = async (taskId, userId) => {
+  // Verify task exists and user has access to it
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: {
+      project: {
+        select: {
+          ownerId: true,
+          members: {
+            select: { userId: true }
+          }
+        }
+      }
+    }
+  });
+
+  if (!task) {
+    throw new NotFoundError('Task not found');
+  }
+
+  // Access rules:
+  // - Project task: user must be project owner or project member
+  // - Standalone task (no project): user must be creator or assignee
+  if (task.project) {
+    const isMember = task.project.members.some(
+      (member) => member.userId === userId
+    );
+    const isOwner = task.project.ownerId === userId;
+
+    if (!isMember && !isOwner) {
+      throw new AuthorizationError('You are not a member of this project');
+    }
+  } else {
+    const isCreator = task.creatorId === userId;
+    const isAssignee = task.assigneeId === userId;
+
+    if (!isCreator && !isAssignee) {
+      throw new AuthorizationError('You are not allowed to view comments on this task');
+    }
+  }
+
   const comments = await prisma.comment.findMany({
     where: { taskId },
     include: {

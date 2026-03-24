@@ -16,6 +16,7 @@ import {
   getAttachmentType,
 } from "@/src/services/attachmentService";
 import { resolveFileUrl } from "@/src/utils/url";
+import { TaskPermissions } from "@/src/utils/permissions";
 
 export type TaskDetailTabKey =
   | "details"
@@ -97,9 +98,10 @@ interface HeaderProps {
   title?: string;
   loading: boolean;
   onClose: () => void;
+  canDelete?: boolean;
 }
 
-export function TaskDetailHeader({ title, loading, onClose }: HeaderProps) {
+export function TaskDetailHeader({ title, loading, onClose, canDelete }: HeaderProps) {
   return (
     <View className="flex-row items-center justify-between p-4 border-b border-gray-700 bg-gray-900/50">
       <View className="flex-1 mr-4">
@@ -179,6 +181,7 @@ interface DetailsTabProps {
   showAssigneePicker: boolean;
   onToggleAssigneePicker: () => void;
   onUpdateAssignee: (memberId: string | undefined) => void;
+  canManageAssignees: boolean;
 }
 
 export function TaskDetailsTab({
@@ -189,6 +192,7 @@ export function TaskDetailsTab({
   showAssigneePicker,
   onToggleAssigneePicker,
   onUpdateAssignee,
+  canManageAssignees,
 }: DetailsTabProps) {
   return (
     <View className="gap-4">
@@ -236,7 +240,7 @@ export function TaskDetailsTab({
             <Ionicons name="person-outline" size={20} color="#60A5FA" />
             <Text className="text-gray-300 font-medium">Assignee</Text>
           </View>
-          {projectMembers.length > 0 && (
+          {projectMembers.length > 0 && canManageAssignees && (
             <TouchableOpacity
               onPress={onToggleAssigneePicker}
               className="bg-gray-700 px-3 py-1 rounded-lg"
@@ -350,6 +354,7 @@ interface CommentsTabProps {
   onPostComment: () => void;
   comments: Comment[];
   formatDate: (dateString?: string) => string;
+  canComment: boolean;
 }
 
 export function TaskCommentsTab({
@@ -359,39 +364,47 @@ export function TaskCommentsTab({
   onPostComment,
   comments,
   formatDate,
+  canComment,
 }: CommentsTabProps) {
   return (
     <View className="gap-4">
-      <View className="bg-gray-800/50 rounded-xl p-3 border border-gray-700">
-        <View className="flex-row items-end gap-2">
-          <TextInput
-            className="flex-1 bg-gray-900 rounded-xl px-4 py-3 text-white min-h-[44px] max-h-[120px] border border-gray-700"
-            placeholder="Write a comment..."
-            placeholderTextColor="#6B7280"
-            value={newComment}
-            onChangeText={onChangeComment}
-            multiline
-            textAlignVertical="top"
-          />
-          <TouchableOpacity
-            onPress={onPostComment}
-            disabled={!newComment.trim() || postingComment}
-            className={`w-11 h-11 rounded-xl items-center justify-center ${
-              newComment.trim() && !postingComment ? "bg-blue-600" : "bg-gray-700"
-            }`}
-          >
-            {postingComment ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons
-                name="send"
-                size={18}
-                color={newComment.trim() ? "#fff" : "#6B7280"}
-              />
-            )}
-          </TouchableOpacity>
+      {canComment ? (
+        <View className="bg-gray-800/50 rounded-xl p-3 border border-gray-700">
+          <View className="flex-row items-end gap-2">
+            <TextInput
+              className="flex-1 bg-gray-900 rounded-xl px-4 py-3 text-white min-h-[44px] max-h-[120px] border border-gray-700"
+              placeholder="Write a comment..."
+              placeholderTextColor="#6B7280"
+              value={newComment}
+              onChangeText={onChangeComment}
+              multiline
+              textAlignVertical="top"
+            />
+            <TouchableOpacity
+              onPress={onPostComment}
+              disabled={!newComment.trim() || postingComment}
+              className={`w-11 h-11 rounded-xl items-center justify-center ${
+                newComment.trim() && !postingComment ? "bg-blue-600" : "bg-gray-700"
+              }`}
+            >
+              {postingComment ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons
+                  name="send"
+                  size={18}
+                  color={newComment.trim() ? "#fff" : "#6B7280"}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      ) : (
+        <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 items-center py-6">
+          <Ionicons name="lock-closed-outline" size={28} color="#6B7280" />
+          <Text className="text-gray-400 text-sm mt-2">You don't have permission to comment</Text>
+        </View>
+      )}
 
       {comments.length === 0 ? (
         <View className="items-center py-12 bg-gray-800/30 rounded-xl border border-gray-700/50">
@@ -440,6 +453,8 @@ interface StatusTabProps {
   onUpdateStatus: (statusId: string) => void;
   onUpdatePriority: (priorityId: string) => void;
   formatDate: (dateString?: string) => string;
+  canManageStatus: boolean;
+  canEdit: boolean;
 }
 
 export function TaskStatusTab({
@@ -451,6 +466,8 @@ export function TaskStatusTab({
   onUpdateStatus,
   onUpdatePriority,
   formatDate,
+  canManageStatus,
+  canEdit,
 }: StatusTabProps) {
   return (
     <View className="gap-4">
@@ -463,6 +480,12 @@ export function TaskStatusTab({
           {updatingStatus && (
             <ActivityIndicator size="small" color="#60A5FA" style={{ marginLeft: 8 }} />
           )}
+          {!canManageStatus && (
+            <View className="flex-row items-center gap-1 ml-auto">
+              <Ionicons name="lock-closed" size={14} color="#9CA3AF" />
+              <Text className="text-gray-400 text-xs">Read-only</Text>
+            </View>
+          )}
         </View>
 
         {statuses.length > 0 ? (
@@ -474,11 +497,11 @@ export function TaskStatusTab({
                 <TouchableOpacity
                   key={status.id}
                   onPress={() => onUpdateStatus(status.id)}
-                  disabled={updatingStatus}
+                  disabled={updatingStatus || !canManageStatus}
                   className={`flex-row items-center gap-2 px-4 py-2.5 rounded-xl border-2 ${
                     isSelected
                       ? "bg-yellow-600 border-yellow-400"
-                      : "bg-gray-800 border-gray-700"
+                      : `${!canManageStatus ? "bg-gray-700" : "bg-gray-800"} border-gray-700`
                   }`}
                 >
                   {isSelected && (
@@ -516,6 +539,12 @@ export function TaskStatusTab({
           {updatingPriority && (
             <ActivityIndicator size="small" color="#60A5FA" style={{ marginLeft: 8 }} />
           )}
+          {!canEdit && (
+            <View className="flex-row items-center gap-1 ml-auto">
+              <Ionicons name="lock-closed" size={14} color="#9CA3AF" />
+              <Text className="text-gray-400 text-xs">Read-only</Text>
+            </View>
+          )}
         </View>
 
         {priorities.length > 0 ? (
@@ -528,11 +557,11 @@ export function TaskStatusTab({
                 <TouchableOpacity
                   key={priority.id}
                   onPress={() => onUpdatePriority(priority.id)}
-                  disabled={updatingPriority}
+                  disabled={updatingPriority || !canEdit}
                   className={`flex-row items-center gap-2 px-4 py-2.5 rounded-xl border-2 ${
                     isSelected
                       ? `${priorityColor.bg} ${priorityColor.border}`
-                      : "bg-gray-800 border-gray-700"
+                      : `${!canEdit ? "bg-gray-700" : "bg-gray-800"} border-gray-700`
                   }`}
                 >
                   <View
@@ -584,6 +613,8 @@ interface AttachmentsTabProps {
   onUploadAttachment: () => void;
   onSelectAttachment: (attachment: Attachment) => void;
   formatDate: (dateString?: string) => string;
+  canUploadAttachments: boolean;
+  canViewAttachments: boolean;
 }
 
 export function TaskAttachmentsTab({
@@ -592,20 +623,38 @@ export function TaskAttachmentsTab({
   onUploadAttachment,
   onSelectAttachment,
   formatDate,
+  canUploadAttachments,
+  canViewAttachments,
 }: AttachmentsTabProps) {
   return (
     <View className="gap-3">
       <TouchableOpacity
         onPress={onUploadAttachment}
-        disabled={uploadingAttachment}
-        className="bg-blue-600 rounded-xl py-3.5 px-4 items-center justify-center flex-row active:bg-blue-700"
+        disabled={uploadingAttachment || !canUploadAttachments}
+        className={`rounded-xl py-3.5 px-4 items-center justify-center flex-row ${
+          canUploadAttachments
+            ? "bg-blue-600 active:bg-blue-700"
+            : "bg-gray-700"
+        }`}
       >
         {uploadingAttachment ? (
           <ActivityIndicator size="small" color="#fff" />
         ) : (
           <>
-            <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
-            <Text className="text-white font-semibold ml-2">Upload Files</Text>
+            <Ionicons
+              name="cloud-upload-outline"
+              size={20}
+              color={canUploadAttachments ? "#fff" : "#6B7280"}
+            />
+            <Text
+              className={`font-semibold ml-2 ${
+                canUploadAttachments
+                  ? "text-white"
+                  : "text-gray-500"
+              }`}
+            >
+              {canUploadAttachments ? "Upload Files" : "Cannot Upload"}
+            </Text>
           </>
         )}
       </TouchableOpacity>

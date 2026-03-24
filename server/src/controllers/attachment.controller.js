@@ -22,11 +22,58 @@ export const uploadTaskAttachmentController = async (req, res, next) => {
             );
         }
 
-        // Get task details for activity logging
+        // Get task details WITH project info for access validation
         const task = await prisma.task.findUnique({
             where: { id: taskId },
-            select: { id: true, title: true, projectId: true }
+            select: { 
+                id: true, 
+                title: true, 
+                projectId: true,
+                creatorId: true,
+                project: {
+                    select: {
+                        ownerId: true,
+                        members: {
+                            select: { userId: true }
+                        }
+                    }
+                }
+            }
         });
+
+        if (!task) {
+            return ApiResponse.sendErrorResponse(
+                res,
+                HTTP_STATUS.NOT_FOUND,
+                "Task not found"
+            );
+        }
+
+        // AUTHORIZATION CHECK: Validate user has access to this task
+        const isTaskCreator = task.creatorId === userId;
+        const isProjectOwner = task.project?.ownerId === userId;
+        const isProjectMember = task.project?.members?.some(m => m.userId === userId);
+
+        // For standalone tasks: only creator can upload
+        if (!task.projectId) {
+            if (!isTaskCreator) {
+                return ApiResponse.sendErrorResponse(
+                    res,
+                    HTTP_STATUS.FORBIDDEN,
+                    "You don't have permission to upload files to this task"
+                );
+            }
+        }
+        // For project tasks: creator, owner, or member can upload
+        else {
+            if (!isTaskCreator && !isProjectOwner && !isProjectMember) {
+                return ApiResponse.sendErrorResponse(
+                    res,
+                    HTTP_STATUS.FORBIDDEN,
+                    "Not a member of this project"
+                );
+            }
+        }
 
         const attachment = await attachmentService.create({
             file: req.file,

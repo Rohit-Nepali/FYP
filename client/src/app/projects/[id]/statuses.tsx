@@ -17,6 +17,7 @@ import {
   deleteStatus,
   Status,
 } from "@/src/services/statusService";
+import { getProjectById, Project } from "@/src/services/projectService";
 import StatusPriorityModal from "@/src/components/UI/modals/StatusPriorityModal";
 import { Button } from "@/src/components/UI/Buttons";
 import useAlert from "@/src/hooks/useAlert";
@@ -26,6 +27,7 @@ export default function ProjectStatuses() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
 
+  const [project, setProject] = useState<Project | null>(null);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -37,16 +39,21 @@ export default function ProjectStatuses() {
   const { showError, showSuccess, showConfirm, AlertComponent } = useAlert();
 
   useEffect(() => {
-    if (id) loadStatuses();
+    if (id) loadData();
   }, [id]);
 
-  const loadStatuses = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await getAllStatuses(id as string);
-      setStatuses(data);
+      // Fetch both project and statuses
+      const [projectData, statusesData] = await Promise.all([
+        getProjectById(id as string),
+        getAllStatuses(id as string)
+      ]);
+      setProject(projectData);
+      setStatuses(statusesData);
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to load statuses");
+      showError(err instanceof Error ? err.message : "Failed to load data");
       router.back();
     } finally {
       setLoading(false);
@@ -63,7 +70,7 @@ export default function ProjectStatuses() {
       await createStatus(id as string, data);
       showSuccess("Status created successfully");
       setModalVisible(false);
-      loadStatuses();
+      loadData();
     } catch (error) {
       showError(error instanceof Error ? error.message : "Failed to create status");
     } finally {
@@ -84,7 +91,7 @@ export default function ProjectStatuses() {
       showSuccess("Status updated successfully");
       setModalVisible(false);
       setEditingStatus(null);
-      loadStatuses();
+      loadData();
     } catch (error) {
       showError(error instanceof Error ? error.message : "Failed to update status");
     } finally {
@@ -100,7 +107,7 @@ export default function ProjectStatuses() {
           setDeletingId(statusId);
           await deleteStatus(id as string, statusId);
           showSuccess("Status deleted successfully");
-          loadStatuses();
+          loadData();
         } catch (err) {
           showError(err instanceof Error ? err.message : "Failed to delete status");
         } finally {
@@ -172,7 +179,8 @@ export default function ProjectStatuses() {
     );
   }
 
-  const isOwner = statuses.length > 0; // If we can load statuses, user has access
+  // Check if current user is the project owner
+  const isOwner = project?.ownerId === user?.id;
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900">

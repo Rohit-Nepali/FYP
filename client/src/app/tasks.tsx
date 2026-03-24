@@ -9,16 +9,15 @@ import {
     RefreshControl,
     Modal,
     Image,
-    Animated,
-    Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, getAllTasks, CreateTaskData } from "@/src/services/taskService";
 import { Status, getAllStatuses } from "@/src/services/statusService";
 import { Priority, getAllPriorities } from "@/src/services/priorityService";
 import TaskModal from "@/src/components/UI/modals/TaskModal";
+import TaskDetailModal from "../components/UI/modals/TaskDetailModal";
 import { Button } from "@/src/components/UI/Buttons";
 import CalendarView from "@/src/components/CalendarView";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -510,6 +509,13 @@ export default function TasksPage() {
     // Modal state
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [taskModalVisible, setTaskModalVisible] = useState(false);
+    const [taskDetailModal, setTaskDetailModal] = useState<{ visible: boolean; taskId: string | null }>({
+        visible: false,
+        taskId: null,
+    });
+
+    // Route params
+    const params = useLocalSearchParams<{ taskId?: string }>();
 
     // Load data
     const loadTasks = useCallback(async () => {
@@ -641,7 +647,7 @@ export default function TasksPage() {
 
     // Handle task press
     const handleTaskPress = (task: Task) => {
-        router.push(`/tasks/${task.id}`);
+        setTaskDetailModal({ visible: true, taskId: task.id });
     };
 
     // Handle task creation
@@ -651,6 +657,13 @@ export default function TasksPage() {
         await loadTasks();
         return {} as Task; // Return empty task as modal handles its own creation
     };
+
+    // Open detail modal if taskId is in route params
+    useEffect(() => {
+        if (params.taskId) {
+            setTaskDetailModal({ visible: true, taskId: params.taskId });
+        }
+    }, [params.taskId]);
 
     // Count active filters
     const activeFilterCount =
@@ -926,18 +939,16 @@ export default function TasksPage() {
                 )}
 
                 {/* Tomorrow Group */}
-                {groupedTasks.tomorrow.length > 0 && (
-                    <TaskGroup
-                        title="Tomorrow"
-                        icon="sunny-outline"
-                        color={GROUP_CONFIG.tomorrow.color}
-                        bgColor={GROUP_CONFIG.tomorrow.bgColor}
-                        tasks={groupedTasks.tomorrow}
-                        expanded={expandedGroups.tomorrow}
-                        onToggle={() => toggleGroup("tomorrow")}
-                        onTaskPress={handleTaskPress}
-                    />
-                )}
+                <TaskGroup
+                    title="Tomorrow"
+                    icon="sunny-outline"
+                    color={GROUP_CONFIG.tomorrow.color}
+                    bgColor={GROUP_CONFIG.tomorrow.bgColor}
+                    tasks={groupedTasks.tomorrow}
+                    expanded={expandedGroups.tomorrow}
+                    onToggle={() => toggleGroup("tomorrow")}
+                    onTaskPress={handleTaskPress}
+                />
 
                 {/* Upcoming Group */}
                 {groupedTasks.upcoming.length > 0 && (
@@ -1004,7 +1015,6 @@ export default function TasksPage() {
                     try {
                         const { createTask } = await import("@/src/services/taskService");
                         const newTask = await createTask(payload);
-                        setTaskModalVisible(false);
                         await loadTasks();
                         return newTask;
                     } catch (err) {
@@ -1021,6 +1031,15 @@ export default function TasksPage() {
                 setStatuses={setStatuses}
                 priorities={priorities}
                 setPriorities={setPriorities}
+            />
+
+            {/* Task Detail Modal */}
+            <TaskDetailModal
+                visible={taskDetailModal.visible}
+                taskId={taskDetailModal.taskId}
+                onClose={() => setTaskDetailModal({ visible: false, taskId: null })}
+                statuses={statuses}
+                priorities={priorities}
             />
         </SafeAreaView>
     );

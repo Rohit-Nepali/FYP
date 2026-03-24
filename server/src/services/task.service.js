@@ -179,6 +179,13 @@ export const taskService = {
         project: {
           select: { id: true, title: true, ownerId: true },
         },
+        attachments: {
+          include: {
+            uploader: {
+              select: { id: true, name: true, email: true, profileImage: true },
+            },
+          },
+        },
       },
     });
 

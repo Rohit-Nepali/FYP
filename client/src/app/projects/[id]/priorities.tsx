@@ -17,6 +17,7 @@ import {
   deletePriority,
   Priority,
 } from "@/src/services/priorityService";
+import { getProjectById, Project } from "@/src/services/projectService";
 import StatusPriorityModal from "@/src/components/UI/modals/StatusPriorityModal";
 import { Button } from "@/src/components/UI/Buttons";
 import useAlert from "@/src/hooks/useAlert";
@@ -26,6 +27,7 @@ export default function ProjectPriorities() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
 
+  const [project, setProject] = useState<Project | null>(null);
   const [priorities, setPriorities] = useState<Priority[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -37,16 +39,21 @@ export default function ProjectPriorities() {
   const { showError, showSuccess, showConfirm, AlertComponent } = useAlert();
 
   useEffect(() => {
-    if (id) loadPriorities();
+    if (id) loadData();
   }, [id]);
 
-  const loadPriorities = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await getAllPriorities(id as string);
-      setPriorities(data);
+      // Fetch both project and priorities
+      const [projectData, prioritiesData] = await Promise.all([
+        getProjectById(id as string),
+        getAllPriorities(id as string)
+      ]);
+      setProject(projectData);
+      setPriorities(prioritiesData);
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to load priorities");
+      showError(err instanceof Error ? err.message : "Failed to load data");
       router.back();
     } finally {
       setLoading(false);
@@ -63,7 +70,7 @@ export default function ProjectPriorities() {
       await createPriority(id as string, data);
       showSuccess("Priority created successfully");
       setModalVisible(false);
-      loadPriorities();
+      loadData();
     } catch (error) {
       showError(error instanceof Error ? error.message : "Failed to create priority");
     } finally {
@@ -84,7 +91,7 @@ export default function ProjectPriorities() {
       showSuccess("Priority updated successfully");
       setModalVisible(false);
       setEditingPriority(null);
-      loadPriorities();
+      loadData();
     } catch (error) {
       showError(error instanceof Error ? error.message : "Failed to update priority");
     } finally {
@@ -100,7 +107,7 @@ export default function ProjectPriorities() {
           setDeletingId(priorityId);
           await deletePriority(id as string, priorityId);
           showSuccess("Priority deleted successfully");
-          loadPriorities();
+          loadData();
         } catch (err) {
           showError(err instanceof Error ? err.message : "Failed to delete priority");
         } finally {
@@ -172,7 +179,8 @@ export default function ProjectPriorities() {
     );
   }
 
-  const isOwner = priorities.length > 0; // If we can load priorities, user has access
+  // Check if current user is the project owner
+  const isOwner = project?.ownerId === user?.id;
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900">

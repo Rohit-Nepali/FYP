@@ -6,7 +6,7 @@ export const statusService = {
   create: async (statusData, projectId, userId) => {
     const { name, color, order } = statusData;
 
-    // If projectId is provided, check project access
+    // If projectId is provided, check project access (owner only)
     if (projectId) {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
@@ -17,8 +17,8 @@ export const statusService = {
         throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
       }
 
-      if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
-        throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+      if (project.ownerId !== userId) {
+        throw new ApiError("Only project owner can create statuses", HTTP_STATUS.FORBIDDEN);
       }
 
       // Check if status with same name already exists for this project
@@ -140,7 +140,7 @@ export const statusService = {
   },
 
   update: async (statusId, projectId, userId, updateData) => {
-    // If projectId is provided, check project access
+    // If projectId is provided, check project access (owner only)
     if (projectId) {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
@@ -151,8 +151,8 @@ export const statusService = {
         throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
       }
 
-      if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
-        throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+      if (project.ownerId !== userId) {
+        throw new ApiError("Only project owner can update statuses", HTTP_STATUS.FORBIDDEN);
       }
 
       const existingStatus = await prisma.status.findFirst({
@@ -246,7 +246,7 @@ export const statusService = {
   },
 
   delete: async (statusId, projectId, userId) => {
-    // If projectId is provided, check project access
+    // If projectId is provided, check project access (owner only)
     if (projectId) {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
@@ -257,8 +257,8 @@ export const statusService = {
         throw new ApiError("Project not found", HTTP_STATUS.NOT_FOUND);
       }
 
-      if (project.ownerId !== userId && !project.members.some(member => member.userId === userId)) {
-        throw new ApiError("Access denied", HTTP_STATUS.FORBIDDEN);
+      if (project.ownerId !== userId) {
+        throw new ApiError("Only project owner can delete statuses", HTTP_STATUS.FORBIDDEN);
       }
 
       const status = await prisma.status.findFirst({

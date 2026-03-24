@@ -77,7 +77,7 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
     <TouchableOpacity
       onPress={() => {
         if (activity.task?.id) {
-          router.push(`/tasks/${activity.task.id}`);
+          router.push(`/tasks?taskId=${activity.task.id}`);
         }
       }}
       className="flex-row items-start rounded-xl p-4 mb-3 border"

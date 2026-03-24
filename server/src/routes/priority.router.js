@@ -21,6 +21,7 @@ priorityRouter.use(authenticateToken);
 
 // Priority routes
 priorityRouter.get("/", getGlobalPrioritiesController);
+priorityRouter.post("/", validate(createPrioritySchema), createPriorityController);
 priorityRouter.post("/projects/:projectId/priorities", validate(createPrioritySchema), createPriorityController);
 priorityRouter.get("/projects/:projectId/priorities", getAllPrioritiesController);
 priorityRouter.get("/projects/:projectId/priorities/:id", getPriorityByIdController);

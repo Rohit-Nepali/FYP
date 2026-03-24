@@ -37,6 +37,7 @@ import ProjectStatusReport from "../../components/ProjectStatusReport";
 import CustomAlert from "../../components/UI/CustomAlert";
 import { Button } from "@/src/components/UI/Buttons";
 import { resolveFileUrl } from "@/src/utils/url";
+import { getProjectPermissions } from "@/src/utils/permissions";
 
 interface ProjectMember {
   id: string;
@@ -281,7 +282,7 @@ function MenuItem({
   return (
     <TouchableOpacity
       className={`flex-row items-center p-3 rounded-xl ${
-        destructive ? "active:bg-red-900/20" : "active:bg-gray-700/60"
+        disabled ? "opacity-50" : destructive ? "active:bg-red-900/20" : "active:bg-gray-700/60"
       }`}
       onPress={onPress}
       disabled={disabled}
@@ -298,12 +299,12 @@ function MenuItem({
         <Ionicons
           name={icon}
           size={18}
-          color={destructive ? "#EF4444" : "#60A5FA"}
+          color={disabled ? "#6B7280" : destructive ? "#EF4444" : "#60A5FA"}
         />
       </View>
       <Text
         className={`ml-3 font-medium ${
-          destructive ? "text-red-400" : "text-white"
+          disabled ? "text-gray-500" : destructive ? "text-red-400" : "text-white"
         }`}
       >
         {label}
@@ -312,7 +313,7 @@ function MenuItem({
         <Ionicons
           name="chevron-forward"
           size={16}
-          color="#4B5563"
+          color={disabled ? "#4B5563" : "#4B5563"}
           style={{ marginLeft: "auto" }}
         />
       )}
@@ -420,6 +421,12 @@ export default function ProjectDetail() {
   const taskCount = project?.tasks?.length || 0;
   const memberCount = project?.members?.length || 0;
   const members = project?.members || [];
+
+  // Compute project permissions
+  const permissions = project && user ? getProjectPermissions({
+    ownerId: project.ownerId,
+    members: project.members?.map(m => ({ userId: m.userId || m.id })),
+  }, user.id) : null;
 
   const existingMemberIds = useMemo(
     () => members.map((m) => m.userId || m.id),
@@ -939,6 +946,7 @@ export default function ProjectDetail() {
                     setMenuVisible(false);
                     setAddMembersModalVisible(true);
                   }}
+                  disabled={!permissions?.canManageMembers}
                 />
                 <MenuItem
                   icon="mail-outline"
@@ -947,9 +955,10 @@ export default function ProjectDetail() {
                     setMenuVisible(false);
                     setInviteEmailModalVisible(true);
                   }}
+                  disabled={!permissions?.canManageMembers}
                 />
 
-                {isOwner && (
+                {isOwner && permissions?.canDelete && (
                   <>
                     <View className="h-px bg-gray-700/50 my-2 mx-3" />
                     <Text className="text-gray-400 text-xs font-medium uppercase tracking-wider px-3 mb-2 mt-1">
@@ -980,18 +989,18 @@ export default function ProjectDetail() {
                         router.push(`/projects/${id}/assignment-report`);
                       }}
                     />
+
+                    <View className="h-px bg-gray-700/50 my-2 mx-3" />
+
+                    <MenuItem
+                      icon="trash-outline"
+                      label={deleting ? "Deleting..." : "Delete Project"}
+                      onPress={handleDeleteProject}
+                      destructive
+                      disabled={deleting}
+                    />
                   </>
                 )}
-
-                <View className="h-px bg-gray-700/50 my-2 mx-3" />
-
-                <MenuItem
-                  icon="trash-outline"
-                  label={deleting ? "Deleting..." : "Delete Project"}
-                  onPress={handleDeleteProject}
-                  destructive
-                  disabled={deleting}
-                />
               </View>
             </TouchableOpacity>
           </View>

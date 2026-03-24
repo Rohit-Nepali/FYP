@@ -22,7 +22,6 @@ import {
   Project,
   createProject,
 } from "../services/projectService";
-import { Button } from "@/src/components/UI/Buttons";
 import TaskModal from "@/src/components/UI/modals/TaskModal";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
@@ -835,7 +834,7 @@ export default function HomeScreen() {
                   key={task.id}
                   task={task}
                   index={index}
-                  onPress={() => router.push(`/tasks/${task.id}`)}
+                  onPress={() => router.push(`/tasks?taskId=${task.id}`)}
                 />
               ))}
 

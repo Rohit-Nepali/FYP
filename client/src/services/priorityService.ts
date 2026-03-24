@@ -7,7 +7,7 @@ export interface Priority {
   name: string;
   color?: string;
   order: number;
-  projectId: string;
+  projectId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,10 +27,14 @@ export interface UpdatePriorityData {
 // ─── Public API Functions ────────────────────────────────────────────────────
 
 export const createPriority = async (
-  projectId: string,
+  projectId: string | undefined,
   data: CreatePriorityData
 ): Promise<Priority> => {
-  return makeRequest<Priority>(`/priorities/projects/${projectId}/priorities`, {
+  const url = projectId
+    ? `/priorities/projects/${projectId}/priorities`
+    : `/priorities`;
+
+  return makeRequest<Priority>(url, {
     method: "POST",
     data,
   });

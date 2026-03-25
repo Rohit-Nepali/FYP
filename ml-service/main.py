@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+from datetime import datetime, timezone
 from typing import Final
 
 import joblib
@@ -49,6 +50,22 @@ class ClassifyRequest(BaseModel):
 class ClassifyResponse(BaseModel):
     label: str
     confidence: float
+
+
+class PredictTaskRiskRequest(BaseModel):
+    task_id: str
+    is_completed: bool = False
+    due_in_days: float | None = None
+    days_overdue: float | None = None
+    recent_activity_count: int = 0
+    behavior_risk_score: float = 0.0
+
+
+class PredictTaskRiskResponse(BaseModel):
+    risk: str
+    probability: float
+    top_factors: list[str]
+    generated_at: str
 
 
 app = FastAPI(title="Taskora ML Service")
@@ -107,3 +124,56 @@ def classify(payload: ClassifyRequest) -> ClassifyResponse:
         raise ValueError("Model returned unsupported label")
 
     return ClassifyResponse(label=predicted_label, confidence=confidence)
+
+
+@app.post("/predict-task-risk", response_model=PredictTaskRiskResponse)
+def predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskResponse:
+    if payload.is_completed:
+        return PredictTaskRiskResponse(
+            risk="LOW",
+            probability=0.05,
+            top_factors=["task_already_completed"],
+            generated_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    factors: list[str] = []
+    probability = 0.15
+
+    if payload.days_overdue is not None and payload.days_overdue > 0:
+        overdue_weight = min(payload.days_overdue * 0.08, 0.45)
+        probability += overdue_weight
+        factors.append("task_overdue")
+
+    if payload.due_in_days is not None and payload.due_in_days <= 2:
+        probability += 0.12
+        factors.append("deadline_very_close")
+
+    if payload.recent_activity_count <= 0:
+        probability += 0.2
+        factors.append("no_recent_activity")
+    elif payload.recent_activity_count < 3:
+        probability += 0.1
+        factors.append("low_recent_activity")
+
+    if payload.behavior_risk_score > 0:
+        probability += min(payload.behavior_risk_score, 1.0) * 0.25
+        factors.append("behavior_signal_risk")
+
+    probability = max(0.01, min(probability, 0.99))
+
+    if probability >= 0.75:
+        risk = "HIGH"
+    elif probability >= 0.45:
+        risk = "MEDIUM"
+    else:
+        risk = "LOW"
+
+    if not factors:
+        factors = ["baseline_task_risk"]
+
+    return PredictTaskRiskResponse(
+        risk=risk,
+        probability=round(probability, 4),
+        top_factors=factors,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )

@@ -49,7 +49,7 @@ export default function InviteMemberModal({
         try {
             setInviting(true);
             await inviteProjectMember(projectId, email, "member");
-            showSuccess("Invitation sent successfully! If the user exists, they've been added. Otherwise, an invite email has been sent.");
+            showSuccess("Invitation sent successfully. The user can accept or decline from notifications.");
             setEmail("");
             onSuccess?.();
             onClose();
@@ -93,7 +93,7 @@ export default function InviteMemberModal({
 
                         {/* Description */}
                         <Text className="text-gray-400 text-sm mb-4">
-                            Send an invitation to join this project via email. If they're already a user, they'll be added directly.
+                            Send an invitation to join this project via email. Members join only after they accept.
                         </Text>
 
                         {/* Email Input */}

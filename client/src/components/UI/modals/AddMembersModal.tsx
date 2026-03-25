@@ -15,7 +15,8 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { addProjectMembers, searchUsers, UserLite } from "@/src/services/userService";
+import { searchUsers, UserLite } from "@/src/services/userService";
+import { inviteProjectMember } from "@/src/services/projectService";
 import useAlert from "@/src/hooks/useAlert";
 import { resolveFileUrl } from "@/src/utils/url";
 
@@ -46,6 +47,7 @@ export default function AddMembersModal({
   const [searchLoading, setSearchLoading] = useState(false);
   const [users, setUsers] = useState<UserLite[]>([]);
   const [memberIds, setMemberIds] = useState<Set<string>>(new Set(existingMemberIds));
+  const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set());
   const [addingUserId, setAddingUserId] = useState<string | null>(null);
   const [hasAddedMembers, setHasAddedMembers] = useState(false);
 
@@ -113,6 +115,7 @@ export default function AddMembersModal({
       setSearch("");
       setUsers([]);
       setMemberIds(new Set(existingMemberIds));
+      setInvitedUserIds(new Set());
       setSearchLoading(false);
       setAddingUserId(null);
       sheetHeight.setValue(INITIAL_SHEET_HEIGHT);
@@ -164,20 +167,20 @@ export default function AddMembersModal({
   };
 
   const handleAddMember = async (user: UserLite) => {
-    if (memberIds.has(user.id) || addingUserId === user.id) return;
+    if (memberIds.has(user.id) || invitedUserIds.has(user.id) || addingUserId === user.id) return;
 
     try {
       setAddingUserId(user.id);
-      await addProjectMembers(projectId, [user.id]);
-      setMemberIds((prev) => {
+      await inviteProjectMember(projectId, user.email, "member");
+      setInvitedUserIds((prev) => {
         const next = new Set(prev);
         next.add(user.id);
         return next;
       });
       setHasAddedMembers(true);
-      showSuccess(`${user.name || user.email} added to the project`);
+      showSuccess(`Invitation sent to ${user.name || user.email}`);
     } catch (error) {
-      showError(error instanceof Error ? error.message : "Failed to add member");
+      showError(error instanceof Error ? error.message : "Failed to send invitation");
     } finally {
       setAddingUserId(null);
     }
@@ -186,8 +189,9 @@ export default function AddMembersModal({
   const renderUserItem = ({ item }: { item: UserLite }) => {
     const isOwner = Boolean(projectOwnerId && item.id === projectOwnerId);
     const alreadyMember = memberIds.has(item.id);
+    const isInvited = invitedUserIds.has(item.id);
     const isAdding = addingUserId === item.id;
-    const isDisabled = alreadyMember || isOwner || isAdding;
+    const isDisabled = alreadyMember || isOwner || isAdding || isInvited;
 
     return (
       <View className="flex-row items-center py-3 px-4">
@@ -231,6 +235,11 @@ export default function AddMembersModal({
           <View className="flex-row items-center">
             <Ionicons name="checkmark-circle" size={18} color="#10B981" />
             <Text className="text-xs text-green-400 ml-1">Member</Text>
+          </View>
+        ) : isInvited ? (
+          <View className="flex-row items-center">
+            <Ionicons name="mail-outline" size={18} color="#A78BFA" />
+            <Text className="text-xs text-purple-300 ml-1">Invited</Text>
           </View>
         ) : isAdding ? (
           <View className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center">

@@ -237,44 +237,21 @@ export const projectService = {
             );
         }
 
-        // If user already exists, add as member directly
-        const existingUser = await prisma.user.findUnique({
-            where: { email },
+        const normalizedEmail = email.trim().toLowerCase();
+
+        await prisma.projectInvite.deleteMany({
+            where: {
+                projectId,
+                email: normalizedEmail,
+                expiresAt: { lt: new Date() },
+            },
         });
 
-        if (existingUser) {
-            const updatedProject = await projectService.addMember(
-                projectId,
-                userId,
-                existingUser.id,
-                role
-            );
-
-            await createInAppNotification({
-                userId: existingUser.id,
-                type: "PROJECT_MEMBER_ADDED",
-                title: "Added to project",
-                message: `You were added to ${project.title}`,
-                data: { projectId, role },
-            });
-
-            if (existingUser.pushToken) {
-                await sendPushNotification(
-                    existingUser.pushToken,
-                    "Added to project",
-                    `You were added to ${project.title}`,
-                    { projectId, type: "project_member_added" }
-                );
-            }
-
-            return updatedProject;
-        }
-
-        // Check for existing invite for this email
         const existingInvite = await prisma.projectInvite.findFirst({
             where: {
                 projectId,
-                email,
+                email: normalizedEmail,
+                expiresAt: { gte: new Date() },
             },
         });
 
@@ -283,6 +260,30 @@ export const projectService = {
                 "An invite for this email already exists",
                 HTTP_STATUS.BAD_REQUEST
             );
+        }
+
+        // If user already exists, create in-app invitation to accept or decline
+        const existingUser = await prisma.user.findUnique({
+            where: { email: normalizedEmail },
+        });
+
+        if (existingUser) {
+            if (existingUser.id === userId) {
+                throw new ApiError("You are already part of this project", HTTP_STATUS.BAD_REQUEST);
+            }
+
+            const existingMember = await prisma.projectMember.findUnique({
+                where: {
+                    projectId_userId: {
+                        projectId,
+                        userId: existingUser.id,
+                    },
+                },
+            });
+
+            if (existingMember) {
+                throw new ApiError("User is already a member of this project", HTTP_STATUS.BAD_REQUEST);
+            }
         }
 
         // Generate token
@@ -294,7 +295,7 @@ export const projectService = {
 
         const invite = await prisma.projectInvite.create({
             data: {
-                email,
+                email: normalizedEmail,
                 projectId,
                 role,
                 token,
@@ -321,8 +322,27 @@ export const projectService = {
         const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:8081'}/invite/${token}`;
         const invitedBy = invite.invitedBy.name || 'A team member';
 
+        if (existingUser) {
+            await createInAppNotification({
+                userId: existingUser.id,
+                type: "PROJECT_INVITE_RECEIVED",
+                title: "Project invitation",
+                message: `${invitedBy} invited you to join ${project.title}`,
+                data: { projectId, inviteToken: token, role, invitedByUserId: userId },
+            });
+
+            if (existingUser.pushToken) {
+                await sendPushNotification(
+                    existingUser.pushToken,
+                    "Project invitation",
+                    `${invitedBy} invited you to join ${project.title}`,
+                    { projectId, type: "project_invite_received", inviteToken: token }
+                );
+            }
+        }
+
         // Send invite email
-        await emailService.sendProjectInviteEmail(email, project.title, inviteLink, invitedBy);
+        await emailService.sendProjectInviteEmail(normalizedEmail, project.title, inviteLink, invitedBy);
 
         return invite;
 
@@ -355,13 +375,24 @@ export const projectService = {
             );
         }
 
+        const existingMember = await prisma.projectMember.findUnique({
+            where: {
+                projectId_userId: {
+                    projectId: invite.projectId,
+                    userId,
+                },
+            },
+        });
+
         // Add user to project (owner / inviter is invite.invitedById)
-        await projectService.addMember(
-            invite.projectId,
-            invite.invitedById,
-            userId,
-            invite.role
-        );
+        if (!existingMember) {
+            await projectService.addMember(
+                invite.projectId,
+                invite.invitedById,
+                userId,
+                invite.role
+            );
+        }
 
         // Delete the invite
         await prisma.projectInvite.delete({
@@ -388,6 +419,58 @@ export const projectService = {
 
         // Return updated project
         return await projectService.getById(invite.projectId, userId);
+    },
+
+    declineInvite: async (token, userId) => {
+        const invite = await prisma.projectInvite.findUnique({
+            where: { token },
+            include: {
+                project: true,
+                invitedBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
+        });
+
+        if (!invite) {
+            throw new ApiError("Invalid invite token", HTTP_STATUS.NOT_FOUND);
+        }
+
+        if (invite.expiresAt < new Date()) {
+            throw new ApiError("Invite has expired", HTTP_STATUS.BAD_REQUEST);
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user || user.email !== invite.email) {
+            throw new ApiError(
+                "This invite is not for your email address",
+                HTTP_STATUS.FORBIDDEN
+            );
+        }
+
+        await prisma.projectInvite.delete({
+            where: { id: invite.id },
+        });
+
+        await createInAppNotification({
+            userId: invite.invitedById,
+            type: "PROJECT_INVITE_DECLINED",
+            title: "Invitation declined",
+            message: `${user.name} declined your invite to ${invite.project.title}`,
+            data: { projectId: invite.projectId, declinedByUserId: userId },
+        });
+
+        return {
+            declined: true,
+            projectId: invite.projectId,
+            message: "Invite declined",
+        };
     },
 
     getInvites: async (projectId, userId) => {

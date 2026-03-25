@@ -21,6 +21,7 @@ import {
   markNotificationAsRead,
   unarchiveNotification,
 } from "../services/userService";
+import { acceptProjectInvite, declineProjectInvite } from "../services/projectService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,15 @@ interface SectionData {
 // ─── Static config (outside component — no useCallback needed) ────────────────
 
 const NOTIFICATION_META: Record<string, NotificationMeta> = {
+  PROJECT_INVITE_RECEIVED: {
+    icon: "mail-open-outline",
+    iconColor: "#a78bfa",
+    badgeStyle: "bg-purple-500/15",
+    tag: "Invite",
+    tagStyle: "bg-purple-500/15",
+    tagTextStyle: "text-purple-300",
+    filterKey: "invite",
+  },
   PROJECT_MEMBER_ADDED: {
     icon: "people-outline",
     iconColor: "#a78bfa",
@@ -60,6 +70,15 @@ const NOTIFICATION_META: Record<string, NotificationMeta> = {
     tag: "Invite",
     tagStyle: "bg-purple-500/15",
     tagTextStyle: "text-purple-300",
+    filterKey: "invite",
+  },
+  PROJECT_INVITE_DECLINED: {
+    icon: "close-circle-outline",
+    iconColor: "#f59e0b",
+    badgeStyle: "bg-amber-500/15",
+    tag: "Invite",
+    tagStyle: "bg-amber-500/15",
+    tagTextStyle: "text-amber-300",
     filterKey: "invite",
   },
   COMMENT_ADDED: {
@@ -253,6 +272,7 @@ export default function NotificationsScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [archivedCount, setArchivedCount] = useState(0);
+  const [resolvingInviteId, setResolvingInviteId] = useState<string | null>(null);
 
   // ─── Data fetching ──────────────────────────────────────────────────────────
 
@@ -418,6 +438,45 @@ export default function NotificationsScreen() {
     });
   }, [activeFilter, loadArchivedCount, loadNotifications]);
 
+  const isActionableInvite = useCallback((item: InAppNotification) => {
+    return (
+      item.type === "PROJECT_INVITE_RECEIVED" &&
+      !item.isArchived &&
+      typeof item.data?.inviteToken === "string" &&
+      item.data.inviteToken.length > 0
+    );
+  }, []);
+
+  const handleAcceptInvite = useCallback(async (item: InAppNotification) => {
+    const inviteToken = item.data?.inviteToken;
+    if (typeof inviteToken !== "string" || !inviteToken) return;
+
+    try {
+      setResolvingInviteId(item.id);
+      await acceptProjectInvite(inviteToken);
+      await markNotificationAsRead(item.id).catch(() => {});
+      await deleteNotification(item.id).catch(() => {});
+      setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+    } finally {
+      setResolvingInviteId(null);
+    }
+  }, []);
+
+  const handleDeclineInvite = useCallback(async (item: InAppNotification) => {
+    const inviteToken = item.data?.inviteToken;
+    if (typeof inviteToken !== "string" || !inviteToken) return;
+
+    try {
+      setResolvingInviteId(item.id);
+      await declineProjectInvite(inviteToken);
+      await markNotificationAsRead(item.id).catch(() => {});
+      await deleteNotification(item.id).catch(() => {});
+      setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+    } finally {
+      setResolvingInviteId(null);
+    }
+  }, []);
+
   // ─── Derived state ──────────────────────────────────────────────────────────
 
   const unreadCount = useMemo(
@@ -449,6 +508,8 @@ export default function NotificationsScreen() {
   const renderItem = useCallback(
     ({ item }: { item: InAppNotification }) => {
       const meta = getNotificationMeta(item.type);
+      const actionableInvite = isActionableInvite(item);
+      const isResolvingThisInvite = resolvingInviteId === item.id;
 
       return (
         <Swipeable
@@ -462,7 +523,8 @@ export default function NotificationsScreen() {
           overshootRight={false}
         >
           <TouchableOpacity
-            onPress={() => handleOpenNotification(item)}
+            onPress={() => !actionableInvite && handleOpenNotification(item)}
+            disabled={actionableInvite}
             className={`flex-row items-start gap-3 px-5 py-3.5 ${
               item.isRead ? "opacity-55" : ""
             }`}
@@ -500,6 +562,30 @@ export default function NotificationsScreen() {
                   </Text>
                 </View>
               </View>
+              {actionableInvite && (
+                <View className="flex-row gap-2 mt-2">
+                  <TouchableOpacity
+                    onPress={() => handleDeclineInvite(item)}
+                    disabled={isResolvingThisInvite}
+                    className="px-3 py-1.5 rounded-lg bg-gray-700"
+                    activeOpacity={0.8}
+                  >
+                    <Text className="text-gray-200 text-xs font-medium">Decline</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleAcceptInvite(item)}
+                    disabled={isResolvingThisInvite}
+                    className="px-3 py-1.5 rounded-lg bg-purple-600"
+                    activeOpacity={0.8}
+                  >
+                    {isResolvingThisInvite ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text className="text-white text-xs font-semibold">Accept</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             {/* Unread dot */}
@@ -510,7 +596,7 @@ export default function NotificationsScreen() {
         </Swipeable>
       );
     },
-    [handleOpenNotification, handleArchive, handleDelete, handleRestore]
+    [handleAcceptInvite, handleArchive, handleDeclineInvite, handleDelete, handleOpenNotification, handleRestore, isActionableInvite, resolvingInviteId]
   );
 
   const renderEmpty = useCallback(() => {

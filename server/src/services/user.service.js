@@ -7,6 +7,7 @@ import {
     getInAppNotifications,
     getUnreadNotificationCount,
     markAllNotificationsAsRead,
+    markNotificationAsIgnored,
     markNotificationAsRead,
     unarchiveInAppNotification,
 } from "./notification.service.js";
@@ -178,6 +179,16 @@ export const userService = {
         return true;
     },
 
+    markNotificationIgnored: async (notificationId, userId) => {
+        const result = await markNotificationAsIgnored(notificationId, userId);
+
+        if (!result.count) {
+            throw new ApiError("Notification not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        return true;
+    },
+
     archiveNotification: async (notificationId, userId) => {
         const result = await archiveInAppNotification(notificationId, userId);
 
@@ -206,5 +217,41 @@ export const userService = {
         }
 
         return true;
+    },
+
+    updateDigestPreferences: async (userId, { timezone, dailyDigestEnabled, digestHourLocal }) => {
+        const updateData = {};
+
+        if (timezone !== undefined) {
+            updateData.timezone = String(timezone || "UTC");
+        }
+
+        if (dailyDigestEnabled !== undefined) {
+            updateData.dailyDigestEnabled = Boolean(dailyDigestEnabled);
+        }
+
+        if (digestHourLocal !== undefined) {
+            const parsedHour = Number.parseInt(String(digestHourLocal), 10);
+            if (Number.isNaN(parsedHour) || parsedHour < 0 || parsedHour > 23) {
+                throw new ApiError("digestHourLocal must be between 0 and 23", HTTP_STATUS.BAD_REQUEST);
+            }
+
+            updateData.digestHourLocal = parsedHour;
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            throw new ApiError("At least one preference field is required", HTTP_STATUS.BAD_REQUEST);
+        }
+
+        return prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+            select: {
+                id: true,
+                timezone: true,
+                dailyDigestEnabled: true,
+                digestHourLocal: true,
+            },
+        });
     }
 };

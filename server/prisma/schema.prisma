@@ -47,9 +47,14 @@ model User {
   uploadedAttachments Attachment[]
   comments            Comment[]
   pushToken           String?
+  timezone            String   @default("UTC")
+  dailyDigestEnabled  Boolean  @default(true)
+  digestHourLocal     Int      @default(19)
   activities          Activity[]
   notifications       Notification[]
   behaviorSignals     UserBehaviorSignal[]
+  taskRiskSnapshots   TaskRiskSnapshot[]
+  dailyDigestLogs     DailyDigestLog[]
 }
 
 model EmailVerification {
@@ -145,6 +150,7 @@ model Task {
   comments    Comment[]
   activities  Activity[]
   behaviorSignals UserBehaviorSignal[]
+  riskSnapshots TaskRiskSnapshot[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -301,6 +307,7 @@ model Notification {
   data      Json?
   createdAt DateTime @default(now())
   readAt    DateTime?
+  ignoredAt DateTime?
   archivedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -308,4 +315,38 @@ model Notification {
   @@index([userId, isRead])
   @@index([userId, isArchived])
   @@index([createdAt])
+}
+
+model TaskRiskSnapshot {
+  id                 String   @id @default(cuid())
+  userId             String
+  taskId             String
+  risk               String
+  probability        Float
+  topFactors         Json?
+  source             String   @default("on_demand")
+  predictedForDateKey String
+  createdAt          DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taskId, predictedForDateKey])
+  @@index([userId, predictedForDateKey])
+  @@index([taskId, createdAt])
+}
+
+model DailyDigestLog {
+  id            String   @id @default(cuid())
+  userId        String
+  digestDateKey String
+  timezone      String
+  deliveryChannel String @default("in_app")
+  payloadHash   String
+  sentAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, digestDateKey])
+  @@index([digestDateKey])
 }

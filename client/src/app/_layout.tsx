@@ -85,6 +85,7 @@ function AppLayout() {
         <Stack.Screen name="(auth)/signup" />
         <Stack.Screen name="(auth)/verify-email" />
         <Stack.Screen name="chatbot" />
+        <Stack.Screen name="insights" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="index" />
         <Stack.Screen name="profile" />

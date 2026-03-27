@@ -6,12 +6,14 @@ import {
 	deleteNotificationController,
 	getNotificationsController,
 	getUnreadNotificationCountController,
+	markNotificationAsIgnoredController,
 	markAllNotificationsAsReadController,
 	markNotificationAsReadController,
 	unarchiveNotificationController,
 	searchUsersController,
 	updateProfileController,
 	uploadAvatarController,
+	updateDigestPreferencesController,
 } from "../controllers/user.controller.js";
 import { uploadAvatar } from "../middleware/upload.middleware.js";
 
@@ -26,6 +28,7 @@ userRouter.get("/notifications", getNotificationsController);
 userRouter.get("/notifications/unread-count", getUnreadNotificationCountController);
 userRouter.patch("/notifications/read-all", markAllNotificationsAsReadController);
 userRouter.patch("/notifications/:notificationId/read", markNotificationAsReadController);
+userRouter.patch("/notifications/:notificationId/ignored", markNotificationAsIgnoredController);
 userRouter.patch("/notifications/:notificationId/archive", archiveNotificationController);
 userRouter.patch("/notifications/:notificationId/unarchive", unarchiveNotificationController);
 userRouter.delete("/notifications/:notificationId", deleteNotificationController);
@@ -33,6 +36,7 @@ userRouter.delete("/notifications/:notificationId", deleteNotificationController
 // Profile routes
 userRouter.put("/profile", updateProfileController);
 userRouter.post("/profile/avatar", uploadAvatar.single("file"), uploadAvatarController);
+userRouter.patch("/preferences/digest", updateDigestPreferencesController);
 
 //notificatoin routes
 

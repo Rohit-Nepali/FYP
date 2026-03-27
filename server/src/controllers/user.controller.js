@@ -95,6 +95,23 @@ export const markNotificationAsReadController = async (req, res, next) => {
     }
 };
 
+export const markNotificationAsIgnoredController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { notificationId } = req.params;
+
+        await userService.markNotificationIgnored(notificationId, userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.UPDATED
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const markAllNotificationsAsReadController = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -213,6 +230,28 @@ export const uploadAvatarController = async (req, res, next) => {
             HTTP_STATUS.OK,
             SUCCESS_MESSAGES.UPDATED,
             updatedUser
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateDigestPreferencesController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { timezone, dailyDigestEnabled, digestHourLocal } = req.body;
+
+        const updated = await userService.updateDigestPreferences(userId, {
+            timezone,
+            dailyDigestEnabled,
+            digestHourLocal,
+        });
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.UPDATED,
+            updated
         );
     } catch (error) {
         next(error);

@@ -25,6 +25,8 @@ import {
 import TaskModal from "@/src/components/UI/modals/TaskModal";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
+import { getUnreadNotificationCount } from "@/src/services/userService";
+import { useFocusEffect } from "@react-navigation/native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -480,6 +482,7 @@ export default function HomeScreen() {
   const [taskError, setTaskError] = useState<string | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Project creation modal state
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -536,18 +539,35 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const count = await getUnreadNotificationCount();
+      setUnreadCount(count);
+    } catch (_error) {
+      // Keep home screen resilient if notification count fetch fails.
+    }
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     loadProjects();
     loadTasks();
     loadTaskData();
-  }, [isAuthenticated, loadProjects, loadTasks, loadTaskData]);
+    loadUnreadCount();
+  }, [isAuthenticated, loadProjects, loadTasks, loadTaskData, loadUnreadCount]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isAuthenticated) return;
+      loadUnreadCount();
+    }, [isAuthenticated, loadUnreadCount])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([loadProjects(), loadTasks()]);
+    await Promise.all([loadProjects(), loadTasks(), loadUnreadCount()]);
     setRefreshing(false);
-  }, [loadProjects, loadTasks]);
+  }, [loadProjects, loadTasks, loadUnreadCount]);
 
   const handleCreateProject = async () => {
     if (!projectTitle.trim()) {
@@ -614,12 +634,30 @@ export default function HomeScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity
-              onPress={() => router.push("/profile")}
-              className="bg-gray-800/60 rounded-full p-2 border border-gray-700/40"
-            >
-              <Ionicons name="person-outline" size={22} color="#fff" />
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                onPress={() => router.push("/notifications")}
+                className="bg-gray-800/60 rounded-full p-2 border border-gray-700/40"
+              >
+                <View>
+                  <Ionicons name="notifications-outline" size={22} color="#fff" />
+                  {unreadCount > 0 && (
+                    <View className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 items-center justify-center">
+                      <Text className="text-[10px] font-bold text-white">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.push("/profile")}
+                className="bg-gray-800/60 rounded-full p-2 border border-gray-700/40"
+              >
+                <Ionicons name="person-outline" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Motivational message */}

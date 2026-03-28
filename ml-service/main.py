@@ -1,9 +1,11 @@
 from pathlib import Path
+import os
 import re
 from datetime import datetime, timezone
 from typing import Final
 
 import joblib
+import pandas as pd
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -23,9 +25,16 @@ VALID_LABELS: Final[set[str]] = {
 }
 
 BASE_DIR = Path(__file__).resolve().parent
-MODELS_DIR = BASE_DIR / "models"
+MODELS_DIR = Path(os.getenv("ML_MODELS_DIR", BASE_DIR / "models"))
 CLASSIFIER_PATH = MODELS_DIR / "taskora_classifier.pkl"
 TFIDF_PATH = MODELS_DIR / "taskora_tfidf.pkl"
+RISK_MODEL_PATH = MODELS_DIR / "taskora_risk_model.pkl"
+RISK_PREPROCESSOR_PATH = MODELS_DIR / "taskora_risk_preprocessor.pkl"
+
+ML_RISK_MODEL_ENABLED = os.getenv("ML_RISK_MODEL_ENABLED", "false").lower() == "true"
+ML_RISK_FALLBACK_ENABLED = os.getenv("ML_RISK_FALLBACK_ENABLED", "true").lower() == "true"
+ML_RISK_THRESHOLD_MEDIUM = float(os.getenv("ML_RISK_THRESHOLD_MEDIUM", "0.45"))
+ML_RISK_THRESHOLD_HIGH = float(os.getenv("ML_RISK_THRESHOLD_HIGH", "0.75"))
 
 
 def clean_text(text):
@@ -72,6 +81,8 @@ app = FastAPI(title="Taskora ML Service")
 
 vectorizer = None
 classifier = None
+risk_model = None
+risk_preprocessor = None
 
 
 @app.exception_handler(RequestValidationError)
@@ -87,7 +98,7 @@ async def validation_exception_handler(request, exc):
 
 @app.on_event("startup")
 def load_models() -> None:
-    global vectorizer, classifier
+    global vectorizer, classifier, risk_model, risk_preprocessor
 
     if not CLASSIFIER_PATH.exists() or not TFIDF_PATH.exists():
         missing_paths = [
@@ -100,34 +111,52 @@ def load_models() -> None:
     classifier = joblib.load(CLASSIFIER_PATH)
     vectorizer = joblib.load(TFIDF_PATH)
 
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
-
-
-@app.post("/classify", response_model=ClassifyResponse)
-def classify(payload: ClassifyRequest) -> ClassifyResponse:
-    normalized_message = clean_text(payload.message)
-
-    if not normalized_message:
-        raise HTTPException(status_code=422, detail="message is required and cannot be empty")
-
-    transformed_text = vectorizer.transform([normalized_message])
-    probabilities = classifier.predict_proba(transformed_text)[0]
-
-    predicted_index = int(probabilities.argmax())
-    predicted_label = str(classifier.classes_[predicted_index])
-    confidence = float(probabilities[predicted_index])
-
-    if predicted_label not in VALID_LABELS:
-        raise ValueError("Model returned unsupported label")
-
-    return ClassifyResponse(label=predicted_label, confidence=confidence)
+    if ML_RISK_MODEL_ENABLED:
+        if RISK_MODEL_PATH.exists():
+            risk_model = joblib.load(RISK_MODEL_PATH)
+            if RISK_PREPROCESSOR_PATH.exists():
+                risk_preprocessor = joblib.load(RISK_PREPROCESSOR_PATH)
+        elif not ML_RISK_FALLBACK_ENABLED:
+            raise RuntimeError(
+                f"Missing risk model file at {RISK_MODEL_PATH} while fallback is disabled"
+            )
 
 
-@app.post("/predict-task-risk", response_model=PredictTaskRiskResponse)
-def predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskResponse:
+def _map_probability_to_risk(probability: float) -> str:
+    if probability >= ML_RISK_THRESHOLD_HIGH:
+        return "HIGH"
+    if probability >= ML_RISK_THRESHOLD_MEDIUM:
+        return "MEDIUM"
+    return "LOW"
+
+
+def _extract_top_factors(payload: PredictTaskRiskRequest, probability: float) -> list[str]:
+    factors: list[str] = []
+
+    if payload.days_overdue is not None and payload.days_overdue > 0:
+        factors.append("task_overdue")
+
+    if payload.due_in_days is not None and payload.due_in_days <= 2:
+        factors.append("deadline_very_close")
+
+    if payload.recent_activity_count <= 0:
+        factors.append("no_recent_activity")
+    elif payload.recent_activity_count < 3:
+        factors.append("low_recent_activity")
+
+    if payload.behavior_risk_score > 0:
+        factors.append("behavior_signal_risk")
+
+    if probability >= ML_RISK_THRESHOLD_HIGH:
+        factors.append("model_high_probability")
+
+    if not factors:
+        factors.append("baseline_task_risk")
+
+    return factors
+
+
+def _fallback_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskResponse:
     if payload.is_completed:
         return PredictTaskRiskResponse(
             risk="LOW",
@@ -160,13 +189,7 @@ def predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskRespons
         factors.append("behavior_signal_risk")
 
     probability = max(0.01, min(probability, 0.99))
-
-    if probability >= 0.75:
-        risk = "HIGH"
-    elif probability >= 0.45:
-        risk = "MEDIUM"
-    else:
-        risk = "LOW"
+    risk = _map_probability_to_risk(probability)
 
     if not factors:
         factors = ["baseline_task_risk"]
@@ -177,3 +200,112 @@ def predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskRespons
         top_factors=factors,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
+
+
+def _model_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskResponse:
+    if risk_model is None:
+        raise RuntimeError("Risk model is not loaded")
+
+    if payload.is_completed:
+        return PredictTaskRiskResponse(
+            risk="LOW",
+            probability=0.05,
+            top_factors=["task_already_completed"],
+            generated_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    feature_frame = pd.DataFrame(
+        [
+            {
+                "is_completed": int(payload.is_completed),
+                "due_in_days": payload.due_in_days,
+                "days_overdue": payload.days_overdue,
+                "recent_activity_count": payload.recent_activity_count,
+                "behavior_risk_score": payload.behavior_risk_score,
+            }
+        ]
+    )
+
+    model_input = feature_frame
+    if risk_preprocessor is not None:
+        model_input = risk_preprocessor.transform(feature_frame)
+
+    if hasattr(risk_model, "predict_proba"):
+        probabilities = risk_model.predict_proba(model_input)[0]
+        positive_index = 1
+
+        classes = getattr(risk_model, "classes_", None)
+        if classes is not None:
+            classes_list = [str(item).upper() for item in classes]
+            if "1" in classes_list:
+                positive_index = classes_list.index("1")
+            elif "TRUE" in classes_list:
+                positive_index = classes_list.index("TRUE")
+            elif "HIGH" in classes_list:
+                positive_index = classes_list.index("HIGH")
+            elif len(classes_list) == 2:
+                positive_index = 1
+
+        probability = float(probabilities[positive_index])
+    else:
+        prediction = risk_model.predict(model_input)[0]
+        probability = 0.8 if int(prediction) == 1 else 0.2
+
+    probability = max(0.01, min(probability, 0.99))
+    risk = _map_probability_to_risk(probability)
+
+    return PredictTaskRiskResponse(
+        risk=risk,
+        probability=round(probability, 4),
+        top_factors=_extract_top_factors(payload, probability),
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@app.get("/health")
+def health() -> dict[str, object]:
+    return {
+        "status": "ok",
+        "models": {
+            "classifier_loaded": classifier is not None,
+            "vectorizer_loaded": vectorizer is not None,
+            "risk_model_enabled": ML_RISK_MODEL_ENABLED,
+            "risk_model_loaded": risk_model is not None,
+            "risk_fallback_enabled": ML_RISK_FALLBACK_ENABLED,
+        },
+    }
+
+
+@app.post("/classify", response_model=ClassifyResponse)
+def classify(payload: ClassifyRequest) -> ClassifyResponse:
+    normalized_message = clean_text(payload.message)
+
+    if not normalized_message:
+        raise HTTPException(status_code=422, detail="message is required and cannot be empty")
+
+    transformed_text = vectorizer.transform([normalized_message])
+    probabilities = classifier.predict_proba(transformed_text)[0]
+
+    predicted_index = int(probabilities.argmax())
+    predicted_label = str(classifier.classes_[predicted_index])
+    confidence = float(probabilities[predicted_index])
+
+    if predicted_label not in VALID_LABELS:
+        raise ValueError("Model returned unsupported label")
+
+    return ClassifyResponse(label=predicted_label, confidence=confidence)
+
+
+@app.post("/predict-task-risk", response_model=PredictTaskRiskResponse)
+def predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskResponse:
+    if ML_RISK_MODEL_ENABLED and risk_model is not None:
+        try:
+            return _model_predict_task_risk(payload)
+        except Exception:
+            if not ML_RISK_FALLBACK_ENABLED:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Risk model inference failed and fallback is disabled",
+                )
+
+    return _fallback_predict_task_risk(payload)

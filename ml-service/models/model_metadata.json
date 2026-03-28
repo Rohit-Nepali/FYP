@@ -1,0 +1,148 @@
+{
+  "classifier": {
+    "dataset": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\training\\raw\\classifier\\productivity_dataset_2.csv",
+    "text_column": "text",
+    "label_column": "label",
+    "classes": [
+      "CONSISTENT_PRODUCTIVITY",
+      "DISTRACTION",
+      "FORGETFULNESS",
+      "HIGH_MOTIVATION",
+      "LOW_ENERGY",
+      "POOR_PLANNING",
+      "PROCRASTINATION",
+      "WORK_OVERLOAD"
+    ],
+    "metrics": {
+      "accuracy": 0.9965,
+      "macro_f1": 0.996499
+    },
+    "report": {
+      "CONSISTENT_PRODUCTIVITY": {
+        "precision": 0.992,
+        "recall": 0.992,
+        "f1-score": 0.992,
+        "support": 250.0
+      },
+      "DISTRACTION": {
+        "precision": 0.9920634920634921,
+        "recall": 1.0,
+        "f1-score": 0.9960159362549801,
+        "support": 250.0
+      },
+      "FORGETFULNESS": {
+        "precision": 0.996,
+        "recall": 0.996,
+        "f1-score": 0.996,
+        "support": 250.0
+      },
+      "HIGH_MOTIVATION": {
+        "precision": 1.0,
+        "recall": 0.988,
+        "f1-score": 0.993963782696177,
+        "support": 250.0
+      },
+      "LOW_ENERGY": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 250.0
+      },
+      "POOR_PLANNING": {
+        "precision": 0.9920634920634921,
+        "recall": 1.0,
+        "f1-score": 0.9960159362549801,
+        "support": 250.0
+      },
+      "PROCRASTINATION": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 250.0
+      },
+      "WORK_OVERLOAD": {
+        "precision": 1.0,
+        "recall": 0.996,
+        "f1-score": 0.9979959919839679,
+        "support": 250.0
+      },
+      "accuracy": 0.9965,
+      "macro avg": {
+        "precision": 0.996515873015873,
+        "recall": 0.9964999999999999,
+        "f1-score": 0.9964989558987631,
+        "support": 2000.0
+      },
+      "weighted avg": {
+        "precision": 0.996515873015873,
+        "recall": 0.9965,
+        "f1-score": 0.9964989558987631,
+        "support": 2000.0
+      }
+    },
+    "artifacts": {
+      "classifier": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\models\\taskora_classifier.pkl",
+      "tfidf": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\models\\taskora_tfidf.pkl"
+    },
+    "train_samples": 8000,
+    "test_samples": 2000,
+    "random_state": 42,
+    "updated_at": "2026-03-28T09:29:18.900494+00:00"
+  },
+  "risk_model": {
+    "raw_risk_dir": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\training\\raw\\risk",
+    "dataset": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\data\\processed\\risk_training.csv",
+    "target_column": "risk_target",
+    "feature_columns": [
+      "is_completed",
+      "due_in_days",
+      "days_overdue",
+      "recent_activity_count",
+      "behavior_risk_score"
+    ],
+    "metrics": {
+      "accuracy": 0.987064,
+      "macro_f1": 0.984165,
+      "roc_auc": 0.998788
+    },
+    "thresholds": {
+      "medium": 0.45,
+      "high": 0.75
+    },
+    "artifacts": {
+      "risk_model": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\models\\taskora_risk_model.pkl",
+      "risk_preprocessor": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\models\\taskora_risk_preprocessor.pkl"
+    },
+    "report": {
+      "0": {
+        "precision": 0.9557803704005874,
+        "recall": 1.0,
+        "f1-score": 0.9773902886701151,
+        "support": 35145.0
+      },
+      "1": {
+        "precision": 1.0,
+        "recall": 0.9820428718152603,
+        "f1-score": 0.9909400909334046,
+        "support": 90549.0
+      },
+      "accuracy": 0.9870638216621318,
+      "macro avg": {
+        "precision": 0.9778901852002937,
+        "recall": 0.9910214359076301,
+        "f1-score": 0.9841651898017598,
+        "support": 125694.0
+      },
+      "weighted avg": {
+        "precision": 0.9876358546766644,
+        "recall": 0.9870638216621318,
+        "f1-score": 0.9871514629913922,
+        "support": 125694.0
+      }
+    },
+    "train_samples": 502772,
+    "test_samples": 125694,
+    "random_state": 42,
+    "updated_at": "2026-03-28T09:34:22.869034+00:00"
+  }
+}

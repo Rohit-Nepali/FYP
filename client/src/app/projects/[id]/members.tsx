@@ -435,7 +435,7 @@ export default function ProjectMembers() {
   // ─── Loading ───────────────────────────────────────────────────
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-950">
+      <SafeAreaView className="flex-1 bg-gray-900">
         <View className="px-5 pt-6 pb-4">
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -451,13 +451,9 @@ export default function ProjectMembers() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-950">
+    <SafeAreaView className="flex-1 bg-gray-900">
       {/* ─── Header ──────────────────────────────────────────────── */}
       <Animated.View entering={FadeInUp.duration(350)}>
-        <LinearGradient
-          colors={["rgba(30,41,59,0.8)", "rgba(3,7,18,0)"]}
-          className="pb-4"
-        >
           <View className="px-5 pt-4">
             {/* Top row */}
             <View className="flex-row items-center justify-between">
@@ -536,7 +532,6 @@ export default function ProjectMembers() {
               </View>
             )}
           </View>
-        </LinearGradient>
       </Animated.View>
 
       {/* ─── Role Summary Strip ──────────────────────────────────── */}

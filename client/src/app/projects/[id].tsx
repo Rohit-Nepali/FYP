@@ -547,13 +547,10 @@ export default function ProjectDetail() {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-950">
+    <SafeAreaView className="flex-1 bg-gray-900">
       {/* ─── Header ──────────────────────────────────────────────── */}
       <Animated.View entering={FadeInUp.duration(350)}>
-        <LinearGradient
-          colors={["rgba(30,41,59,0.8)", "rgba(3,7,18,0)"]}
-          className="pb-2"
-        >
+
           <View className="px-5 pt-4 pb-2">
             {/* Top row */}
             <View className="flex-row items-center justify-between">
@@ -620,7 +617,6 @@ export default function ProjectDetail() {
               )}
             </View>
           </View>
-        </LinearGradient>
       </Animated.View>
 
       {/* ─── Stat Cards ──────────────────────────────────────────── */}

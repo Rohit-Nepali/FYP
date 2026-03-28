@@ -2,7 +2,7 @@ import { prisma } from "../config/db.js";
 import { classifyMessage } from "./mlClassification.service.js";
 
 const LOW_CONFIDENCE_THRESHOLD = Number.parseFloat(
-  process.env.ML_LOW_CONFIDENCE_THRESHOLD || "0.45"
+  process.env.ML_LOW_CONFIDENCE_THRESHOLD || "0.6"
 );
 
 const userTaskAccessWhere = (userId) => ({
@@ -108,20 +108,20 @@ const buildBotReply = (classification) => {
   }
 
   if (classification.confidence < LOW_CONFIDENCE_THRESHOLD) {
-    return "I’m not fully sure yet. Could you explain the main reason the task was missed so I can understand better?";
+    return "I'm not fully sure yet. Could you explain the main reason the task was missed so I can understand better?";
   }
 
   const labelResponses = {
     HIGH_MOTIVATION:
       "Thanks for sharing. It sounds like motivation is improving—let’s keep that momentum going.",
     CONSISTENT_PRODUCTIVITY:
-      "You seem to be staying consistent. Let’s keep reinforcing this pattern.",
+      "You seem to be staying consistent. Let's keep reinforcing this pattern.",
     LOW_ENERGY:
       "It sounds like energy levels might be affecting completion. We can adjust workload and timing.",
     WORK_OVERLOAD:
       "This seems related to overload. We should break tasks into smaller chunks and rebalance priorities.",
     DISTRACTION:
-      "Distractions may be the blocker here. Let’s identify the biggest interruption and reduce it.",
+      "Distractions may be the blocker here. Let's identify the biggest interruption and reduce it.",
     PROCRASTINATION:
       "This sounds like procrastination pressure. Starting with a tiny first step can help.",
     POOR_PLANNING:
@@ -132,7 +132,7 @@ const buildBotReply = (classification) => {
 
   return (
     labelResponses[classification.label] ||
-    "Thanks for explaining. I’ve saved the productivity signal to improve future support."
+    "Thanks for explaining. I've saved the productivity signals to improve future support."
   );
 };
 
@@ -164,6 +164,8 @@ export const chatbotService = {
           },
         });
       } catch (_error) {
+        // Log error but don't fail the whole response if signal saving fails
+        console.error("Failed to save user behavior signal:", _error);
       }
     }
 

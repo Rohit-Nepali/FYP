@@ -119,53 +119,64 @@ export const deleteProjectController = async (req, res, next) => {
 
 export const addProjectMemberController = async (req, res, next) => {
   try {
-
-    console.log("Adding members to project:", req.body);
-
     const userId = req.user.id;
     const { id } = req.params;
     const { memberId, userIds, role } = req.body;
 
     let project;
-    let addedMembers = [];
+    let invitedMembers = [];
 
     if (userIds && Array.isArray(userIds)) {
-      // Bulk add
+      // Bulk invite
       for (const mId of userIds) {
         try {
-          await projectService.addMember(id, userId, mId, role);
-          addedMembers.push(mId);
+          const targetUser = await prisma.user.findUnique({
+            where: { id: mId },
+            select: { id: true, email: true },
+          });
+
+          if (!targetUser) {
+            continue;
+          }
+
+          await projectService.createInvite(id, userId, targetUser.email, role);
+          invitedMembers.push(mId);
         } catch (err) {
-          // specific error handling if needed, e.g. ignoring 'already member'
-          // For now we continue to try adding others
-          console.log(`Failed to add member ${mId}: ${err.message}`);
+          console.log(`Failed to invite member ${mId}: ${err.message}`);
         }
       }
-      // Get final state
       project = await projectService.getById(id, userId);
     } else if (memberId) {
-      project = await projectService.addMember(id, userId, memberId, role);
-      addedMembers.push(memberId);
-    } else {
-      // Fallback or error
-      // If neither, maybe return current project or throw error
+      const targetUser = await prisma.user.findUnique({
+        where: { id: memberId },
+        select: { id: true, email: true },
+      });
+
+      if (!targetUser) {
+        throw new ApiError("User not found", HTTP_STATUS.NOT_FOUND);
+      }
+
+      await projectService.createInvite(id, userId, targetUser.email, role);
+      invitedMembers.push(memberId);
       project = await projectService.getById(id, userId);
+    } else {
+      throw new ApiError("memberId or userIds is required", HTTP_STATUS.BAD_REQUEST);
     }
 
-    // Log activity for each added member
-    for (const addedMemberId of addedMembers) {
+    // Log activity for each invited member
+    for (const invitedMemberId of invitedMembers) {
       await logActivity({
-        type: 'MEMBER_ADDED',
+        type: 'MEMBER_INVITED',
         projectId: id,
         userId,
-        metadata: { memberId: addedMemberId, role: role || 'member' }
+        metadata: { memberId: invitedMemberId, role: role || 'member' }
       });
     }
 
     return ApiResponse.sendSuccessResponse(
       res,
       HTTP_STATUS.OK,
-      "Member(s) added successfully",
+      "Invitation(s) sent successfully",
       project
     );
   } catch (error) {
@@ -209,21 +220,10 @@ export const createProjectInviteController = async (req, res, next) => {
 
     const result = await projectService.createInvite(id, userId, email, role);
 
-    // If result has members, it means user existed and was added
-    if (result.members) {
-      return ApiResponse.sendSuccessResponse(
-        res,
-        HTTP_STATUS.OK,
-        "Member added successfully",
-        result
-      );
-    }
-
-    // Otherwise, invite created
     return ApiResponse.sendSuccessResponse(
       res,
       HTTP_STATUS.CREATED,
-      "Invite created successfully",
+      "Invitation sent successfully",
       result
     );
   } catch (error) {
@@ -243,6 +243,24 @@ export const acceptProjectInviteController = async (req, res, next) => {
       HTTP_STATUS.OK,
       "Invite accepted successfully",
       project
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const declineProjectInviteController = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { token } = req.params;
+
+    const result = await projectService.declineInvite(token, userId);
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Invite declined successfully",
+      result
     );
   } catch (error) {
     next(error);

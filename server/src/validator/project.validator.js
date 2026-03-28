@@ -11,7 +11,13 @@ export const updateProjectSchema = joi.object({
 });
 
 export const addProjectMemberSchema = joi.object({
-    memberId: joi.string().required(),
+    memberId: joi.string().optional(),
+    userIds: joi.array().items(joi.string()).min(1).optional(),
+    role: joi.string().valid("member").optional(),
+}).or("memberId", "userIds");
+
+export const createProjectInviteSchema = joi.object({
+    email: joi.string().email().required(),
     role: joi.string().valid("member").optional(),
 });
 

@@ -36,6 +36,7 @@ export interface InAppNotification {
   data?: Record<string, any> | null;
   createdAt: string;
   readAt?: string | null;
+  ignoredAt?: string | null;
   archivedAt?: string | null;
 }
 
@@ -131,6 +132,12 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
   });
 }
 
+export async function markNotificationAsIgnored(notificationId: string): Promise<void> {
+  await makeRequest<void>(`/users/notifications/${notificationId}/ignored`, {
+    method: "PATCH",
+  });
+}
+
 export async function markAllNotificationsAsRead(): Promise<void> {
   await makeRequest<void>(`/users/notifications/read-all`, {
     method: "PATCH",
@@ -152,5 +159,21 @@ export async function unarchiveNotification(notificationId: string): Promise<voi
 export async function deleteNotification(notificationId: string): Promise<void> {
   await makeRequest<void>(`/users/notifications/${notificationId}`, {
     method: "DELETE",
+  });
+}
+
+export async function updateDigestPreferences(payload: {
+  timezone?: string;
+  dailyDigestEnabled?: boolean;
+  digestHourLocal?: number;
+}): Promise<{
+  id: string;
+  timezone: string;
+  dailyDigestEnabled: boolean;
+  digestHourLocal: number;
+}> {
+  return makeRequest(`/users/preferences/digest`, {
+    method: "PATCH",
+    data: payload,
   });
 }

@@ -1,5 +1,6 @@
 export type AuthErrorType =
   | "INVALID_CREDENTIALS"
+  | "EMAIL_NOT_VERIFIED"
   | "NETWORK_ERROR"
   | "EMAIL_ERROR"
   | "UNKNOWN_ERROR";
@@ -13,6 +14,11 @@ export const handleAuthError = (error: unknown): AuthErrorType => {
       message.includes("invalid credentials")
     ) {
       return "INVALID_CREDENTIALS";
+    } else if (
+      message.includes("verify your email") ||
+      message.includes("email not verified")
+    ) {
+      return "EMAIL_NOT_VERIFIED";
     } else if (
       message.includes("network") ||
       message.includes("internet") ||
@@ -36,6 +42,11 @@ export const getAuthErrorMessage = (
       message:
         "Invalid email or password. Please check your credentials and try again.",
     },
+    EMAIL_NOT_VERIFIED: {
+      title: "Email Not Verified",
+      message:
+        "Please verify your email first. Check your inbox for the verification code.",
+    },
     NETWORK_ERROR: {
       title: "Connection Error",
       message:
@@ -57,6 +68,7 @@ export const getAuthErrorMessage = (
 // Add to existing errorHandler.ts
 export type SignupErrorType =
   | "EMAIL_TAKEN"
+  | "EMAIL_SERVICE_UNAVAILABLE"
   | "NETWORK_ERROR"
   | "INVALID_EMAIL"
   | "WEAK_PASSWORD"
@@ -71,6 +83,12 @@ export const handleSignupError = (error: unknown): SignupErrorType => {
       (message.includes("taken") || message.includes("already"))
     ) {
       return "EMAIL_TAKEN";
+    } else if (
+      message.includes("email verification service") ||
+      message.includes("smtp") ||
+      message.includes("service unavailable")
+    ) {
+      return "EMAIL_SERVICE_UNAVAILABLE";
     } else if (
       message.includes("network") ||
       message.includes("internet") ||
@@ -95,6 +113,11 @@ export const getSignupErrorMessage = (
       title: "Email Already Registered",
       message:
         "This email is already registered. Please use a different email or sign in.",
+    },
+    EMAIL_SERVICE_UNAVAILABLE: {
+      title: "Email Service Unavailable",
+      message:
+        "We couldn't send the verification email right now. Please try again later.",
     },
     NETWORK_ERROR: {
       title: "Connection Error",

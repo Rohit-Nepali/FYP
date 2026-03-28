@@ -74,8 +74,6 @@ export default function LoginScreen() {
 
     if (!password) {
       newErrors.password = "Password is required";
-    } else if (password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
     }
 
     setErrors(newErrors);
@@ -101,6 +99,19 @@ export default function LoginScreen() {
           email: "Invalid email or password",
           password: "Invalid email or password",
         });
+      } else if (errorType === "EMAIL_NOT_VERIFIED") {
+        showAlert(
+          "Email Not Verified",
+          "Please verify your email before signing in.",
+          "warning"
+        );
+
+        setTimeout(() => {
+          router.push({
+            pathname: "/verify-email",
+            params: { email },
+          });
+        }, 1200);
       } else {
         showAlert(errorInfo.title, errorInfo.message, "error");
       }

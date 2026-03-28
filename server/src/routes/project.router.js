@@ -9,6 +9,7 @@ import {
     createProjectController,
     createProjectAttachmentController,
     createProjectInviteController,
+    declineProjectInviteController,
     deleteProjectAttachmentController,
     deleteProjectController,
     getAllProjectsController,
@@ -21,6 +22,7 @@ import {
 } from "../controllers/project.controller.js";
 import {
     addProjectMemberSchema,
+    createProjectInviteSchema,
     createProjectSchema,
     updateProjectSchema,
 } from "../validator/project.validator.js";
@@ -43,12 +45,13 @@ projectRouter.post(
     validate(addProjectMemberSchema),
     addProjectMemberController
 );
+projectRouter.post("/:id/invites", validate(createProjectInviteSchema), createProjectInviteController);
 projectRouter.delete("/:id/members/:memberId", removeProjectMemberController);
 
 // Invite management routes
-projectRouter.post("/:id/invites", createProjectInviteController);
 projectRouter.get("/:id/invites", getProjectInvitesController);
 projectRouter.post("/invites/:token/accept", acceptProjectInviteController);
+projectRouter.post("/invites/:token/decline", declineProjectInviteController);
 
 // Attachment management routes
 projectRouter.get("/:id/attachments", getProjectAttachmentsController);

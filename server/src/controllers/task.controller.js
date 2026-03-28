@@ -3,6 +3,7 @@ import { taskService } from "../services/task.service.js";
 import { CLIENT_RENEG_LIMIT } from "tls";
 import { logActivity } from "../services/activity.service.js";
 import { prisma } from "../config/db.js";
+import { taskRiskSnapshotService } from "../services/taskRiskSnapshot.service.js";
 
 export const createTaskController = async (req, res, next) => {
     try {
@@ -10,6 +11,17 @@ export const createTaskController = async (req, res, next) => {
         const taskData = req.body;
 
         const task = await taskService.create(taskData, userId);
+
+        if (!task.isCompleted) {
+            taskRiskSnapshotService
+                .upsertSnapshot({
+                    userId,
+                    taskId: task.id,
+                    timezone: req.user.timezone || "UTC",
+                    source: "on_demand",
+                })
+                .catch(() => {});
+        }
 
         // Log activity
         if (task.projectId) {
@@ -82,6 +94,18 @@ export const updateTaskController = async (req, res, next) => {
         const updateData = req.body;
 
         const task = await taskService.update(id, userId, updateData);
+
+        if (!task.isCompleted) {
+            taskRiskSnapshotService
+                .upsertSnapshot({
+                    userId,
+                    taskId: task.id,
+                    timezone: req.user.timezone || "UTC",
+                    source: "on_demand",
+                    force: true,
+                })
+                .catch(() => {});
+        }
 
         // Log activity
         if (task.projectId) {

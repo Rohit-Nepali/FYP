@@ -11,6 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import messaging from '@react-native-firebase/messaging';
 import { Alert } from 'react-native';
 import { axiosInstance } from "../services/authService";
+import { updateDigestPreferences } from "../services/userService";
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, user } = useAuth();
@@ -31,6 +32,9 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       if (token) {
         await registerTokenWithBackend(token);
       }
+
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      await updateDigestPreferences({ timezone, digestHourLocal: 19 });
 
       // Listen for token refresh
       const unsubscribeTokenRefresh = messaging().onTokenRefresh(async newToken => {

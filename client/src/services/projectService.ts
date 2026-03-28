@@ -109,6 +109,18 @@ export async function inviteProjectMember(projectId: string, email: string, role
   });
 }
 
+export async function acceptProjectInvite(token: string): Promise<any> {
+  return makeRequest<any>(`/projects/invites/${token}/accept`, {
+    method: "POST",
+  });
+}
+
+export async function declineProjectInvite(token: string): Promise<any> {
+  return makeRequest<any>(`/projects/invites/${token}/decline`, {
+    method: "POST",
+  });
+}
+
 export async function removeProjectMember(projectId: string, memberId: string): Promise<Project> {
   return makeRequest<Project>(`/projects/${projectId}/members/${memberId}`, {
     method: "DELETE",

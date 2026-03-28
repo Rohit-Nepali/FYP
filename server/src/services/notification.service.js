@@ -121,6 +121,19 @@ export async function markNotificationAsRead(notificationId, userId) {
   });
 }
 
+export async function markNotificationAsIgnored(notificationId, userId) {
+  return prisma.notification.updateMany({
+    where: {
+      id: notificationId,
+      userId,
+      ignoredAt: null,
+    },
+    data: {
+      ignoredAt: new Date(),
+    },
+  });
+}
+
 export async function markAllNotificationsAsRead(userId) {
   return prisma.notification.updateMany({
     where: {

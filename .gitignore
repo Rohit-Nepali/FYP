@@ -1,3 +1,17 @@
-.vscode/
+﻿.vscode/
 .idea/
 
+# Python cache artifacts
+**/__pycache__/
+*.pyc
+.pytest_cache/
+
+# ML raw and intermediate datasets
+ml-service/training/raw/
+ml-service/data/processed/
+
+# Optional: keep local model artifacts out of git
+ml-service/models/*.pkl
+
+# Keep metadata tracked if desired (uncomment next line to ignore)
+# ml-service/models/model_metadata.json

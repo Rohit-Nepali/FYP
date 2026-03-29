@@ -177,6 +177,9 @@ interface DetailsTabProps {
   task: Task;
   isDone: boolean;
   formatDate: (dateString?: string) => string;
+  updatingCompletion: boolean;
+  onToggleCompletion: () => void;
+  canMarkComplete: boolean;
   projectMembers: ProjectMember[];
   showAssigneePicker: boolean;
   onToggleAssigneePicker: () => void;
@@ -188,6 +191,9 @@ export function TaskDetailsTab({
   task,
   isDone,
   formatDate,
+  updatingCompletion,
+  onToggleCompletion,
+  canMarkComplete,
   projectMembers,
   showAssigneePicker,
   onToggleAssigneePicker,
@@ -198,17 +204,23 @@ export function TaskDetailsTab({
     <View className="gap-4">
       <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
         <View className="flex-row items-start mb-3">
-          <View
+          <TouchableOpacity
+            onPress={onToggleCompletion}
+            disabled={!canMarkComplete || updatingCompletion}
             className={`w-7 h-7 rounded-full items-center justify-center ${
               isDone ? "bg-green-500/20" : "bg-gray-700"
-            }`}
+            } ${!canMarkComplete ? "opacity-70" : ""}`}
           >
-            <Ionicons
-              name={isDone ? "checkmark-circle" : "ellipse-outline"}
-              size={22}
-              color={isDone ? "#10B981" : "#9CA3AF"}
-            />
-          </View>
+            {updatingCompletion ? (
+              <ActivityIndicator size="small" color="#9CA3AF" />
+            ) : (
+              <Ionicons
+                name={isDone ? "checkmark-circle" : "ellipse-outline"}
+                size={22}
+                color={isDone ? "#10B981" : "#9CA3AF"}
+              />
+            )}
+          </TouchableOpacity>
           <Text className="text-white text-lg font-bold ml-3 flex-1 leading-snug">
             {task.title}
           </Text>
@@ -343,6 +355,7 @@ export function TaskDetailsTab({
           </View>
         )}
       </View>
+
     </View>
   );
 }

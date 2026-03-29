@@ -244,10 +244,20 @@ export const taskService = {
 
     const data = {};
 
+    // Completion can only be toggled by task creator or assignee.
+    if (isCompleted !== undefined && !isCreator && !isAssignee) {
+      throw new ApiError(
+        "Only the task creator or assignee can update completion status",
+        HTTP_STATUS.FORBIDDEN
+      );
+    }
+
     if (isCreator || isOwner) {
       if (title !== undefined) data.title = title;
       if (description !== undefined) data.description = description;
-      if (isCompleted !== undefined) data.isCompleted = isCompleted;
+      if (isCompleted !== undefined && (isCreator || isAssignee)) {
+        data.isCompleted = isCompleted;
+      }
 
       if (statusId !== undefined) {
         if (statusId === null || statusId === "") {

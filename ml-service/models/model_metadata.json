@@ -1,6 +1,6 @@
 {
   "classifier": {
-    "dataset": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\training\\raw\\classifier\\productivity_dataset_2.csv",
+    "dataset": "training\\raw\\classifier\\productivity_dataset_2.csv",
     "text_column": "text",
     "label_column": "label",
     "classes": [
@@ -87,11 +87,11 @@
     "train_samples": 8000,
     "test_samples": 2000,
     "random_state": 42,
-    "updated_at": "2026-03-28T09:29:18.900494+00:00"
+    "updated_at": "2026-03-29T02:14:50.488937+00:00"
   },
   "risk_model": {
-    "raw_risk_dir": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\training\\raw\\risk",
-    "dataset": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\data\\processed\\risk_training.csv",
+    "raw_risk_dir": "training\\raw\\risk",
+    "dataset": "data\\processed\\risk_training.csv",
     "target_column": "risk_target",
     "feature_columns": [
       "is_completed",
@@ -143,6 +143,6 @@
     "train_samples": 502772,
     "test_samples": 125694,
     "random_state": 42,
-    "updated_at": "2026-03-28T09:34:22.869034+00:00"
+    "updated_at": "2026-03-29T02:24:47.267040+00:00"
   }
 }

@@ -1,14 +1,16 @@
-import * as AuthSession from 'expo-auth-session';
+import {
+  GoogleSignin,
+  isCancelledResponse,
+  isNoSavedCredentialFoundResponse,
+  isSuccessResponse,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import { makeRequest } from './apiClient';
 
-// Configure redirect URI
-const redirectUri = AuthSession.makeRedirectUri({
-  scheme: 'taskora',
-  path: 'calendar-callback',
-});
-
-// Google Calendar OAuth configuration - Replace with your client IDs
-const GOOGLE_CLIENT_ID = '887155577122-3n3mra5upom1c7tcr7jkmb9gnm2isejj.apps.googleusercontent.com';
+const CALENDAR_SCOPES = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/calendar.events',
+];
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -34,61 +36,66 @@ export interface CalendarConnectionStatus {
 // ─── Public API Functions ────────────────────────────────────────────────────
 
 /**
- * Start the Google Calendar OAuth flow
+ * Connect Google Calendar using the existing Google Sign-In session.
+ * This requests calendar scopes from the signed-in Google account.
  */
 export const connectGoogleCalendar = async (): Promise<{
   accessToken: string;
   refreshToken: string;
 }> => {
-  // Create auth request for Calendar scope
-  const request = new AuthSession.AuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    scopes: [
-      'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/calendar.events',
-    ],
-    redirectUri,
-    extraParams: {
-      access_type: 'offline',
-      prompt: 'consent',
-    },
-    usePKCE: true,
-  });
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-  // Get discovery document
-  const discovery = await AuthSession.fetchDiscoveryAsync('https://accounts.google.com');
+    // 1. Get current user
+    const currentUser = await GoogleSignin.getCurrentUser();
 
-  // Prompt user for authorization
-  const result = await request.promptAsync(discovery, {
-    windowFeatures: {
-      width: 520,
-      height: 680,
-    },
-  });
+    // In v16, currentUser.data.scopes is an array of strings
+    const currentScopes = currentUser?.data?.scopes || [];
 
-  if (result.type !== 'success') {
-    throw new Error('Calendar authorization was cancelled');
+    // Check if every required calendar scope is already present
+    const hasScopes = CALENDAR_SCOPES.every(scope => currentScopes.includes(scope));
+
+    let userInfo;
+
+    if (!currentUser || !hasScopes) {
+      // 2. If no user OR missing scopes, trigger sign-in with the specific scopes
+      // This will prompt the user to "Select Account" and "Grant Permissions"
+      userInfo = await GoogleSignin.signIn({
+        // Optional: force account selection to ensure they pick the right one
+        // forceAccountSelection: true 
+      });
+    } else {
+      // 3. User is already logged in and has scopes
+      userInfo = currentUser;
+    }
+
+    if (!isSuccessResponse(userInfo)) {
+      throw new Error('Sign in failed or was cancelled');
+    }
+
+    // 4. Get the fresh tokens
+    const { accessToken } = await GoogleSignin.getTokens();
+    const serverAuthCode = userInfo.data.serverAuthCode;
+
+    if (!serverAuthCode) {
+      throw new Error('No serverAuthCode received. Ensure offlineAccess: true is in your GoogleSignin.configure');
+    }
+
+    // 5. Send to backend
+    await makeRequest('/calendar/connect', {
+      method: 'POST',
+      data: { accessToken, serverAuthCode },
+    });
+
+    return { accessToken, refreshToken: '' };
+
+  } catch (error: any) {
+    // Standard error handling...
+    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      throw new Error('Calendar authorization was cancelled');
+    }
+    throw new Error(error?.message || 'Failed to connect Google Calendar');
   }
-
-  const { access_token, refresh_token } = result.params;
-
-  if (!access_token) {
-    throw new Error('No access token received');
-  }
-
-  // Send tokens to backend to store (uses shared apiClient with auth interceptor)
-  await makeRequest('/calendar/connect', {
-    method: 'POST',
-    data: {
-      accessToken: access_token,
-      refreshToken: refresh_token,
-    },
-  });
-
-  return {
-    accessToken: access_token,
-    refreshToken: refresh_token || '',
-  };
 };
 
 /**
@@ -152,17 +159,8 @@ export const deleteCalendarEvent = async (eventId: string): Promise<void> => {
 };
 
 /**
- * Get Google Auth config for Calendar (for use with useAuthRequest hook)
+ * Backward-compatible helper for any consumer that still reads auth config.
  */
 export const getCalendarAuthConfig = () => ({
-  clientId: GOOGLE_CLIENT_ID,
-  redirectUri,
-  scopes: [
-    'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/calendar.events',
-  ],
-  extraParams: {
-    access_type: 'offline',
-    prompt: 'consent',
-  },
+  scopes: CALENDAR_SCOPES,
 });

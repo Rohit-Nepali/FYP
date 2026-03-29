@@ -91,8 +91,11 @@ export function getTaskPermissions(
 
   // Project task permissions
   if (isProjectOwner) {
-    // Project owner has full access to all tasks
-    return fullTaskPermissions();
+    // Project owner can manage task fields but completion is limited
+    // to task creator/assignee.
+    const ownerPermissions = fullTaskPermissions();
+    ownerPermissions.canMarkComplete = isTaskCreator || isTaskAssignee;
+    return ownerPermissions;
   }
 
   if (isTaskCreator) {

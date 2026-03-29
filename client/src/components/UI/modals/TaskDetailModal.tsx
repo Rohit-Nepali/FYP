@@ -76,6 +76,7 @@ export default function TaskDetailModal({
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingPriority, setUpdatingPriority] = useState(false);
+  const [updatingCompletion, setUpdatingCompletion] = useState(false);
   const [selectedAttachment, setSelectedAttachment] =
     useState<Attachment | null>(null);
   const [deletingAttachment, setDeletingAttachment] = useState(false);
@@ -100,6 +101,7 @@ export default function TaskDetailModal({
   const canDelete = permissions?.canDelete ?? false;
   const canManageAssignees = permissions?.canAssign ?? false;
   const canManageStatus = permissions?.canEditStatus ?? false;
+  const canMarkComplete = permissions?.canMarkComplete ?? false;
   const canComment = permissions?.canComment ?? false;
   const canViewAttachments = permissions?.canUploadAttachment ?? false;
   const canUploadAttachments = permissions?.canUploadAttachment ?? false;
@@ -181,6 +183,26 @@ export default function TaskDetailModal({
       showError("Failed to update priority");
     } finally {
       setUpdatingPriority(false);
+    }
+  };
+
+  const handleToggleCompletion = async () => {
+    if (!task) return;
+
+    if (!canMarkComplete) {
+      showError("You don't have permission to update completion status");
+      return;
+    }
+
+    try {
+      setUpdatingCompletion(true);
+      const nextCompleted = !Boolean(task.isCompleted);
+      await updateTask(task.id, { isCompleted: nextCompleted });
+      setTask({ ...task, isCompleted: nextCompleted });
+    } catch {
+      showError("Failed to update completion status");
+    } finally {
+      setUpdatingCompletion(false);
     }
   };
 
@@ -382,6 +404,9 @@ export default function TaskDetailModal({
                         task={task}
                         isDone={isDone}
                         formatDate={formatDate}
+                        updatingCompletion={updatingCompletion}
+                        onToggleCompletion={handleToggleCompletion}
+                        canMarkComplete={canMarkComplete}
                         projectMembers={projectMembers}
                         showAssigneePicker={showAssigneePicker}
                         onToggleAssigneePicker={() =>

@@ -6,6 +6,12 @@ import { storeTokens } from './apiClient';
 // Your WEB CLIENT ID
 const API_BASE_URL = config.API_BASE_URL;
 const WEB_CLIENT_ID = '887155577122-4lrojdh2pm8fh6lmt7ri0jf22unf2q8u.apps.googleusercontent.com';
+const GOOGLE_SCOPES = [
+  'email',
+  'profile',
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/calendar.events',
+];
 
 /**
  * Configure Google Sign-In - Call this once when app starts
@@ -14,7 +20,8 @@ export const configureGoogleSignIn = () => {
   GoogleSignin.configure({
     webClientId: WEB_CLIENT_ID,
     offlineAccess: true,
-    scopes: ['email', 'profile'],
+    forceCodeForRefreshToken: true,
+    scopes: GOOGLE_SCOPES,
   });
   console.log('✅ Google Sign-In configured');
 };
@@ -57,7 +64,12 @@ export const signInWithGoogle = async (
     const userInfo = await GoogleSignin.signIn();
     console.log("User : ", userInfo);
 
+    if (userInfo.type !== 'success') {
+      throw new Error('Google Sign-In was cancelled');
+    }
+
     const googleUser = userInfo.data?.user;
+    const serverAuthCode = userInfo.data?.serverAuthCode;
 
     if (!googleUser) {
       throw new Error('Google Sign-In failed: No user data returned');
@@ -85,6 +97,7 @@ export const signInWithGoogle = async (
         googleId: user.id,
         email: user.email,
         accessToken: tokens.accessToken,
+        serverAuthCode,
       });
 
       if (signInResponse.data.success) {
@@ -115,6 +128,7 @@ export const signInWithGoogle = async (
           name: user.name,
           profileImage: user.picture,
           accessToken: tokens.accessToken,
+          serverAuthCode,
         });
 
         if (signUpResponse.data.success) {

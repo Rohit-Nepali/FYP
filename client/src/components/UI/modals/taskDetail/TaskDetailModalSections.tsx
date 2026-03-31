@@ -47,28 +47,10 @@ const TABS: Array<{
   label: string;
   countKey?: "comments" | "attachments";
 }> = [
-  {
-    key: "details",
-    icon: "document-text-outline",
-    label: "Details",
-  },
-  {
-    key: "comments",
-    icon: "chatbubble-outline",
-    label: "Comments",
-    countKey: "comments",
-  },
-  {
-    key: "status",
-    icon: "flag-outline",
-    label: "Status",
-  },
-  {
-    key: "attachments",
-    icon: "attach-outline",
-    label: "Files",
-    countKey: "attachments",
-  },
+  { key: "details", icon: "document-text-outline", label: "Details" },
+  { key: "comments", icon: "chatbubble-outline", label: "Comments", countKey: "comments" },
+  { key: "status", icon: "flag-outline", label: "Status" },
+  { key: "attachments", icon: "attach-outline", label: "Files", countKey: "attachments" },
 ];
 
 const getPriorityColor = (priorityName?: string) => {
@@ -76,21 +58,13 @@ const getPriorityColor = (priorityName?: string) => {
     case "high":
     case "urgent":
     case "critical":
-      return { bg: "bg-red-600", border: "border-red-400", dot: "#EF4444" };
+      return { bg: "bg-red-500/10", border: "border-red-500/30", text: "text-red-400", dot: "#EF4444" };
     case "medium":
-      return {
-        bg: "bg-yellow-600",
-        border: "border-yellow-400",
-        dot: "#F59E0B",
-      };
+      return { bg: "bg-yellow-500/10", border: "border-yellow-500/30", text: "text-yellow-400", dot: "#F59E0B" };
     case "low":
-      return {
-        bg: "bg-green-600",
-        border: "border-green-400",
-        dot: "#10B981",
-      };
+      return { bg: "bg-green-500/10", border: "border-green-500/30", text: "text-green-400", dot: "#10B981" };
     default:
-      return { bg: "bg-blue-600", border: "border-blue-400", dot: "#6B7280" };
+      return { bg: "bg-blue-500/10", border: "border-blue-500/30", text: "text-blue-400", dot: "#6B7280" };
   }
 };
 
@@ -101,16 +75,16 @@ interface HeaderProps {
   canDelete?: boolean;
 }
 
-export function TaskDetailHeader({ title, loading, onClose, canDelete }: HeaderProps) {
+export function TaskDetailHeader({ title, loading, onClose }: HeaderProps) {
   return (
-    <View className="flex-row items-center justify-between p-4 border-b border-gray-700 bg-gray-900/50">
+    <View className="flex-row items-center justify-between p-5 pt-6 bg-gray-900">
       <View className="flex-1 mr-4">
-        <Text className="text-xl font-bold text-white" numberOfLines={1}>
+        <Text className="text-2xl font-bold text-white tracking-tight" numberOfLines={1}>
           {loading ? "Loading..." : title || "Task Detail"}
         </Text>
       </View>
-      <TouchableOpacity onPress={onClose} className="p-1">
-        <Ionicons name="close-circle" size={30} color="#9CA3AF" />
+      <TouchableOpacity onPress={onClose} className="p-2 -mr-2 rounded-full bg-gray-900">
+        <Ionicons name="close" size={24} color="#9CA3AF" />
       </TouchableOpacity>
     </View>
   );
@@ -135,34 +109,33 @@ export function TaskDetailTabBar({
   };
 
   return (
-    <View className="flex-row border-b border-gray-700 bg-gray-900/30">
+    <View className="flex-row px-2 bg-gray-900 border-b border-gray-800">
       {TABS.map((tab) => {
         const count = tab.countKey ? tabCounts[tab.countKey] : undefined;
+        const isActive = activeTab === tab.key;
 
         return (
           <TouchableOpacity
             key={tab.key}
             onPress={() => onChangeTab(tab.key)}
-            className={`flex-1 py-3 items-center border-b-2 ${
-              activeTab === tab.key ? "border-blue-500" : "border-transparent"
+            className={`flex-1 py-4 items-center border-b-2 ${
+              isActive ? "border-white" : "border-transparent"
             }`}
           >
-            <Ionicons
-              name={tab.icon}
-              size={20}
-              color={activeTab === tab.key ? "#60A5FA" : "#6B7280"}
-            />
-            <View className="flex-row items-center gap-1 mt-1">
-              <Text
-                className={`text-xs font-medium ${
-                  activeTab === tab.key ? "text-white" : "text-gray-400"
-                }`}
-              >
+            <View className="flex-row items-center gap-2">
+              <Ionicons
+                name={isActive ? tab.icon.replace("-outline", "") as any : tab.icon}
+                size={18}
+                color={isActive ? "#FFFFFF" : "#6B7280"}
+              />
+              <Text className={`text-sm font-semibold ${isActive ? "text-white" : "text-gray-500"}`}>
                 {tab.label}
               </Text>
               {count !== undefined && count > 0 && (
-                <View className="bg-gray-700 px-1.5 rounded-full min-w-[18px] items-center">
-                  <Text className="text-xs text-gray-300 font-semibold">{count}</Text>
+                <View className={`px-1.5 py-0.5 rounded-full ${isActive ? "bg-white" : "bg-gray-800"}`}>
+                  <Text className={`text-[10px] font-bold ${isActive ? "text-black" : "text-gray-400"}`}>
+                    {count}
+                  </Text>
                 </View>
               )}
             </View>
@@ -201,161 +174,139 @@ export function TaskDetailsTab({
   canManageAssignees,
 }: DetailsTabProps) {
   return (
-    <View className="gap-4">
-      <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
-        <View className="flex-row items-start mb-3">
+    <View className="px-5 py-6 gap-8">
+      {/* Title & Description */}
+      <View>
+        <View className="flex-row items-start mb-4">
           <TouchableOpacity
             onPress={onToggleCompletion}
             disabled={!canMarkComplete || updatingCompletion}
-            className={`w-7 h-7 rounded-full items-center justify-center ${
-              isDone ? "bg-green-500/20" : "bg-gray-700"
-            } ${!canMarkComplete ? "opacity-70" : ""}`}
+            className={`w-6 h-6 mt-1 rounded-full border-2 items-center justify-center mr-4 ${
+              isDone ? "bg-green-500 border-green-500" : "border-gray-500 bg-transparent"
+            } ${!canMarkComplete ? "opacity-50" : ""}`}
           >
             {updatingCompletion ? (
               <ActivityIndicator size="small" color="#9CA3AF" />
-            ) : (
-              <Ionicons
-                name={isDone ? "checkmark-circle" : "ellipse-outline"}
-                size={22}
-                color={isDone ? "#10B981" : "#9CA3AF"}
-              />
-            )}
+            ) : isDone ? (
+              <Ionicons name="checkmark" size={16} color="#000" />
+            ) : null}
           </TouchableOpacity>
-          <Text className="text-white text-lg font-bold ml-3 flex-1 leading-snug">
+          <Text className={`text-xl font-bold flex-1 leading-snug ${isDone ? "text-gray-400 line-through" : "text-white"}`}>
             {task.title}
           </Text>
         </View>
+        
         {task.description ? (
           <Text className="text-gray-300 leading-relaxed text-base ml-10">
             {task.description}
           </Text>
         ) : (
-          <Text className="text-gray-500 italic ml-10">No description provided</Text>
+          <Text className="text-gray-600 italic ml-10">No description provided</Text>
         )}
       </View>
 
-      {task.dueDate && (
-        <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 flex-row items-center">
-          <View className="w-8 h-8 rounded-full bg-blue-900/30 items-center justify-center">
-            <Ionicons name="calendar-outline" size={18} color="#60A5FA" />
-          </View>
-          <View className="ml-3">
-            <Text className="text-gray-400 text-xs">Due Date</Text>
-            <Text className="text-white font-medium">{formatDate(task.dueDate)}</Text>
-          </View>
-        </View>
-      )}
+      <View className="h-px bg-gray-800 ml-10" />
 
-      <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center gap-2">
-            <Ionicons name="person-outline" size={20} color="#60A5FA" />
-            <Text className="text-gray-300 font-medium">Assignee</Text>
+      {/* Meta Information (Due Date & Assignee) without boxes */}
+      <View className="ml-10 gap-6">
+        {task.dueDate && (
+          <View className="flex-row items-center">
+            <View className="w-8 items-center justify-center mr-3">
+              <Ionicons name="calendar-clear-outline" size={20} color="#6B7280" />
+            </View>
+            <View>
+              <Text className="text-gray-500 text-xs mb-0.5 uppercase tracking-wider font-semibold">Due Date</Text>
+              <Text className="text-white text-base">{formatDate(task.dueDate)}</Text>
+            </View>
           </View>
-          {projectMembers.length > 0 && canManageAssignees && (
-            <TouchableOpacity
-              onPress={onToggleAssigneePicker}
-              className="bg-gray-700 px-3 py-1 rounded-lg"
-            >
-              <Text className="text-blue-400 text-xs font-semibold">
-                {showAssigneePicker ? "Cancel" : "Change"}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        )}
 
-        {showAssigneePicker ? (
-          <View className="flex-row flex-wrap gap-2 mt-2">
-            <TouchableOpacity
-              onPress={() => onUpdateAssignee(undefined)}
-              className={`px-3 py-2 rounded-lg border-2 items-center min-w-[70px] ${
-                !task.assigneeId
-                  ? "bg-blue-600 border-blue-400"
-                  : "bg-gray-800 border-gray-700"
-              }`}
-            >
-              <Ionicons
-                name="person-remove-outline"
-                size={20}
-                color={!task.assigneeId ? "#fff" : "#9CA3AF"}
-              />
-              <Text
-                className={`text-xs mt-1 ${
-                  !task.assigneeId ? "text-white" : "text-gray-400"
-                }`}
-              >
-                None
-              </Text>
-            </TouchableOpacity>
-
-            {projectMembers.map((member) => (
-              <TouchableOpacity
-                key={member.id}
-                onPress={() => onUpdateAssignee(member.id)}
-                className={`px-3 py-2 rounded-lg border-2 items-center min-w-[70px] ${
-                  task.assigneeId === member.id
-                    ? "bg-blue-600 border-blue-400"
-                    : "bg-gray-800 border-gray-700"
-                }`}
-              >
-                {member.profileImage ? (
-                  <Image
-                    source={{ uri: resolveFileUrl(member.profileImage) }}
-                    className="w-8 h-8 rounded-full mb-1"
-                  />
-                ) : (
-                  <View className="w-8 h-8 rounded-full bg-gray-700 items-center justify-center mb-1">
-                    <Text className="text-white text-xs font-semibold">
-                      {member.name?.charAt(0)?.toUpperCase() || "?"}
-                    </Text>
-                  </View>
-                )}
-                <Text
-                  className={`text-xs text-center ${
-                    task.assigneeId === member.id ? "text-white" : "text-gray-400"
-                  }`}
-                  numberOfLines={1}
-                >
-                  {member.name.split(" ")[0]}
+        <View>
+          <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center">
+              <View className="w-8 items-center justify-center mr-3">
+                <Ionicons name="person-outline" size={20} color="#6B7280" />
+              </View>
+              <Text className="text-gray-500 text-xs uppercase tracking-wider font-semibold">Assignee</Text>
+            </View>
+            
+            {projectMembers.length > 0 && canManageAssignees && (
+              <TouchableOpacity onPress={onToggleAssigneePicker}>
+                <Text className="text-blue-400 text-sm font-medium">
+                  {showAssigneePicker ? "Cancel" : task.assignee ? "Change" : "Assign"}
                 </Text>
               </TouchableOpacity>
-            ))}
+            )}
           </View>
-        ) : (
-          <View className="flex-row items-center">
-            {task.assignee ? (
-              <>
-                {task.assignee.profileImage ? (
-                  <Image
-                    source={{ uri: resolveFileUrl(task.assignee.profileImage) }}
-                    className="w-10 h-10 rounded-full border-2 border-gray-700"
-                  />
-                ) : (
-                  <View className="w-10 h-10 rounded-full bg-gray-700 items-center justify-center border-2 border-gray-700">
-                    <Text className="text-white text-sm font-bold">
-                      {task.assignee.name?.charAt(0)?.toUpperCase() || "?"}
+
+          <View className="ml-11">
+            {showAssigneePicker ? (
+              <View className="flex-row flex-wrap gap-3 mt-2">
+                <TouchableOpacity
+                  onPress={() => onUpdateAssignee(undefined)}
+                  className={`px-4 py-2 rounded-full border items-center ${
+                    !task.assigneeId ? "bg-blue-600 border-blue-600" : "bg-gray-900 border-gray-700"
+                  }`}
+                >
+                  <Text className={`text-sm font-medium ${!task.assigneeId ? "text-white" : "text-gray-300"}`}>
+                    Unassigned
+                  </Text>
+                </TouchableOpacity>
+
+                {projectMembers.map((member) => (
+                  <TouchableOpacity
+                    key={member.id}
+                    onPress={() => onUpdateAssignee(member.id)}
+                    className={`flex-row items-center px-4 py-2 rounded-full border ${
+                      task.assigneeId === member.id ? "bg-blue-600 border-blue-600" : "bg-gray-900 border-gray-700"
+                    }`}
+                  >
+                    {member.profileImage ? (
+                      <Image
+                        source={{ uri: resolveFileUrl(member.profileImage) }}
+                        className="w-5 h-5 rounded-full mr-2"
+                      />
+                    ) : (
+                      <View className="w-5 h-5 rounded-full bg-gray-700 items-center justify-center mr-2">
+                        <Text className="text-white text-[10px] font-bold">
+                          {member.name?.charAt(0)?.toUpperCase() || "?"}
+                        </Text>
+                      </View>
+                    )}
+                    <Text className={`text-sm font-medium ${task.assigneeId === member.id ? "text-white" : "text-gray-300"}`}>
+                      {member.name.split(" ")[0]}
                     </Text>
-                  </View>
-                )}
-                <View className="ml-3">
-                  <Text className="text-white font-medium">{task.assignee.name}</Text>
-                  <Text className="text-gray-500 text-xs">{task.assignee.email}</Text>
-                </View>
-              </>
+                  </TouchableOpacity>
+                ))}
+              </View>
             ) : (
-              <View className="flex-row items-center">
-                <View className="w-10 h-10 rounded-full bg-gray-700/50 items-center justify-center border-2 border-dashed border-gray-600">
-                  <Ionicons name="person-outline" size={20} color="#6B7280" />
-                </View>
-                <View className="ml-3">
-                  <Text className="text-gray-400 italic">Unassigned</Text>
-                </View>
+              <View className="flex-row items-center mt-1">
+                {task.assignee ? (
+                  <>
+                    {task.assignee.profileImage ? (
+                      <Image
+                        source={{ uri: resolveFileUrl(task.assignee.profileImage) }}
+                        className="w-8 h-8 rounded-full"
+                      />
+                    ) : (
+                      <View className="w-8 h-8 rounded-full bg-gray-800 items-center justify-center">
+                        <Text className="text-white text-sm font-bold">
+                          {task.assignee.name?.charAt(0)?.toUpperCase() || "?"}
+                        </Text>
+                      </View>
+                    )}
+                    <View className="ml-3">
+                      <Text className="text-white text-base font-medium">{task.assignee.name}</Text>
+                    </View>
+                  </>
+                ) : (
+                  <Text className="text-gray-500 italic text-base">Unassigned</Text>
+                )}
               </View>
             )}
           </View>
-        )}
+        </View>
       </View>
-
     </View>
   );
 }
@@ -380,79 +331,92 @@ export function TaskCommentsTab({
   canComment,
 }: CommentsTabProps) {
   return (
-    <View className="gap-4">
-      {canComment ? (
-        <View className="bg-gray-800/50 rounded-xl p-3 border border-gray-700">
-          <View className="flex-row items-end gap-2">
+    <View className="flex-1 px-4 py-2">
+      {/* Comments List */}
+      <View className="flex-1 mt-4 mb-20">
+        {comments.length === 0 ? (
+          <View className="items-center justify-center py-20 opacity-50">
+            <Ionicons name="chatbubbles-outline" size={48} color="#9CA3AF" />
+            <Text className="text-gray-400 text-base mt-4 font-medium">No comments yet</Text>
+            <Text className="text-gray-500 text-sm mt-1">Start the conversation below</Text>
+          </View>
+        ) : (
+          <View className="gap-6">
+            {comments.map((comment, index) => {
+              // Simple check to see if we should group consecutive comments
+              const prevComment = index > 0 ? comments[index - 1] : null;
+              const isSameAuthor = prevComment?.author.id === comment.author.id;
+
+              return (
+                <View key={comment.id} className={isSameAuthor ? "-mt-4" : ""}>
+                  {!isSameAuthor && (
+                    <View className="flex-row justify-between items-center mb-1">
+                      <View className="flex-row items-center gap-2">
+                        {(comment.author as any)?.profileImage ? (
+                          <Image
+                            source={{ uri: resolveFileUrl((comment.author as any).profileImage) }}
+                            className="w-6 h-6 rounded-full"
+                          />
+                        ) : (
+                          <View className="w-6 h-6 rounded-full bg-gray-800 items-center justify-center">
+                            <Text className="text-gray-300 text-[10px] font-bold">
+                              {comment.author.name.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                        <Text className="text-white text-sm font-semibold">{comment.author.name}</Text>
+                      </View>
+                      <Text className="text-gray-500 text-xs">{formatDate(comment.createdAt)}</Text>
+                    </View>
+                  )}
+                  <Text className="text-gray-300 text-[15px] leading-relaxed ml-8">
+                    {comment.content}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+
+      {/* Input Area - Pill shaped and floating at bottom */}
+      <View className="absolute bottom-0 left-0 right-0 p-4 bg-gray-950 border-t border-gray-900">
+        {canComment ? (
+          <View className="flex-row items-end gap-2 bg-gray-900 rounded-3xl pl-5 pr-2 py-1.5 border border-gray-800">
             <TextInput
-              className="flex-1 bg-gray-900 rounded-xl px-4 py-3 text-white min-h-[44px] max-h-[120px] border border-gray-700"
-              placeholder="Write a comment..."
+              className="flex-1 text-white text-base min-h-[40px] max-h-[100px] pt-2.5 pb-2"
+              placeholder="Message..."
               placeholderTextColor="#6B7280"
               value={newComment}
               onChangeText={onChangeComment}
               multiline
-              textAlignVertical="top"
+              textAlignVertical="center"
             />
             <TouchableOpacity
               onPress={onPostComment}
               disabled={!newComment.trim() || postingComment}
-              className={`w-11 h-11 rounded-xl items-center justify-center ${
-                newComment.trim() && !postingComment ? "bg-blue-600" : "bg-gray-700"
+              className={`w-10 h-10 rounded-full items-center justify-center mb-0.5 ${
+                newComment.trim() && !postingComment ? "bg-white" : "bg-transparent"
               }`}
             >
               {postingComment ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color="#000" />
               ) : (
                 <Ionicons
-                  name="send"
-                  size={18}
-                  color={newComment.trim() ? "#fff" : "#6B7280"}
+                  name="arrow-up"
+                  size={20}
+                  color={newComment.trim() ? "#000" : "#4B5563"}
                 />
               )}
             </TouchableOpacity>
           </View>
-        </View>
-      ) : (
-        <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 items-center py-6">
-          <Ionicons name="lock-closed-outline" size={28} color="#6B7280" />
-          <Text className="text-gray-400 text-sm mt-2">You don't have permission to comment</Text>
-        </View>
-      )}
-
-      {comments.length === 0 ? (
-        <View className="items-center py-12 bg-gray-800/30 rounded-xl border border-gray-700/50">
-          <Ionicons name="chatbubble-outline" size={40} color="#4B5563" />
-          <Text className="text-gray-400 text-sm mt-3 font-medium">No comments yet</Text>
-          <Text className="text-gray-600 text-xs mt-1">Be the first to comment</Text>
-        </View>
-      ) : (
-        comments.map((comment) => (
-          <View
-            key={comment.id}
-            className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50"
-          >
-            <View className="flex-row items-center mb-2">
-              {(comment.author as any)?.profileImage ? (
-                <Image
-                  source={{ uri: resolveFileUrl((comment.author as any).profileImage) }}
-                  className="w-7 h-7 rounded-full"
-                />
-              ) : (
-                <View className="w-7 h-7 rounded-full bg-blue-900/50 items-center justify-center border border-blue-500/30">
-                  <Text className="text-blue-400 text-xs font-bold">
-                    {comment.author.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <View className="flex-1 ml-2">
-                <Text className="text-gray-300 text-sm font-medium">{comment.author.name}</Text>
-                <Text className="text-gray-500 text-xs">{formatDate(comment.createdAt)}</Text>
-              </View>
-            </View>
-            <Text className="text-gray-300 text-sm leading-relaxed ml-9">{comment.content}</Text>
+        ) : (
+          <View className="bg-gray-900 rounded-full py-3 items-center flex-row justify-center gap-2">
+            <Ionicons name="lock-closed" size={16} color="#6B7280" />
+            <Text className="text-gray-500 text-sm font-medium">Commenting is disabled</Text>
           </View>
-        ))
-      )}
+        )}
+      </View>
     </View>
   );
 }
@@ -483,48 +447,32 @@ export function TaskStatusTab({
   canEdit,
 }: StatusTabProps) {
   return (
-    <View className="gap-4">
-      <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-        <View className="flex-row items-center gap-2 mb-4">
-          <View className="w-8 h-8 rounded-full bg-yellow-900/30 items-center justify-center">
-            <Ionicons name="flag" size={16} color="#FBBF24" />
-          </View>
-          <Text className="text-white font-semibold">Status</Text>
-          {updatingStatus && (
-            <ActivityIndicator size="small" color="#60A5FA" style={{ marginLeft: 8 }} />
-          )}
-          {!canManageStatus && (
-            <View className="flex-row items-center gap-1 ml-auto">
-              <Ionicons name="lock-closed" size={14} color="#9CA3AF" />
-              <Text className="text-gray-400 text-xs">Read-only</Text>
-            </View>
-          )}
+    <View className="p-5 gap-8">
+      
+      {/* Status Section */}
+      <View>
+        <View className="flex-row items-center justify-between mb-4">
+          <Text className="text-white text-lg font-semibold tracking-tight">Status</Text>
+          {updatingStatus && <ActivityIndicator size="small" color="#fff" />}
+          {!canManageStatus && <Text className="text-gray-500 text-xs uppercase tracking-wider">Read-Only</Text>}
         </View>
 
         {statuses.length > 0 ? (
-          <View className="flex-row flex-wrap gap-2">
+          <View className="flex-row flex-wrap gap-3">
             {statuses.map((status) => {
               const isSelected = task.statusId === status.id;
-
               return (
                 <TouchableOpacity
                   key={status.id}
                   onPress={() => onUpdateStatus(status.id)}
                   disabled={updatingStatus || !canManageStatus}
-                  className={`flex-row items-center gap-2 px-4 py-2.5 rounded-xl border-2 ${
+                  className={`px-5 py-2.5 rounded-full border ${
                     isSelected
-                      ? "bg-yellow-600 border-yellow-400"
-                      : `${!canManageStatus ? "bg-gray-700" : "bg-gray-800"} border-gray-700`
+                      ? "bg-white border-white"
+                      : "bg-gray-900 border-gray-800"
                   }`}
                 >
-                  {isSelected && (
-                    <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                  )}
-                  <Text
-                    className={`text-sm font-medium ${
-                      isSelected ? "text-white" : "text-gray-300"
-                    }`}
-                  >
+                  <Text className={`text-sm font-semibold ${isSelected ? "text-black" : "text-gray-400"}`}>
                     {status.name}
                   </Text>
                 </TouchableOpacity>
@@ -532,89 +480,57 @@ export function TaskStatusTab({
             })}
           </View>
         ) : (
-          <View className="flex-row items-center gap-2 py-2">
-            <Text className="text-gray-400 text-sm">Current:</Text>
-            <View className="px-3 py-1 rounded-full bg-yellow-900/30 border border-yellow-700/50">
-              <Text className="text-yellow-500 text-sm font-medium">
-                {task.status?.name || "Not set"}
-              </Text>
-            </View>
-          </View>
+          <Text className="text-white text-base">{task.status?.name || "Not set"}</Text>
         )}
       </View>
 
-      <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-        <View className="flex-row items-center gap-2 mb-4">
-          <View className="w-8 h-8 rounded-full bg-red-900/30 items-center justify-center">
-            <Ionicons name="alert-circle" size={18} color="#EF4444" />
-          </View>
-          <Text className="text-white font-semibold">Priority</Text>
-          {updatingPriority && (
-            <ActivityIndicator size="small" color="#60A5FA" style={{ marginLeft: 8 }} />
-          )}
-          {!canEdit && (
-            <View className="flex-row items-center gap-1 ml-auto">
-              <Ionicons name="lock-closed" size={14} color="#9CA3AF" />
-              <Text className="text-gray-400 text-xs">Read-only</Text>
-            </View>
-          )}
+      <View className="h-px bg-gray-800" />
+
+      {/* Priority Section */}
+      <View>
+        <View className="flex-row items-center justify-between mb-4">
+          <Text className="text-white text-lg font-semibold tracking-tight">Priority</Text>
+          {updatingPriority && <ActivityIndicator size="small" color="#fff" />}
+          {!canEdit && <Text className="text-gray-500 text-xs uppercase tracking-wider">Read-Only</Text>}
         </View>
 
         {priorities.length > 0 ? (
-          <View className="flex-row flex-wrap gap-2">
+          <View className="gap-2">
             {priorities.map((priority) => {
               const isSelected = task.priorityId === priority.id;
-              const priorityColor = getPriorityColor(priority.name);
+              const style = getPriorityColor(priority.name);
 
               return (
                 <TouchableOpacity
                   key={priority.id}
                   onPress={() => onUpdatePriority(priority.id)}
                   disabled={updatingPriority || !canEdit}
-                  className={`flex-row items-center gap-2 px-4 py-2.5 rounded-xl border-2 ${
-                    isSelected
-                      ? `${priorityColor.bg} ${priorityColor.border}`
-                      : `${!canEdit ? "bg-gray-700" : "bg-gray-800"} border-gray-700`
+                  className={`flex-row items-center justify-between px-4 py-3 rounded-2xl border ${
+                    isSelected ? style.border + " " + style.bg : "border-transparent bg-gray-900/50"
                   }`}
                 >
-                  <View
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{
-                      backgroundColor: isSelected ? "#fff" : priorityColor.dot,
-                    }}
-                  />
-                  <Text
-                    className={`text-sm font-medium ${
-                      isSelected ? "text-white" : "text-gray-300"
-                    }`}
-                  >
-                    {priority.name}
-                  </Text>
-                  {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+                  <View className="flex-row items-center gap-3">
+                    <View className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: style.dot }} />
+                    <Text className={`text-base font-medium ${isSelected ? "text-white" : "text-gray-300"}`}>
+                      {priority.name}
+                    </Text>
+                  </View>
+                  {isSelected && <Ionicons name="checkmark" size={18} color="#fff" />}
                 </TouchableOpacity>
               );
             })}
           </View>
         ) : (
-          <View className="flex-row items-center gap-2 py-2">
-            <Text className="text-gray-400 text-sm">Current:</Text>
-            <View className="px-3 py-1 rounded-full bg-red-900/30 border border-red-700/50">
-              <Text className="text-red-400 text-sm font-medium">
-                {task.priority?.name || "Not set"}
-              </Text>
-            </View>
-          </View>
+          <Text className="text-white text-base">{task.priority?.name || "Not set"}</Text>
         )}
       </View>
 
-      <View className="bg-gray-800/50 rounded-xl p-4 border border-gray-700 flex-row items-center justify-between">
-        <View className="flex-row items-center gap-3">
-          <View className="w-8 h-8 rounded-full bg-gray-700/50 items-center justify-center">
-            <Ionicons name="time" size={18} color="#9CA3AF" />
-          </View>
-          <Text className="text-gray-300 font-medium">Created</Text>
-        </View>
-        <Text className="text-gray-400 text-sm">{formatDate(task.createdAt)}</Text>
+      <View className="h-px bg-gray-800" />
+
+      {/* Meta Footer */}
+      <View className="flex-row justify-between items-center opacity-70 mt-2">
+        <Text className="text-gray-500 text-sm">Created At</Text>
+        <Text className="text-gray-400 text-sm font-medium">{formatDate(task.createdAt)}</Text>
       </View>
     </View>
   );
@@ -640,94 +556,83 @@ export function TaskAttachmentsTab({
   canViewAttachments,
 }: AttachmentsTabProps) {
   return (
-    <View className="gap-3">
-      <TouchableOpacity
-        onPress={onUploadAttachment}
-        disabled={uploadingAttachment || !canUploadAttachments}
-        className={`rounded-xl py-3.5 px-4 items-center justify-center flex-row ${
-          canUploadAttachments
-            ? "bg-blue-600 active:bg-blue-700"
-            : "bg-gray-700"
-        }`}
-      >
-        {uploadingAttachment ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <>
-            <Ionicons
-              name="cloud-upload-outline"
-              size={20}
-              color={canUploadAttachments ? "#fff" : "#6B7280"}
-            />
-            <Text
-              className={`font-semibold ml-2 ${
-                canUploadAttachments
-                  ? "text-white"
-                  : "text-gray-500"
-              }`}
-            >
-              {canUploadAttachments ? "Upload Files" : "Cannot Upload"}
-            </Text>
-          </>
-        )}
-      </TouchableOpacity>
-
-      {attachments.length === 0 ? (
-        <View className="items-center py-12 bg-gray-800/30 rounded-xl border border-dashed border-gray-700">
-          <View className="w-16 h-16 rounded-full bg-gray-700/50 items-center justify-center mb-3">
-            <Ionicons name="cloud-upload-outline" size={32} color="#6B7280" />
-          </View>
-          <Text className="text-gray-400 text-base font-medium">No files attached</Text>
-          <Text className="text-gray-600 text-xs mt-1">
-            Upload documents, images, or other files
-          </Text>
+    <View className="flex-1 p-5 gap-4">
+      {!canViewAttachments ? (
+        <View className="items-center justify-center py-16 opacity-80">
+          <Ionicons name="lock-closed-outline" size={44} color="#6B7280" />
+          <Text className="text-gray-400 text-base mt-4 font-medium">Files are restricted</Text>
+          <Text className="text-gray-500 text-sm mt-1">You do not have permission to view attachments.</Text>
         </View>
       ) : (
-        attachments.map((attachment) => {
-          const attachmentType = getAttachmentType(attachment.fileType);
-          const isImage = attachmentType === "image";
-          const iconName =
-            attachmentType === "image"
-              ? "image-outline"
-              : attachmentType === "document"
-              ? "document-text-outline"
-              : "attach-outline";
+        <>
+      
+      {/* Minimal Upload Button */}
+      {canUploadAttachments && (
+        <TouchableOpacity
+          onPress={onUploadAttachment}
+          disabled={uploadingAttachment}
+          className="flex-row items-center justify-center py-3 bg-gray-900 rounded-2xl border border-gray-800 mb-2"
+        >
+          {uploadingAttachment ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="add" size={20} color="#fff" />
+              <Text className="text-white font-medium ml-1">Add File</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
 
-          return (
-            <TouchableOpacity
-              key={attachment.id}
-              onPress={() => onSelectAttachment(attachment)}
-              className="bg-gray-800/50 rounded-xl p-3 border border-gray-700 active:bg-gray-700/50"
-            >
-              <View className="flex-row items-center">
+      {/* Clean List */}
+      <View>
+        {attachments.length === 0 ? (
+          <View className="items-center justify-center py-16 opacity-50">
+            <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
+            <Text className="text-gray-400 text-base mt-4 font-medium">No files yet</Text>
+          </View>
+        ) : (
+          attachments.map((attachment, index) => {
+            const attachmentType = getAttachmentType(attachment.fileType);
+            const isImage = attachmentType === "image";
+            const isLast = index === attachments.length - 1;
+
+            return (
+              <TouchableOpacity
+                key={attachment.id}
+                onPress={() => onSelectAttachment(attachment)}
+                className={`flex-row items-center py-4 ${!isLast ? "border-b border-gray-800/50" : ""}`}
+              >
                 {isImage ? (
                   <Image
-                    source={{
-                      uri: resolveFileUrl(attachment.fileUrl),
-                    }}
-                    className="w-12 h-12 rounded-lg bg-gray-700"
+                    source={{ uri: resolveFileUrl(attachment.fileUrl) }}
+                    className="w-12 h-12 rounded-xl bg-gray-900"
                     resizeMode="cover"
                   />
                 ) : (
-                  <View className="w-12 h-12 rounded-lg bg-gray-700 items-center justify-center">
-                    <Ionicons name={iconName as any} size={24} color="#60A5FA" />
+                  <View className="w-12 h-12 rounded-xl bg-gray-900 items-center justify-center">
+                    <Ionicons 
+                      name={attachmentType === "document" ? "document-text" : "document-attach"} 
+                      size={20} 
+                      color="#9CA3AF" 
+                    />
                   </View>
                 )}
 
-                <View className="ml-3 flex-1">
-                  <Text className="text-white font-medium" numberOfLines={1}>
+                <View className="ml-4 flex-1 justify-center">
+                  <Text className="text-white text-base font-medium mb-0.5" numberOfLines={1}>
                     {attachment.fileName}
                   </Text>
-                  <Text className="text-gray-400 text-xs mt-0.5">
+                  <Text className="text-gray-500 text-xs">
                     {formatFileSize(attachment.fileSize)} • {formatDate(attachment.createdAt)}
                   </Text>
                 </View>
-
-                <Ionicons name="chevron-forward" size={18} color="#6B7280" />
-              </View>
-            </TouchableOpacity>
-          );
-        })
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </View>
+      </>
       )}
     </View>
   );

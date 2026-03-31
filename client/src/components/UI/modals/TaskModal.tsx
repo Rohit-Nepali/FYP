@@ -22,165 +22,10 @@ import { Task, uploadAttachments } from "@/src/services/taskService";
 import useAlert from "@/src/hooks/useAlert";
 import { resolveFileUrl } from "@/src/utils/url";
 import { LinearGradient } from "expo-linear-gradient";
-
-// ─── Design tokens (Updated to match Slate/Gray Gradient) ─────────────────────
-const T = {
-  bg: "#111827",           // Gradient bottom (Gray 900)
-  surface: "#374151",      // Elevated cards/chips (Gray 700)
-  surfaceAlt: "#1F2937",   // Secondary surfaces (Gray 800)
-  border: "#4B5563",       // Visible borders (Gray 600)
-  borderSubtle: "#374151", // Subtle dividers (Gray 700)
-  accent: "#3B82F6",       // Blue 500
-  accentBg: "#1E3A8A",     // Selected background (Blue 900)
-  accentBorder: "#2563EB", // Selected border (Blue 600)
-  text: "#F3F4F6",         // Primary text (Gray 100)
-  textSub: "#9CA3AF",      // Secondary text (Gray 400)
-  textMuted: "#6B7280",    // Placeholders (Gray 500)
-  danger: "#EF4444",
-  success: "#10B981",
-  warning: "#F59E0B",
-};
-
-// ─── Dot colour by name ───────────────────────────────────────────────────────
-function chipDotColor(name: string): string {
-  const n = name.toLowerCase();
-  if (n.includes("high") || n.includes("urgent") || n.includes("critical")) return T.danger;
-  if (n.includes("medium") || n.includes("mild") || n.includes("progress")) return T.warning;
-  if (n.includes("low") || n.includes("done") || n.includes("complete")) return T.success;
-  return T.accent;
-}
-
-// ─── RowDivider ───────────────────────────────────────────────────────────────
-function RowDivider() {
-  return <View className="h-px bg-[#374151]" />;
-}
-
-// ─── RowIcon ──────────────────────────────────────────────────────────────────
-function RowIcon({ name }: { name: keyof typeof Ionicons.glyphMap }) {
-  return (
-    <View className="h-7 w-7 items-center justify-center rounded-lg bg-[#374151]">
-      <Ionicons name={name} size={14} color={T.accent} />
-    </View>
-  );
-}
-
-// ─── SelectionChip ────────────────────────────────────────────────────────────
-function SelectionChip({
-  label,
-  selected,
-  onPress,
-  disabled,
-  dotColor,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  disabled?: boolean;
-  dotColor?: string;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-      className={`flex-row items-center gap-[5px] rounded-[20px] border px-[11px] py-[6px] ${
-        selected ? "border-[#2563EB] bg-[#1E3A8A]" : "border-[#4B5563] bg-[#374151]"
-      }`}
-    >
-      <View
-        className={`h-[6px] w-[6px] rounded-full ${
-          selected
-            ? dotColor === T.danger
-              ? "bg-[#EF4444]"
-              : dotColor === T.warning
-                ? "bg-[#F59E0B]"
-                : dotColor === T.success
-                  ? "bg-[#10B981]"
-                  : "bg-[#3B82F6]"
-            : "bg-[#9CA3AF]"
-        }`}
-      />
-      <Text className={`text-xs ${selected ? "font-semibold text-[#F3F4F6]" : "text-[#9CA3AF]"}`}>
-        {label}
-      </Text>
-      {selected && <Ionicons name="checkmark" size={11} color={T.accent} />}
-    </TouchableOpacity>
-  );
-}
-
-// ─── AddChip ──────────────────────────────────────────────────────────────────
-function AddChip({ onPress, disabled }: { onPress: () => void; disabled?: boolean }) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-      className="flex-row items-center gap-[3px] rounded-[20px] border border-dashed border-[#4B5563] px-[9px] py-[6px]"
-    >
-      <Ionicons name="add" size={12} color={T.textSub} />
-      <Text className="text-xs text-[#9CA3AF]">Add</Text>
-    </TouchableOpacity>
-  );
-}
-
-// ─── MiniInputModal ───────────────────────────────────────────────────────────
-function MiniInputModal({
-  visible,
-  title,
-  placeholder,
-  value,
-  onChange,
-  onConfirm,
-  onDismiss,
-  loading,
-  confirmLabel,
-}: {
-  visible: boolean;
-  title: string;
-  placeholder: string;
-  value: string;
-  onChange: (v: string) => void;
-  onConfirm: () => void;
-  onDismiss: () => void;
-  loading: boolean;
-  confirmLabel: string;
-}) {
-  return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onDismiss}>
-      <TouchableOpacity activeOpacity={1} onPress={onDismiss} className="flex-1 items-center justify-center bg-black/70 px-6">
-        <TouchableOpacity activeOpacity={1} className="w-full rounded-2xl border border-[#4B5563] bg-[#1F2937] p-5">
-          <View className="mb-[14px] flex-row items-center justify-between">
-            <Text className="text-[15px] font-bold text-[#F3F4F6]">{title}</Text>
-            <TouchableOpacity onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={18} color={T.textSub} />
-            </TouchableOpacity>
-          </View>
-          <View className="mb-3 rounded-[10px] border border-[#4B5563] bg-[#111827]">
-            <TextInput
-              className="px-[14px] py-[11px] text-sm text-[#F3F4F6]"
-              placeholder={placeholder}
-              placeholderTextColor={T.textMuted}
-              value={value}
-              onChangeText={onChange}
-              editable={!loading}
-              autoFocus
-            />
-          </View>
-          <TouchableOpacity
-            onPress={onConfirm}
-            disabled={loading}
-            className={`flex-row items-center justify-center rounded-[10px] bg-[#3B82F6] py-3 ${loading ? "opacity-70" : "opacity-100"}`}
-          >
-            {loading
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Text className="text-sm font-semibold text-white">{confirmLabel}</Text>
-            }
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
-  );
-}
+import { AddChip, RowDivider, RowIcon, SelectionChip } from "@/src/components/common";
+import MiniInputModal from "@/src/components/modals/MiniInputModal";
+import { APP_THEME } from "@/src/constants/theme";
+import { chipDotColor, COLORS } from "@/src/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface InitialValues {
@@ -223,7 +68,8 @@ interface Attachment {
   mimeType?: string;
 }
 
-const SCREEN_HEIGHT= Dimensions.get("window").height; 
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+const TASK_MODAL_MAX_HEIGHT_RATIO = 0.85;
 
 // ─── TaskModal ────────────────────────────────────────────────────────────────
 export default function TaskModal({
@@ -374,9 +220,9 @@ export default function TaskModal({
           // className="max-h-[85%]"
         >
           <LinearGradient
-            colors={["#1F2937", "#111827"]}
+            colors={[APP_THEME.colors.surfaceAlt, APP_THEME.colors.bg]}
             className=" overflow-hidden rounded-t-[20px] border-x border-t border-[#4B5563] "
-            style={{ maxHeight: SCREEN_HEIGHT * 0.85 }}
+            style={{ maxHeight: SCREEN_HEIGHT * TASK_MODAL_MAX_HEIGHT_RATIO }}
           >
 
             {/* Header */}
@@ -387,7 +233,7 @@ export default function TaskModal({
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 className="h-7 w-7 items-center justify-center rounded-full border border-[#4B5563] bg-[#374151]"
               >
-                <Ionicons name="close" size={15} color={T.textSub} />
+                <Ionicons name="close" size={15} color={COLORS.textSub} />
               </TouchableOpacity>
             </View>
 
@@ -398,7 +244,7 @@ export default function TaskModal({
                 <TextInput
                   className="px-[14px] pb-[10px] pt-3 text-[15px] font-semibold text-[#F3F4F6]"
                   placeholder="Task title"
-                  placeholderTextColor={T.textMuted}
+                  placeholderTextColor={COLORS.textMuted}
                   value={title}
                   onChangeText={setTitle}
                   editable={!saving}
@@ -407,7 +253,7 @@ export default function TaskModal({
                 <TextInput
                   className="min-h-[52px] px-[14px] pb-3 pt-[10px] text-[13px] text-[#9CA3AF]"
                   placeholder="Description (optional)"
-                  placeholderTextColor={T.textMuted}
+                  placeholderTextColor={COLORS.textMuted}
                   value={description}
                   onChangeText={setDescription}
                   multiline
@@ -480,7 +326,7 @@ export default function TaskModal({
                       }`}
                     >
                       <View className="mb-1 h-8 w-8 items-center justify-center rounded-full bg-[#1F2937]">
-                        <Ionicons name="person-outline" size={14} color={!assigneeId ? T.accent : T.textSub} />
+                        <Ionicons name="person-outline" size={14} color={!assigneeId ? COLORS.accent : COLORS.textSub} />
                       </View>
                       <Text className={`text-[11px] ${!assigneeId ? "font-medium text-[#F3F4F6]" : "text-[#9CA3AF]"}`}>
                         None
@@ -530,7 +376,7 @@ export default function TaskModal({
                 <Text className={`text-[13px] ${dueDate ? "text-[#9CA3AF]" : "text-[#6B7280]"}`}>
                   {dueDate ? dueDate.toISOString().split("T")[0] : "Select"}
                 </Text>
-                <Ionicons name="chevron-forward" size={14} color={T.textMuted} />
+                <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
               </TouchableOpacity>
 
               {showDatePicker && (
@@ -560,7 +406,7 @@ export default function TaskModal({
                 ) : (
                   <Text className="text-[13px] text-[#6B7280]">Add files</Text>
                 )}
-                <Ionicons name="chevron-forward" size={14} color={T.textMuted} />
+                <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
               </TouchableOpacity>
 
               {attachments.length > 0 && (
@@ -572,13 +418,13 @@ export default function TaskModal({
                       activeOpacity={0.8}
                       className="flex-row items-center gap-2 rounded-lg border border-[#4B5563] bg-[#374151] px-[10px] py-2"
                     >
-                      <Ionicons name="document-outline" size={14} color={T.accent} />
+                      <Ionicons name="document-outline" size={14} color={COLORS.accent} />
                       <Text className="flex-1 text-xs text-[#9CA3AF]" numberOfLines={1}>{file.name}</Text>
                       <TouchableOpacity
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         onPress={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
                       >
-                        <Ionicons name="close-circle" size={16} color={T.danger} />
+                        <Ionicons name="close-circle" size={16} color={COLORS.danger} />
                       </TouchableOpacity>
                     </TouchableOpacity>
                   ))}
@@ -650,14 +496,14 @@ export default function TaskModal({
                 {previewAttachment?.name}
               </Text>
               <TouchableOpacity onPress={() => setPreviewAttachment(null)}>
-                <Ionicons name="close" size={18} color={T.textSub} />
+                <Ionicons name="close" size={18} color={COLORS.textSub} />
               </TouchableOpacity>
             </View>
             <View className="mb-[14px] h-[200px] items-center justify-center overflow-hidden rounded-[10px] border border-[#4B5563] bg-[#111827]">
               {previewAttachment?.mimeType?.startsWith("image/") ? (
                 <Image source={{ uri: previewAttachment.uri }} className="h-full w-full" resizeMode="contain" />
               ) : (
-                <Ionicons name="document-outline" size={48} color={T.textSub} />
+                <Ionicons name="document-outline" size={48} color={COLORS.textSub} />
               )}
             </View>
             <View className="flex-row gap-[10px]">

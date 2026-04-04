@@ -50,6 +50,8 @@ interface ProjectMember {
   avatarUrl?: string;
 }
 
+type MemberRoleFilter = "all" | "owner" | "admin" | "member";
+
 // ─── Avatar Component ──────────────────────────────────────────────
 function MemberAvatar({
   name,
@@ -237,6 +239,7 @@ export default function ProjectMembers() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<MemberRoleFilter>("all");
 
   // Alert states
   const [removeAlertVisible, setRemoveAlertVisible] = useState(false);
@@ -272,18 +275,77 @@ export default function ProjectMembers() {
   }, [loadProject]);
 
   const isOwner = project?.ownerId === user?.id;
-  const members: ProjectMember[] = project?.members || [];
+  const members: ProjectMember[] = useMemo(() => {
+    const rawMembers: ProjectMember[] = project?.members || [];
+    const ownerUser = project?.owner;
+
+    const ownerMember: ProjectMember | null = ownerUser
+      ? {
+          id: ownerUser.id,
+          userId: ownerUser.id,
+          role: "owner",
+          user: {
+            id: ownerUser.id,
+            name: ownerUser.name,
+            email: ownerUser.email,
+            profileImage: ownerUser.profileImage,
+          },
+        }
+      : null;
+
+    const combined = ownerMember ? [ownerMember, ...rawMembers] : rawMembers;
+    const seen = new Set<string>();
+
+    return combined.filter((member) => {
+      const memberUser = member.user || member;
+      const memberId = memberUser.id || member.userId || member.id;
+      if (!memberId || seen.has(memberId)) return false;
+      seen.add(memberId);
+      return true;
+    });
+  }, [project?.members, project?.owner]);
 
   const existingMemberIds = useMemo(
-    () => members.map((m) => m.userId || m.id),
+    () =>
+      members
+        .map((m) => {
+          const memberUser = m.user || m;
+          return memberUser.id || m.userId || m.id;
+        })
+        .filter(Boolean) as string[],
     [members]
   );
 
-  // Search / filter
+  const roleStats = useMemo(() => {
+    const ownerCount = members.some((m) => (m.user || m).id === project?.ownerId)
+      ? 1
+      : 0;
+    const adminsCount = members.filter(
+      (m) => m.role === "admin" && (m.user || m).id !== project?.ownerId
+    ).length;
+    const membersCount = members.filter(
+      (m) => m.role !== "admin" && (m.user || m).id !== project?.ownerId
+    ).length;
+
+    return { ownerCount, adminsCount, membersCount };
+  }, [members, project?.ownerId]);
+
+  // Search / role filter
   const filteredMembers = useMemo(() => {
-    if (!searchQuery.trim()) return members;
+    const roleFiltered = members.filter((item) => {
+      const memberUser = item.user || item;
+      const isOwnerMember = memberUser.id === project?.ownerId;
+
+      if (selectedRoleFilter === "all") return true;
+      if (selectedRoleFilter === "owner") return isOwnerMember;
+      if (selectedRoleFilter === "admin") return !isOwnerMember && item.role === "admin";
+      return !isOwnerMember && item.role !== "admin";
+    });
+
+    if (!searchQuery.trim()) return roleFiltered;
+
     const q = searchQuery.toLowerCase();
-    return members.filter((item) => {
+    return roleFiltered.filter((item) => {
       const memberUser = item.user || item;
       const name = (
         memberUser.name ||
@@ -293,7 +355,7 @@ export default function ProjectMembers() {
       const email = (memberUser.email || "").toLowerCase();
       return name.includes(q) || email.includes(q);
     });
-  }, [members, searchQuery]);
+  }, [members, project?.ownerId, searchQuery, selectedRoleFilter]);
 
   // Sort: owner first, then admins, then members
   const sortedMembers = useMemo(() => {
@@ -543,37 +605,45 @@ export default function ProjectMembers() {
           <View className="flex-row gap-2">
             {[
               {
+                key: "all" as MemberRoleFilter,
+                label: "All",
+                count: members.length,
+                color: "#9CA3AF",
+                bg: "bg-gray-500/10",
+              },
+              {
+                key: "owner" as MemberRoleFilter,
                 label: "Owner",
-                count: 1,
+                count: roleStats.ownerCount,
                 color: "#FBBF24",
                 bg: "bg-amber-500/10",
               },
               {
+                key: "admin" as MemberRoleFilter,
                 label: "Admins",
-                count: members.filter(
-                  (m) =>
-                    m.role === "admin" &&
-                    (m.user || m).id !== project?.ownerId
-                ).length,
+                count: roleStats.adminsCount,
                 color: "#A78BFA",
                 bg: "bg-purple-500/10",
               },
               {
+                key: "member" as MemberRoleFilter,
                 label: "Members",
-                count: members.filter(
-                  (m) =>
-                    m.role !== "admin" &&
-                    (m.user || m).id !== project?.ownerId
-                ).length,
+                count: roleStats.membersCount,
                 color: "#60A5FA",
                 bg: "bg-blue-500/10",
               },
             ]
               .filter((s) => s.count > 0)
               .map((stat) => (
-                <View
+                <TouchableOpacity
                   key={stat.label}
-                  className={`${stat.bg} rounded-xl px-3 py-2 flex-row items-center`}
+                  onPress={() => setSelectedRoleFilter(stat.key)}
+                  activeOpacity={0.7}
+                  className={`${stat.bg} rounded-xl px-3 py-2 flex-row items-center border ${
+                    selectedRoleFilter === stat.key
+                      ? "border-white/25"
+                      : "border-transparent"
+                  }`}
                 >
                   <View
                     className="w-2 h-2 rounded-full mr-2"
@@ -585,7 +655,7 @@ export default function ProjectMembers() {
                   >
                     {stat.count} {stat.label}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
           </View>
         </Animated.View>
@@ -632,6 +702,27 @@ export default function ProjectMembers() {
               >
                 <Text className="text-blue-400 text-sm font-medium">
                   Clear Search
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : selectedRoleFilter !== "all" ? (
+            <View className="items-center py-16">
+              <View className="bg-gray-800/40 rounded-full p-4 mb-3">
+                <Ionicons
+                  name="funnel-outline"
+                  size={28}
+                  color="#4B5563"
+                />
+              </View>
+              <Text className="text-gray-300 text-base font-semibold">
+                No {selectedRoleFilter === "member" ? "members" : `${selectedRoleFilter}s`} found
+              </Text>
+              <TouchableOpacity
+                onPress={() => setSelectedRoleFilter("all")}
+                className="mt-4 bg-gray-800/50 px-4 py-2 rounded-xl"
+              >
+                <Text className="text-blue-400 text-sm font-medium">
+                  Show All
                 </Text>
               </TouchableOpacity>
             </View>

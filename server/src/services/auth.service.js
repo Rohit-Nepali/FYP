@@ -8,6 +8,15 @@ import {
 } from "../utils/jwt.utils.js";
 import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
+import { statusService } from "./status.service.js";
+import { priorityService } from "./priority.service.js";
+
+const ensureStandaloneDefaultsForUser = async (userId) => {
+  await Promise.all([
+    statusService.ensureStandaloneDefaultsForUser(userId),
+    priorityService.ensureStandaloneDefaultsForUser(userId),
+  ]);
+};
 
 const generateVerificationCode = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
@@ -120,6 +129,8 @@ export const authService = {
       });
     });
 
+    await ensureStandaloneDefaultsForUser(user.id);
+
     // Log OTP for testing purposes
     console.log(`\n📧 Email Verification OTP\n━━━━━━━━━━━━━━━━━━━━━━━━━\nEmail: ${user.email}\nOTP: ${verificationCode}\nExpires in: 15 minutes\n━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
@@ -216,6 +227,8 @@ export const authService = {
         expiresAt,
       },
     });
+
+    await ensureStandaloneDefaultsForUser(user.id);
 
     return {
       user: {
@@ -570,6 +583,8 @@ export const authService = {
       });
     }
 
+    await ensureStandaloneDefaultsForUser(user.id);
+
     // Generate tokens
     const accessTokenJWT = generateAccessToken({
       id: user.id,
@@ -683,6 +698,8 @@ export const authService = {
         expiresAt,
       },
     });
+
+    await ensureStandaloneDefaultsForUser(user.id);
 
     return {
       user: {

@@ -2,6 +2,19 @@ import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
 
+const DEFAULT_STANDALONE_STATUSES = [
+  { name: "To Do", color: "#6B7280", order: 0 },
+  { name: "In Progress", color: "#3B82F6", order: 1 },
+  { name: "Done", color: "#10B981", order: 2 },
+];
+
+const buildStandaloneStatusData = (userId) =>
+  DEFAULT_STANDALONE_STATUSES.map((status) => ({
+    ...status,
+    projectId: null,
+    userId,
+  }));
+
 export const statusService = {
   create: async (statusData, projectId, userId) => {
     const { name, color, order } = statusData;
@@ -37,6 +50,34 @@ export const statusService = {
           HTTP_STATUS.BAD_REQUEST
         );
       }
+
+      const status = await prisma.status.create({
+        data: {
+          name: name.trim(),
+          color: color || null,
+          order: order || 0,
+          projectId,
+          userId: null,
+        },
+      });
+
+      return status;
+    }
+
+    if (!userId) {
+      throw new ApiError("User is required", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const existing = await prisma.status.findFirst({
+      where: {
+        projectId: null,
+        userId,
+        name: name.trim(),
+      },
+    });
+
+    if (existing) {
+      throw new ApiError("Status with this name already exists", HTTP_STATUS.BAD_REQUEST);
     }
 
     const status = await prisma.status.create({
@@ -44,7 +85,8 @@ export const statusService = {
         name: name.trim(),
         color: color || null,
         order: order || 0,
-        projectId: projectId || null,
+        projectId: null,
+        userId,
       },
     });
 
@@ -68,26 +110,48 @@ export const statusService = {
       }
 
       const statuses = await prisma.status.findMany({
-        where: { projectId },
+        where: { projectId, userId: null },
         orderBy: [{ order: "asc" }, { name: "asc" }],
       });
 
       return statuses;
     }
 
-    // Get user's global statuses (no projectId)
+    // Get user's standalone statuses (no projectId)
+    await statusService.ensureStandaloneDefaultsForUser(userId);
+
     const statuses = await prisma.status.findMany({
-      where: { projectId: null },
+      where: { projectId: null, userId },
       orderBy: [{ order: "asc" }, { name: "asc" }],
     });
 
     return statuses;
   },
 
+  ensureStandaloneDefaultsForUser: async (userId) => {
+    const existing = await prisma.status.findFirst({
+      where: {
+        projectId: null,
+        userId,
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return;
+    }
+
+    await prisma.status.createMany({
+      data: buildStandaloneStatusData(userId),
+    });
+  },
+
   getGlobal: async (userId) => {
-    // Get user's global statuses (no projectId)
+    // Get user's standalone statuses (no projectId)
+    await statusService.ensureStandaloneDefaultsForUser(userId);
+
     const statuses = await prisma.status.findMany({
-      where: { projectId: null },
+      where: { projectId: null, userId },
       orderBy: [{ order: "asc" }, { name: "asc" }],
     });
 
@@ -129,6 +193,7 @@ export const statusService = {
       where: {
         id: statusId,
         projectId: null,
+        userId,
       },
     });
 
@@ -205,6 +270,7 @@ export const statusService = {
       where: {
         id: statusId,
         projectId: null,
+        userId,
       },
     });
 
@@ -220,6 +286,7 @@ export const statusService = {
         where: {
           name: name.trim(),
           projectId: null,
+            userId,
           id: { not: statusId },
         },
       });
@@ -298,6 +365,7 @@ export const statusService = {
       where: {
         id: statusId,
         projectId: null,
+        userId,
       },
       include: {
         tasks: {

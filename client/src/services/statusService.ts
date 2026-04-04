@@ -8,6 +8,7 @@ export interface Status {
   color?: string;
   order: number;
   projectId?: string | null;
+  userId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

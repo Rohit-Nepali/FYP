@@ -380,7 +380,7 @@ export function TaskCommentsTab({
       </View>
 
       {/* Input Area - Pill shaped and floating at bottom */}
-      <View className="absolute bottom-0 left-0 right-0 p-4 bg-gray-950 border-t border-gray-900">
+      <View className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800 ">
         {canComment ? (
           <View className="flex-row items-end gap-2 bg-gray-900 rounded-3xl pl-5 pr-2 py-1.5 border border-gray-800">
             <TextInput

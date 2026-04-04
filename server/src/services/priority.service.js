@@ -2,6 +2,19 @@ import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
 
+const DEFAULT_STANDALONE_PRIORITIES = [
+  { name: "Low", color: "#10B981", order: 0 },
+  { name: "Medium", color: "#F59E0B", order: 1 },
+  { name: "High", color: "#EF4444", order: 2 },
+];
+
+const buildStandalonePriorityData = (userId) =>
+  DEFAULT_STANDALONE_PRIORITIES.map((priority) => ({
+    ...priority,
+    projectId: null,
+    userId,
+  }));
+
 export const priorityService = {
   create: async (priorityData, projectId, userId) => {
     const { name, color, order } = priorityData;
@@ -37,6 +50,34 @@ export const priorityService = {
           HTTP_STATUS.BAD_REQUEST
         );
       }
+
+      const priority = await prisma.priority.create({
+        data: {
+          name: name.trim(),
+          color: color || null,
+          order: order || 0,
+          projectId,
+          userId: null,
+        },
+      });
+
+      return priority;
+    }
+
+    if (!userId) {
+      throw new ApiError("User is required", HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const existing = await prisma.priority.findFirst({
+      where: {
+        projectId: null,
+        userId,
+        name: name.trim(),
+      },
+    });
+
+    if (existing) {
+      throw new ApiError("Priority with this name already exists", HTTP_STATUS.BAD_REQUEST);
     }
 
     const priority = await prisma.priority.create({
@@ -44,7 +85,8 @@ export const priorityService = {
         name: name.trim(),
         color: color || null,
         order: order || 0,
-        projectId: projectId || null,
+        projectId: null,
+        userId,
       },
     });
 
@@ -68,26 +110,48 @@ export const priorityService = {
       }
 
       const priorities = await prisma.priority.findMany({
-        where: { projectId },
+        where: { projectId, userId: null },
         orderBy: [{ order: "asc" }, { name: "asc" }],
       });
 
       return priorities;
     }
 
-    // Get user's global priorities (no projectId)
+    // Get user's standalone priorities (no projectId)
+    await priorityService.ensureStandaloneDefaultsForUser(userId);
+
     const priorities = await prisma.priority.findMany({
-      where: { projectId: null },
+      where: { projectId: null, userId },
       orderBy: [{ order: "asc" }, { name: "asc" }],
     });
 
     return priorities;
   },
 
+  ensureStandaloneDefaultsForUser: async (userId) => {
+    const existing = await prisma.priority.findFirst({
+      where: {
+        projectId: null,
+        userId,
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return;
+    }
+
+    await prisma.priority.createMany({
+      data: buildStandalonePriorityData(userId),
+    });
+  },
+
   getGlobal: async (userId) => {
-    // Get user's global priorities (no projectId)
+    // Get user's standalone priorities (no projectId)
+    await priorityService.ensureStandaloneDefaultsForUser(userId);
+
     const priorities = await prisma.priority.findMany({
-      where: { projectId: null },
+      where: { projectId: null, userId },
       orderBy: [{ order: "asc" }, { name: "asc" }],
     });
 
@@ -129,6 +193,7 @@ export const priorityService = {
       where: {
         id: priorityId,
         projectId: null,
+        userId,
       },
     });
 
@@ -205,6 +270,7 @@ export const priorityService = {
       where: {
         id: priorityId,
         projectId: null,
+        userId,
       },
     });
 
@@ -220,6 +286,7 @@ export const priorityService = {
         where: {
           name: name.trim(),
           projectId: null,
+            userId,
           id: { not: priorityId },
         },
       });
@@ -298,6 +365,7 @@ export const priorityService = {
       where: {
         id: priorityId,
         projectId: null,
+        userId,
       },
       include: {
         tasks: {

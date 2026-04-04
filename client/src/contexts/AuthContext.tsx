@@ -24,6 +24,7 @@ interface User {
   role: string;
   profileImage?: string;
   createdAt: string;
+  googleId?: string;
 }
 
 interface AuthContextType {

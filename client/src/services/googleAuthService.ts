@@ -35,6 +35,7 @@ export interface GoogleUser {
 
 export interface GoogleAuthResult {
   user: GoogleUser;
+  googleId: string;
   accessToken: string;
   refreshToken?: string;
 }
@@ -113,6 +114,7 @@ export const signInWithGoogle = async (
             name: backendUser.name,
             picture: backendUser.profileImage,
           },
+          googleId: user.id,
           accessToken,
           refreshToken,
         };
@@ -144,6 +146,7 @@ export const signInWithGoogle = async (
               name: backendUser.name,
               picture: backendUser.profileImage,
             },
+            googleId: user.id,
             accessToken,
             refreshToken,
           };

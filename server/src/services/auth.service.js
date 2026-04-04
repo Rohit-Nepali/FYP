@@ -341,6 +341,7 @@ export const authService = {
         role: true,
         profileImage: true,
         createdAt: true,
+        googleId: true,
       },
     });
 
@@ -366,6 +367,7 @@ export const authService = {
         role: true,
         profileImage: true,
         createdAt: true,
+        googleId: true,
       },
     });
 

@@ -71,6 +71,25 @@ interface Attachment {
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const TASK_MODAL_MAX_HEIGHT_RATIO = 0.85;
 
+const getStartOfToday = () => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const setToEndOfDay = (date: Date) => {
+  const normalized = new Date(date);
+  normalized.setHours(23, 59, 59, 999);
+  return normalized;
+};
+
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 // ─── TaskModal ────────────────────────────────────────────────────────────────
 export default function TaskModal({
   visible,
@@ -374,7 +393,7 @@ export default function TaskModal({
                 <RowIcon name="calendar-outline" />
                 <Text className="flex-1 text-[13px] font-medium text-[#F3F4F6]">Due date</Text>
                 <Text className={`text-[13px] ${dueDate ? "text-[#9CA3AF]" : "text-[#6B7280]"}`}>
-                  {dueDate ? dueDate.toISOString().split("T")[0] : "Select"}
+                  {dueDate ? formatLocalDate(dueDate) : "Select"}
                 </Text>
                 <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
               </TouchableOpacity>
@@ -382,9 +401,10 @@ export default function TaskModal({
               {showDatePicker && (
                 <DateTimePicker
                   value={dueDate ?? new Date()}
+                  minimumDate={getStartOfToday()}
                   mode="date"
                   display={Platform.OS === "ios" ? "spinner" : "default"}
-                  onChange={(_, d) => { setShowDatePicker(false); if (d) setDueDate(d); }}
+                  onChange={(_, d) => { setShowDatePicker(false); if (d) setDueDate(setToEndOfDay(d)); }}
                 />
               )}
 

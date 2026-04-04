@@ -16,6 +16,13 @@ export const taskService = {
     const normalizedStatusId = statusId || null;
     const normalizedPriorityId = priorityId || null;
 
+    if (dueDate) {
+      const parsedDueDate = new Date(dueDate);
+      if (parsedDueDate < new Date()) {
+        throw new ApiError("Due date cannot be in the past", HTTP_STATUS.BAD_REQUEST);
+      }
+    }
+
     if (normalizedStatusId) {
       const status = await prisma.status.findFirst({
         where: { id: normalizedStatusId, projectId },

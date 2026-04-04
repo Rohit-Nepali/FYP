@@ -52,13 +52,11 @@ export const taskService = {
         throw new ApiError(ERROR_MESSAGES.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
       }
 
-      // Check if user is owner or member
+      // Only project owner can create project tasks.
       const isOwner = project.ownerId === userId;
-      const isMember = project.members.some((member) => member.userId === userId);
-
-      if (!isOwner && !isMember) {
+      if (!isOwner) {
         throw new ApiError(
-          "Only project owner or members can create tasks",
+          "Only project owner can create tasks",
           HTTP_STATUS.FORBIDDEN
         );
       }
@@ -231,6 +229,14 @@ export const taskService = {
     const isCreator = existingTask.creatorId === userId;
     const isOwner = existingTask.project?.ownerId === userId;
     const isAssignee = existingTask.assigneeId === userId;
+    const isProjectTask = Boolean(existingTask.projectId);
+
+    if (isProjectTask && !isOwner) {
+      throw new ApiError(
+        "Project members can only view tasks",
+        HTTP_STATUS.FORBIDDEN
+      );
+    }
 
     if (!isCreator && !isOwner && !isAssignee) {
       throw new ApiError(
@@ -251,10 +257,10 @@ export const taskService = {
 
     const data = {};
 
-    // Completion can only be toggled by task creator or assignee.
-    if (isCompleted !== undefined && !isCreator && !isAssignee) {
+    // Completion can only be toggled by task creator, assignee, or project owner.
+    if (isCompleted !== undefined && !isCreator && !isAssignee && !isOwner) {
       throw new ApiError(
-        "Only the task creator or assignee can update completion status",
+        "Only the task creator, assignee, or project owner can update completion status",
         HTTP_STATUS.FORBIDDEN
       );
     }
@@ -262,7 +268,7 @@ export const taskService = {
     if (isCreator || isOwner) {
       if (title !== undefined) data.title = title;
       if (description !== undefined) data.description = description;
-      if (isCompleted !== undefined && (isCreator || isAssignee)) {
+      if (isCompleted !== undefined && (isCreator || isAssignee || isOwner)) {
         data.isCompleted = isCompleted;
       }
 
@@ -425,23 +431,31 @@ export const taskService = {
   },
 
   delete: async (taskId, userId) => {
-    const existingTask = await prisma.task.findFirst({
-      where: {
-        id: taskId,
-        OR: [
-          { creatorId: userId },
-          {
-            project: {
-              ownerId: userId,
-            },
+    const existingTask = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        project: {
+          select: {
+            ownerId: true,
           },
-        ],
+        },
       },
     });
 
     if (!existingTask) {
+      throw new ApiError(ERROR_MESSAGES.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (existingTask.projectId) {
+      if (existingTask.project?.ownerId !== userId) {
+        throw new ApiError(
+          "Only the project owner can delete project tasks",
+          HTTP_STATUS.FORBIDDEN
+        );
+      }
+    } else if (existingTask.creatorId !== userId) {
       throw new ApiError(
-        "Only the task creator or project owner can delete this task",
+        "Only the task creator can delete standalone tasks",
         HTTP_STATUS.FORBIDDEN
       );
     }

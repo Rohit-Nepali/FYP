@@ -98,7 +98,12 @@ export default function TaskDetailModal({
             creatorId: task.creatorId,
             assigneeId: task.assigneeId,
             projectId: task.projectId,
-            project: (task as any).project ?? null,
+            project: task.projectId
+              ? {
+                  ownerId: (task as any).project?.ownerId ?? "",
+                  members: projectMembers.map((member) => ({ userId: member.id })),
+                }
+              : null,
           },
           user.id
         )

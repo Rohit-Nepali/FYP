@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import TaskModal from "@/src/components/UI/modals/TaskModal";
+import { useAuth } from "@/src/contexts/AuthContext";
 import { getProjectById, Project } from "@/src/services/projectService";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
@@ -23,6 +24,7 @@ interface ProjectDetail extends Project {
 
 export default function ProjectTasks() {
   const router = useRouter();
+  const { user } = useAuth();
   const { id, quickFilter } = useLocalSearchParams<{ id?: string; quickFilter?: string }>();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,6 +170,7 @@ export default function ProjectTasks() {
 
   const taskCount = filteredTasks.length;
   const totalTaskCount = project.tasks?.length || 0;
+  const isProjectOwner = project.ownerId === user?.id;
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
@@ -285,15 +288,22 @@ export default function ProjectTasks() {
         </View>
       </ScrollView>
 
-      {/* Bottom bar with Add Task */}
-      <View className="border-t border-gray-800 bg-gray-900 px-4 py-3 mb-24">
-        <Button
-          title="Add Task"
-          onPress={() => setModalVisible(true)}
-          variant="primary"
-          icon="add-outline"
-        />
-      </View>
+      {isProjectOwner ? (
+        <View className="border-t border-gray-800 bg-gray-900 px-4 py-3 mb-24">
+          <Button
+            title="Add Task"
+            onPress={() => setModalVisible(true)}
+            variant="primary"
+            icon="add-outline"
+          />
+        </View>
+      ) : (
+        <View className="border-t border-gray-800 bg-gray-900 px-4 py-4 mb-24">
+          <Text className="text-center text-xs text-gray-500">
+            You can view project tasks. Only the project owner can edit them.
+          </Text>
+        </View>
+      )}
 
       {/* Create Task Modal */}
       <TaskModal

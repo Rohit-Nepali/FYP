@@ -196,6 +196,7 @@ model Project {
   ownerId     String
   owner       User     @relation("ownerProjects", fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
+  status      String   @default("todo")
 
   members    ProjectMember[]
   tasks      Task[]

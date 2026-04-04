@@ -111,13 +111,14 @@ export const projectService = {
             );
         }
 
-        const { title, description } = updateData;
+        const { title, description, status } = updateData;
 
         const updated = await prisma.project.update({
             where: { id: projectId },
             data: {
                 ...(title !== undefined && { title }),
                 ...(description !== undefined && { description }),
+                ...(status !== undefined && { status }),
             },
             include: {
                 owner: { select: { id: true, name: true, email: true, profileImage: true } },

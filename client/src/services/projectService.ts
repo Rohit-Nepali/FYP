@@ -2,11 +2,14 @@ import { makeRequest, apiClient, ApiResponse, ApiSuccess } from "./apiClient";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export type ProjectStatus = "todo" | "in_progress" | "done";
+
 export interface Project {
   id: string;
   title: string;
   description?: string;
   ownerId: string;
+  status: ProjectStatus;
   owner?: {
     id: string;
     name: string;
@@ -98,6 +101,16 @@ export async function getProjectById(projectId: string): Promise<Project & { tas
 export async function createProject(payload: { title: string; description?: string }): Promise<Project> {
   return makeRequest<Project>("/projects", {
     method: "POST",
+    data: payload,
+  });
+}
+
+export async function updateProject(
+  projectId: string,
+  payload: { title?: string; description?: string; status?: ProjectStatus }
+): Promise<Project> {
+  return makeRequest<Project>(`/projects/${projectId}`, {
+    method: "PUT",
     data: payload,
   });
 }

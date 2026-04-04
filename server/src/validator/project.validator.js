@@ -8,6 +8,7 @@ export const createProjectSchema = joi.object({
 export const updateProjectSchema = joi.object({
     title: joi.string().min(1).max(200).trim().optional(),
     description: joi.string().max(1000).trim().allow("", null).optional(),
+    status: joi.string().valid("todo", "in_progress", "done").optional(),
 });
 
 export const addProjectMemberSchema = joi.object({

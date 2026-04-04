@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 import joblib
+import matplotlib
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
@@ -15,6 +16,9 @@ from sklearn.metrics import accuracy_score, classification_report, f1_score, roc
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 from common import (
     PROCESSED_DIR,
@@ -35,6 +39,186 @@ DEFAULT_FEATURES = [
 ]
 
 HIGH_RISK_LABELS = {"HIGH", "HIGH_RISK", "1", "TRUE", "YES"}
+
+DEFAULT_PREPROCESSING_VIEW_COLUMNS = [
+    "planned_duration_seconds",
+    "elapsed_duration_seconds",
+    "declaration_count",
+    "declaration_total_seconds",
+    "recent_activity_count",
+]
+
+
+def _numeric_series(series: pd.Series) -> pd.Series:
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return series
+    return pd.to_numeric(series, errors="coerce")
+
+
+def _plot_histograms(df: pd.DataFrame, columns: list[str], output_path: Path, title: str) -> None:
+    available_cols = [col for col in columns if col in df.columns]
+    if not available_cols:
+        return
+
+    n_cols = 3
+    n_rows = int(np.ceil(len(available_cols) / n_cols))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 3.5 * n_rows))
+    axes = np.array(axes).reshape(-1)
+
+    for idx, column in enumerate(available_cols):
+        axis = axes[idx]
+        numeric_values = _numeric_series(df[column]).dropna()
+
+        if numeric_values.empty:
+            axis.text(0.5, 0.5, "No numeric data", ha="center", va="center", fontsize=10)
+        else:
+            axis.hist(numeric_values, bins=30, color="#2563eb", edgecolor="#1e3a8a", alpha=0.85)
+            axis.set_ylabel("Frequency")
+
+        axis.set_title(column)
+        axis.grid(alpha=0.2)
+
+    for idx in range(len(available_cols), len(axes)):
+        axes[idx].axis("off")
+
+    fig.suptitle(title, fontsize=14)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=140)
+    plt.close(fig)
+
+
+def _plot_missingness(before_df: pd.DataFrame, after_df: pd.DataFrame, columns: list[str], output_path: Path) -> None:
+    available_cols = [col for col in columns if col in before_df.columns or col in after_df.columns]
+    if not available_cols:
+        return
+
+    before_missing = [
+        float(before_df[col].isna().mean() * 100.0) if col in before_df.columns else 100.0
+        for col in available_cols
+    ]
+    after_missing = [
+        float(after_df[col].isna().mean() * 100.0) if col in after_df.columns else 100.0
+        for col in available_cols
+    ]
+
+    x = np.arange(len(available_cols))
+    width = 0.36
+
+    fig, ax = plt.subplots(figsize=(max(8, len(available_cols) * 1.3), 4.8))
+    ax.bar(x - width / 2, before_missing, width=width, label="Before preprocessing", color="#f59e0b")
+    ax.bar(x + width / 2, after_missing, width=width, label="After preprocessing", color="#10b981")
+    ax.set_ylabel("Missing (%)")
+    ax.set_title("Missing value rate before vs after preprocessing")
+    ax.set_xticks(x)
+    ax.set_xticklabels(available_cols, rotation=30, ha="right")
+    ax.set_ylim(0, 100)
+    ax.legend()
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=140)
+    plt.close(fig)
+
+
+def _plot_correlation_heatmap(df: pd.DataFrame, columns: list[str], output_path: Path, title: str) -> None:
+    available_cols = [col for col in columns if col in df.columns]
+    if len(available_cols) < 2:
+        return
+
+    numeric_df = df[available_cols].apply(pd.to_numeric, errors="coerce")
+    corr = numeric_df.corr()
+
+    fig, ax = plt.subplots(figsize=(max(6, len(available_cols) * 1.1), max(5, len(available_cols) * 0.9)))
+    im = ax.imshow(corr.values, cmap="coolwarm", vmin=-1, vmax=1)
+    ax.set_xticks(range(len(available_cols)))
+    ax.set_yticks(range(len(available_cols)))
+    ax.set_xticklabels(available_cols, rotation=45, ha="right")
+    ax.set_yticklabels(available_cols)
+    ax.set_title(title)
+
+    for row in range(len(available_cols)):
+        for col in range(len(available_cols)):
+            value = corr.values[row, col]
+            if np.isnan(value):
+                continue
+            ax.text(col, row, f"{value:.2f}", ha="center", va="center", fontsize=8, color="#111827")
+
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="Correlation")
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=140)
+    plt.close(fig)
+
+
+def _plot_class_balance(target: pd.Series | np.ndarray, output_path: Path, title: str) -> None:
+    target_series = pd.Series(target)
+    counts = target_series.value_counts().sort_index()
+    if counts.empty:
+        return
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    bars = ax.bar(counts.index.astype(str), counts.values, color=["#64748b", "#ef4444"][: len(counts)])
+    ax.set_title(title)
+    ax.set_xlabel("Class")
+    ax.set_ylabel("Samples")
+    ax.grid(axis="y", alpha=0.25)
+
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2, height, f"{int(height)}", ha="center", va="bottom")
+
+    fig.tight_layout()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=140)
+    plt.close(fig)
+
+
+def _save_risk_visualizations(
+    before_df: pd.DataFrame,
+    after_df: pd.DataFrame,
+    transformed_df: pd.DataFrame,
+    target: pd.Series | np.ndarray,
+    out_dir: Path,
+    feature_cols: list[str],
+    before_cols: list[str],
+) -> None:
+    before_dir = out_dir / "before_preprocessing"
+    after_dir = out_dir / "after_preprocessing"
+
+    _plot_histograms(
+        before_df,
+        before_cols,
+        before_dir / "feature_histograms_before.png",
+        "Feature distributions before preprocessing",
+    )
+    _plot_correlation_heatmap(
+        before_df,
+        before_cols,
+        before_dir / "feature_correlation_before.png",
+        "Feature correlation before preprocessing",
+    )
+
+    _plot_histograms(
+        after_df,
+        feature_cols,
+        after_dir / "feature_histograms_after.png",
+        "Feature distributions after preprocessing",
+    )
+    _plot_correlation_heatmap(
+        after_df,
+        feature_cols,
+        after_dir / "feature_correlation_after.png",
+        "Feature correlation after preprocessing",
+    )
+    _plot_histograms(
+        transformed_df,
+        transformed_df.columns.tolist(),
+        after_dir / "scaled_feature_histograms_after.png",
+        "Scaled feature distributions after preprocessing pipeline",
+    )
+    _plot_missingness(before_df, after_df, feature_cols, out_dir / "missingness_before_after.png")
+    _plot_class_balance(target, out_dir / "target_class_balance.png", "Risk target class balance")
 
 
 def parse_duration_to_seconds(value: object) -> float:
@@ -80,7 +264,7 @@ def normalize_bool(series: pd.Series) -> pd.Series:
     )
 
 
-def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> pd.DataFrame:
+def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     tasks_path = raw_risk_dir / "tasks.csv"
     tasks_computed_path = raw_risk_dir / "tasks_computed.csv"
     declarations_path = raw_risk_dir / "declarations.csv"
@@ -161,6 +345,8 @@ def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> p
     )
 
     risk_df = task_base.merge(decl_agg, on="task_id", how="left")
+
+    preprocessed_snapshot = risk_df.copy()
 
     for col in [
         "declaration_count",
@@ -245,7 +431,7 @@ def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> p
     final_df = risk_df[final_columns].copy()
     processed_output.parent.mkdir(parents=True, exist_ok=True)
     final_df.to_csv(processed_output, index=False)
-    return final_df
+    return final_df, preprocessed_snapshot
 
 
 def parse_args() -> argparse.Namespace:
@@ -278,6 +464,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--random-state", type=int, default=42, help="Random seed.")
     parser.add_argument("--medium-threshold", type=float, default=0.45)
     parser.add_argument("--high-threshold", type=float, default=0.75)
+    parser.add_argument(
+        "--visualization-dir",
+        type=Path,
+        default=Path("reports") / "figures" / "risk",
+        help="Directory to save before/after preprocessing visualization images.",
+    )
     return parser.parse_args()
 
 
@@ -302,7 +494,7 @@ def main() -> None:
     args = parse_args()
     ensure_models_dir()
 
-    df = build_risk_training_dataset(args.raw_risk_dir, args.dataset)
+    df, before_snapshot = build_risk_training_dataset(args.raw_risk_dir, args.dataset)
 
     feature_cols = [col.strip() for col in args.feature_cols.split(",") if col.strip()]
 
@@ -322,6 +514,41 @@ def main() -> None:
 
     if len(np.unique(y)) < 2:
         raise ValueError("Target must include at least two classes.")
+
+    # Persist visual EDA snapshots for both pre-cleaned and post-preprocessed data.
+    scaled_input = x.copy()
+    preprocessing_only = Pipeline(
+        steps=[
+            (
+                "preprocessor",
+                ColumnTransformer(
+                    transformers=[
+                        (
+                            "numeric",
+                            Pipeline(
+                                steps=[
+                                    ("imputer", SimpleImputer(strategy="median")),
+                                    ("scaler", StandardScaler()),
+                                ]
+                            ),
+                            feature_cols,
+                        )
+                    ]
+                ),
+            )
+        ]
+    )
+    transformed_values = preprocessing_only.fit_transform(scaled_input)
+    transformed_df = pd.DataFrame(transformed_values, columns=feature_cols)
+    _save_risk_visualizations(
+        before_df=before_snapshot,
+        after_df=x,
+        transformed_df=transformed_df,
+        target=y,
+        out_dir=args.visualization_dir,
+        feature_cols=feature_cols,
+        before_cols=DEFAULT_PREPROCESSING_VIEW_COLUMNS,
+    )
 
     x_train, x_test, y_train, y_test = train_test_split(
         x,
@@ -406,6 +633,7 @@ def main() -> None:
         "macro_f1": macro_f1,
         "roc_auc": roc_auc,
         "risk_model_path": str(RISK_MODEL_PATH),
+        "visualization_dir": str(args.visualization_dir),
     }
     print(json.dumps(output, indent=2))
 

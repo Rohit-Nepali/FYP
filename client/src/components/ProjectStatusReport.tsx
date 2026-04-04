@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, ScrollView, RefreshControl } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { getProjectStatistics, ProjectStatistics } from "../services/projectService";
 import StatCard from "./UI/StatCard";
 import TaskStatusBreakdown from "./UI/TaskStatusBreakdown";
@@ -12,6 +13,7 @@ interface ProjectStatusReportProps {
 }
 
 export default function ProjectStatusReport({ projectId }: ProjectStatusReportProps) {
+  const router = useRouter();
   const [statistics, setStatistics] = useState<ProjectStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,13 +58,17 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
 
   const { overview, statusBreakdown, priorityBreakdown, assigneeBreakdown } = statistics;
 
+  const handleOpenTasks = (quickFilter: string) => {
+    router.push(`/projects/${projectId}/tasks?quickFilter=${encodeURIComponent(quickFilter)}`);
+  };
+
   const statCards = [
-    { title: "Total Tasks", value: overview.totalTasks, icon: "list-outline", color: "#60A5FA" },
-    { title: "Completed", value: overview.completedTasks, icon: "checkmark-circle-outline", color: "#10B981" },
-    { title: "In Progress", value: overview.inProgressTasks, icon: "hourglass-outline", color: "#3B82F6" },
-    { title: "Overdue", value: overview.overdueTasks, icon: "alert-circle-outline", color: "#EF4444" },
-    { title: "Unassigned", value: overview.unassignedTasks, icon: "person-outline", color: "#F59E0B" },
-    { title: "Due This Week", value: overview.tasksDueThisWeek, icon: "calendar-outline", color: "#8B5CF6" },
+    { title: "Total Tasks", value: overview.totalTasks, icon: "list-outline", color: "#60A5FA", quickFilter: "all" },
+    { title: "Completed", value: overview.completedTasks, icon: "checkmark-circle-outline", color: "#10B981", quickFilter: "completed" },
+    { title: "In Progress", value: overview.inProgressTasks, icon: "hourglass-outline", color: "#3B82F6", quickFilter: "in-progress" },
+    { title: "Overdue", value: overview.overdueTasks, icon: "alert-circle-outline", color: "#EF4444", quickFilter: "overdue" },
+    { title: "Unassigned", value: overview.unassignedTasks, icon: "person-outline", color: "#F59E0B", quickFilter: "unassigned" },
+    { title: "Due This Week", value: overview.tasksDueThisWeek, icon: "calendar-outline", color: "#8B5CF6", quickFilter: "due-this-week" },
   ] as const;
 
 
@@ -73,11 +79,11 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#60A5FA" />
       }
     >
-      <View className="space-y-4 pb-4">
+      <View className="pb-4">
         {/* Statistics Cards Grid */}
-        <View className="space-y-3 mb-2">
+        <View className="mb-6">
           <Text className="text-white font-semibold text-lg px-1">Overview</Text>
-          <View className="flex-row flex-wrap justify-between">
+          <View className="mt-3 flex-row flex-wrap justify-between">
             {statCards.map((card, i) => (
               <View key={i} className="w-[31%] mb-3">
                 <StatCard
@@ -85,6 +91,7 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
                   value={card.value}
                   icon={card.icon}
                   iconColor={card.color}
+                  onPress={() => handleOpenTasks(card.quickFilter)}
                 />
               </View>
             ))}
@@ -95,7 +102,7 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
             colors={["#2563EB", "#7C3AED"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            className="rounded-xl p-4 border border-gray-700 overflow-hidden"
+            className="mt-1 rounded-xl border border-gray-700 p-4 overflow-hidden"
           >
             <View className="flex-row items-center justify-between">
               <View>
@@ -120,19 +127,25 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
         </View>
 
         {/* Task Status Breakdown */}
-        <TaskStatusBreakdown
-          statusBreakdown={statusBreakdown}
-          totalTasks={overview.totalTasks}
-        />
+        <View className="mb-6">
+          <TaskStatusBreakdown
+            statusBreakdown={statusBreakdown}
+            totalTasks={overview.totalTasks}
+          />
+        </View>
 
         {/* Priority Distribution */}
-        <PriorityDistribution
-          priorityBreakdown={priorityBreakdown}
-          totalTasks={overview.totalTasks}
-        />
+        <View className="mb-6">
+          <PriorityDistribution
+            priorityBreakdown={priorityBreakdown}
+            totalTasks={overview.totalTasks}
+          />
+        </View>
 
         {/* Team Workload */}
-        <TeamWorkloadSection assigneeBreakdown={assigneeBreakdown} />
+        <View className="mt-4">
+          <TeamWorkloadSection assigneeBreakdown={assigneeBreakdown} />
+        </View>
       </View>
     </ScrollView>
   );

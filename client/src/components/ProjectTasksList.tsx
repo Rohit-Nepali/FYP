@@ -9,6 +9,7 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import TaskModal from "@/src/components/UI/modals/TaskModal";
+import { useAuth } from "@/src/contexts/AuthContext";
 import { getProjectById, Project } from "@/src/services/projectService";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
@@ -27,6 +28,7 @@ interface ProjectTasksListProps {
 
 export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -137,6 +139,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
   }
 
   const taskCount = project.tasks?.length || 0;
+  const isProjectOwner = project.ownerId === user?.id;
 
   // Extract project members for assignee selection
   const projectMembers = [
@@ -269,18 +272,25 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
         )}
       </View>
 
-      {/* Bottom bar with Add Task */}
-      <View className="mt-4 mb-8">
-        <TouchableOpacity
-          onPress={() => setModalVisible(true)}
-          className="bg-blue-600 rounded-xl py-3 flex-row items-center justify-center"
-        >
-          <Ionicons name="add-outline" size={18} color="#fff" />
-          <Text className="text-white font-semibold text-sm ml-2">
-            Add Task
+      {isProjectOwner ? (
+        <View className="mt-4 mb-8">
+          <TouchableOpacity
+            onPress={() => setModalVisible(true)}
+            className="bg-blue-600 rounded-xl py-3 flex-row items-center justify-center"
+          >
+            <Ionicons name="add-outline" size={18} color="#fff" />
+            <Text className="text-white font-semibold text-sm ml-2">
+              Add Task
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View className="mt-4 mb-8 rounded-xl border border-gray-700 bg-gray-900/60 px-4 py-3">
+          <Text className="text-center text-xs text-gray-500">
+            You are a project member. Tasks are view-only.
           </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
 
       {/* Create Task Modal */}
       <TaskModal

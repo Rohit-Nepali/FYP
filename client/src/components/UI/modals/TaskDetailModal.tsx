@@ -76,6 +76,7 @@ export default function TaskDetailModal({
   const [showAssigneePicker, setShowAssigneePicker] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingPriority, setUpdatingPriority] = useState(false);
+  const [updatingCompletion, setUpdatingCompletion] = useState(false);
   const [selectedAttachment, setSelectedAttachment] =
     useState<Attachment | null>(null);
   const [deletingAttachment, setDeletingAttachment] = useState(false);
@@ -89,19 +90,33 @@ export default function TaskDetailModal({
       ? insets.bottom + 16
       : (StatusBar.currentHeight ?? 0) + 16;
 
-  // Compute permissions
-  const permissions = task && user ? getTaskPermissions({
-    creatorId: task.creatorId,
-    assigneeId: task.assigneeId,
-    projectId: task.projectId,
-  }, user.id) : null;
+  // Compute permissions with optional project context when available from API.
+  const permissions =
+    task && user
+      ? getTaskPermissions(
+          {
+            creatorId: task.creatorId,
+            assigneeId: task.assigneeId,
+            projectId: task.projectId,
+            project: task.projectId
+              ? {
+                  ownerId: (task as any).project?.ownerId ?? "",
+                  members: projectMembers.map((member) => ({ userId: member.id })),
+                }
+              : null,
+          },
+          user.id
+        )
+      : null;
   
+  const canViewTask = permissions?.canView ?? false;
   const canEdit = permissions?.canEditTitle ?? false;
   const canDelete = permissions?.canDelete ?? false;
   const canManageAssignees = permissions?.canAssign ?? false;
   const canManageStatus = permissions?.canEditStatus ?? false;
+  const canMarkComplete = permissions?.canMarkComplete ?? false;
   const canComment = permissions?.canComment ?? false;
-  const canViewAttachments = permissions?.canUploadAttachment ?? false;
+  const canViewAttachments = permissions?.canView ?? false;
   const canUploadAttachments = permissions?.canUploadAttachment ?? false;
   const canDeleteAttachments = permissions?.canDeleteAnyAttachment ?? false;
 
@@ -181,6 +196,26 @@ export default function TaskDetailModal({
       showError("Failed to update priority");
     } finally {
       setUpdatingPriority(false);
+    }
+  };
+
+  const handleToggleCompletion = async () => {
+    if (!task) return;
+
+    if (!canMarkComplete) {
+      showError("You don't have permission to update completion status");
+      return;
+    }
+
+    try {
+      setUpdatingCompletion(true);
+      const nextCompleted = !Boolean(task.isCompleted);
+      await updateTask(task.id, { isCompleted: nextCompleted });
+      setTask({ ...task, isCompleted: nextCompleted });
+    } catch {
+      showError("Failed to update completion status");
+    } finally {
+      setUpdatingCompletion(false);
     }
   };
 
@@ -371,7 +406,7 @@ export default function TaskDetailModal({
                       <Text className="text-white font-semibold">Retry</Text>
                     </TouchableOpacity>
                   </View>
-                ) : task ? (
+                ) : task && canViewTask ? (
                   <ScrollView
                     className="flex-1 p-4"
                     contentContainerStyle={{ paddingBottom: 24 }}
@@ -382,6 +417,9 @@ export default function TaskDetailModal({
                         task={task}
                         isDone={isDone}
                         formatDate={formatDate}
+                        updatingCompletion={updatingCompletion}
+                        onToggleCompletion={handleToggleCompletion}
+                        canMarkComplete={canMarkComplete}
                         projectMembers={projectMembers}
                         showAssigneePicker={showAssigneePicker}
                         onToggleAssigneePicker={() =>
@@ -431,6 +469,24 @@ export default function TaskDetailModal({
                       />
                     )}
                   </ScrollView>
+                ) : task && !canViewTask ? (
+                  <View className="flex-1 justify-center items-center p-6">
+                    <View className="w-16 h-16 rounded-full bg-yellow-600/20 items-center justify-center mb-4">
+                      <Ionicons name="lock-closed-outline" size={36} color="#F59E0B" />
+                    </View>
+                    <Text className="text-white text-lg font-semibold text-center">
+                      Access restricted
+                    </Text>
+                    <Text className="text-gray-400 text-sm mt-2 text-center">
+                      You do not have permission to view this task.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={onClose}
+                      className="mt-6 bg-gray-700 px-6 py-3 rounded-xl"
+                    >
+                      <Text className="text-white font-semibold">Close</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : (
                   <View className="flex-1 justify-center items-center p-6">
                     <View className="w-16 h-16 rounded-full bg-red-600/20 items-center justify-center mb-4">

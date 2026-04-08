@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -10,6 +10,7 @@ interface StatCardProps {
   iconColor: string;
   bgColor?: string;
   gradient?: [string, string];
+  onPress?: () => void;
 }
 
 export default function StatCard({
@@ -19,6 +20,7 @@ export default function StatCard({
   iconColor,
   bgColor = "bg-gray-800",
   gradient,
+  onPress,
 }: StatCardProps) {
   // Convert hex color to rgb for opacity
   const hexToRgb = (hex: string) => {
@@ -47,7 +49,18 @@ export default function StatCard({
   );
 
   if (gradient) {
-    return (
+    return onPress ? (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.8} className="flex-1">
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="flex-1"
+        >
+          {content}
+        </LinearGradient>
+      </TouchableOpacity>
+    ) : (
       <LinearGradient
         colors={gradient}
         start={{ x: 0, y: 0 }}
@@ -59,7 +72,11 @@ export default function StatCard({
     );
   }
 
-  return (
+  return onPress ? (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} className="flex-1">
+      {content}
+    </TouchableOpacity>
+  ) : (
     <View className="flex-1">
       {content}
     </View>

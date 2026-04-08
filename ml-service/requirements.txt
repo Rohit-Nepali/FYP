@@ -6,5 +6,6 @@ pydantic
 numpy
 pandas
 scipy
+matplotlib
 pytest
 httpx

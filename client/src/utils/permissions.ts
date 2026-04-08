@@ -91,50 +91,11 @@ export function getTaskPermissions(
 
   // Project task permissions
   if (isProjectOwner) {
-    // Project owner has full access to all tasks
     return fullTaskPermissions();
   }
 
-  if (isTaskCreator) {
-    // Task creator (project member) can do everything except delete others' stuff
-    return {
-      canView: true,
-      canEditTitle: true,
-      canEditDescription: true,
-      canEditStatus: true,
-      canEditPriority: true,
-      canEditDueDate: true,
-      canAssign: true,
-      canDelete: true,
-      canMarkComplete: true,
-      canComment: true,
-      canUploadAttachment: true,
-      canDeleteOwnAttachment: true,
-      canDeleteAnyAttachment: false,
-    };
-  }
-
-  if (isTaskAssignee) {
-    // Assignee can only update status and mark complete
-    return {
-      canView: true,
-      canEditTitle: false,
-      canEditDescription: false,
-      canEditStatus: true,
-      canEditPriority: false,
-      canEditDueDate: false,
-      canAssign: false,
-      canDelete: false,
-      canMarkComplete: true,
-      canComment: true,
-      canUploadAttachment: true,
-      canDeleteOwnAttachment: true,
-      canDeleteAnyAttachment: false,
-    };
-  }
-
-  if (isProjectMember) {
-    // Regular member (not creator, not assignee) - read-only with comments
+  if (isTaskCreator || isTaskAssignee || isProjectMember) {
+    // Project members are view-only for task fields.
     return {
       canView: true,
       canEditTitle: false,

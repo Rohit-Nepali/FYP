@@ -16,6 +16,11 @@ const formatDate = (value: string) => {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
+const formatTrendDate = (value: string) => {
+  const date = new Date(value);
+  return date.toLocaleDateString("en-US", { weekday: "short" });
+};
+
 const toPercent = (value: number) => `${Math.round(value * 100)}%`;
 
 const MiniBars = ({
@@ -42,6 +47,82 @@ const MiniBars = ({
           />
         );
       })}
+    </View>
+  );
+};
+
+const CompletionTrendChart = ({
+  points,
+  max,
+}: {
+  points: Array<{ date: string; totalDue: number; completed: number }>;
+  max: number;
+}) => {
+  return (
+    <View>
+      <View className="flex-row items-end gap-1 h-28 pb-2">
+        {points.map((point) => {
+          const dueHeight = Math.max(4, Math.round(((max > 0 ? point.totalDue / max : 0) * 88)));
+          const completedHeight = Math.max(
+            4,
+            Math.round(((max > 0 ? point.completed / max : 0) * 88)
+          ));
+
+          return (
+            <View key={point.date} className="flex-1 items-center justify-end gap-1 min-w-[18px]">
+              <View className="w-full flex-row items-end justify-center gap-[2px] h-24">
+                <View
+                  className="flex-1 rounded-t-sm bg-slate-500/90"
+                  style={{ height: dueHeight }}
+                />
+                <View
+                  className="flex-1 rounded-t-sm bg-emerald-500"
+                  style={{ height: completedHeight }}
+                />
+              </View>
+              <Text className="text-gray-500 text-[10px] leading-3 text-center">
+                {formatTrendDate(point.date)}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const RiskTrendChart = ({
+  points,
+  max,
+}: {
+  points: Array<{ date: string; avgProbability: number }>;
+  max: number;
+}) => {
+  return (
+    <View>
+      <View className="flex-row items-end gap-1 h-28 pb-2">
+        {points.map((point) => {
+          const barHeight = Math.max(4, Math.round(((max > 0 ? point.avgProbability / max : 0) * 88)));
+          return (
+            <View key={point.date} className="flex-1 items-center justify-end gap-1 min-w-[18px]">
+              <View className="w-full h-24 flex justify-end">
+                <View
+                  className="w-full rounded-t-sm bg-orange-500"
+                  style={{ height: barHeight }}
+                />
+              </View>
+              <Text className="text-gray-500 text-[10px] leading-3 text-center">
+                {formatTrendDate(point.date)}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+
+      <View className="flex-row justify-between mt-1">
+        <Text className="text-gray-500 text-xs">Low</Text>
+        <Text className="text-gray-500 text-xs">High</Text>
+      </View>
     </View>
   );
 };
@@ -81,15 +162,16 @@ export default function InsightsScreen() {
 
   const completionChart = useMemo(() => {
     const trend = insights?.trends.completion || [];
-    const totals = trend.slice(-14).map((row) => row.totalDue);
-    const completed = trend.slice(-14).map((row) => row.completed);
-    return { totals, completed, max: Math.max(1, ...totals) };
+    const points = trend.slice(-14);
+    const values = points.flatMap((row) => [row.totalDue, row.completed]);
+    return { points, max: Math.max(1, ...values) };
   }, [insights]);
 
   const riskChart = useMemo(() => {
     const trend = insights?.trends.risk || [];
-    const probs = trend.slice(-14).map((row) => row.avgProbability);
-    return { probs, max: Math.max(0.01, ...probs) };
+    const points = trend.slice(-14);
+    const probs = points.map((row) => row.avgProbability);
+    return { points, max: Math.max(0.01, ...probs) };
   }, [insights]);
 
   const labelRows = useMemo(() => {
@@ -197,24 +279,53 @@ export default function InsightsScreen() {
             </View>
 
             <View className="bg-gray-800 rounded-xl p-4 mt-4">
-              <Text className="text-white font-semibold">Task Completion Trend</Text>
-              <Text className="text-gray-400 text-xs mt-1">Last 14 days due vs completed</Text>
+              <View className="flex-row items-start justify-between gap-3">
+                <View className="flex-1 pr-3">
+                  <Text className="text-white font-semibold">Task Completion Trend</Text>
+                  <Text className="text-gray-400 text-xs mt-1">
+                    Gray = tasks due, green = tasks completed
+                  </Text>
+                </View>
+                <View className="items-end gap-2">
+                  <View className="flex-row items-center gap-2">
+                    <View className="w-3 h-3 rounded-full bg-slate-500" />
+                    <Text className="text-gray-300 text-[11px]">Due</Text>
+                  </View>
+                  <View className="flex-row items-center gap-2">
+                    <View className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <Text className="text-gray-300 text-[11px]">Completed</Text>
+                  </View>
+                </View>
+              </View>
+
               <View className="mt-4">
-                <MiniBars data={completionChart.totals} color="#334155" max={completionChart.max} />
-                <View className="mt-1" />
-                <MiniBars data={completionChart.completed} color="#10B981" max={completionChart.max} />
+                <CompletionTrendChart points={completionChart.points} max={completionChart.max} />
+              </View>
+              <View className="mt-3 flex-row items-center justify-between">
+                <Text className="text-gray-500 text-xs">Older</Text>
+                <Text className="text-gray-500 text-xs">Newer</Text>
               </View>
             </View>
 
             <View className="bg-gray-800 rounded-xl p-4 mt-4">
-              <Text className="text-white font-semibold">Risk Probability Trend</Text>
-              <Text className="text-gray-400 text-xs mt-1">Average predicted risk (last 14 days)</Text>
-              <View className="mt-4">
-                <MiniBars data={riskChart.probs} color="#F97316" max={riskChart.max} />
-                <View className="flex-row justify-between mt-2">
-                  <Text className="text-gray-500 text-xs">0%</Text>
-                  <Text className="text-gray-500 text-xs">100%</Text>
+              <View className="flex-row items-start justify-between gap-3">
+                <View className="flex-1 pr-3">
+                  <Text className="text-white font-semibold">Risk Probability Trend</Text>
+                  <Text className="text-gray-400 text-xs mt-1">
+                    Average predicted risk over the last 14 days
+                  </Text>
                 </View>
+                <View className="items-end gap-2">
+                  <View className="flex-row items-center gap-2">
+                    <View className="w-3 h-3 rounded-full bg-orange-500" />
+                    <Text className="text-gray-300 text-[11px]">Avg risk</Text>
+                  </View>
+                  <Text className="text-gray-500 text-[10px]">0% to 100%</Text>
+                </View>
+              </View>
+
+              <View className="mt-4">
+                <RiskTrendChart points={riskChart.points} max={riskChart.max} />
               </View>
             </View>
 

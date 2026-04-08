@@ -23,10 +23,14 @@ import { Button } from "@/src/components/UI/Buttons";
 import {
   getAllProjects,
   Project,
+  ProjectStatus,
   createProject,
+  updateProject,
 } from "../../services/projectService";
 import BoardColumn from "@/src/components/Boards/BoardColumn";
 import BoardProjectCard from "@/src/components/Boards/BoardProjectCard";
+import { useAuth } from "@/src/contexts/AuthContext";
+import useAlert from "@/src/hooks/useAlert";
 
 // ---------- Types for view/filter/sort ----------
 
@@ -42,6 +46,8 @@ type SortOption =
 
 export default function Projects() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { showSuccess, showError, AlertComponent } = useAlert();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +62,9 @@ export default function Projects() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortOption, setSortOption] = useState<SortOption>("title_asc");
   const [sortModalVisible, setSortModalVisible] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [statusTargetProject, setStatusTargetProject] = useState<Project | null>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -115,9 +124,108 @@ export default function Projects() {
 
   // Make sure we always have a status value; default to "todo"
   const getStatus = (project: Project): "todo" | "in_progress" | "done" => {
-    const raw = (project as any).status ?? "todo";
+    const raw = project.status ?? "todo";
     if (raw === "in_progress" || raw === "done") return raw;
     return "todo";
+  };
+
+  const getStatusMeta = (status: ProjectStatus) => {
+    switch (status) {
+      case "in_progress":
+        return {
+          label: "In Progress",
+          tint: "#60A5FA",
+          border: "#2563EB40",
+          background: "rgba(37, 99, 235, 0.14)",
+        };
+      case "done":
+        return {
+          label: "Done",
+          tint: "#34D399",
+          border: "#10B98140",
+          background: "rgba(16, 185, 129, 0.14)",
+        };
+      case "todo":
+      default:
+        return {
+          label: "Todo",
+          tint: "#9CA3AF",
+          border: "#6B728040",
+          background: "rgba(107, 114, 128, 0.14)",
+        };
+    }
+  };
+
+  const statusOptions: Array<{
+    value: ProjectStatus;
+    label: string;
+    description: string;
+  }> = [
+    {
+      value: "todo",
+      label: "Todo",
+      description: "Move back to the backlog",
+    },
+    {
+      value: "in_progress",
+      label: "In Progress",
+      description: "Mark as actively being worked on",
+    },
+    {
+      value: "done",
+      label: "Done",
+      description: "Mark as completed",
+    },
+  ];
+
+  const openStatusModal = (project: Project) => {
+    if (project.ownerId !== user?.id) {
+      showError(
+        "I can't update the status of this project because it is not mine.",
+        "Status Update Unavailable"
+      );
+      return;
+    }
+
+    setStatusTargetProject(project);
+    setStatusModalVisible(true);
+  };
+
+  const handleProjectStatusUpdate = async (nextStatus: ProjectStatus) => {
+    if (!statusTargetProject || statusSaving) return;
+
+    if (statusTargetProject.status === nextStatus) {
+      setStatusModalVisible(false);
+      setStatusTargetProject(null);
+      return;
+    }
+
+    try {
+      setStatusSaving(true);
+      const updatedProject = await updateProject(statusTargetProject.id, {
+        status: nextStatus,
+      });
+
+      setProjects((prev) =>
+        prev.map((project) =>
+          project.id === updatedProject.id
+            ? { ...project, status: updatedProject.status }
+            : project,
+        ),
+      );
+
+      setStatusModalVisible(false);
+      setStatusTargetProject(null);
+      showSuccess(`Project moved to ${getStatusMeta(nextStatus).label}.`, "Project Updated");
+    } catch (err) {
+      console.error("Failed to update project status", err);
+      showError(
+        err instanceof Error ? err.message : "Failed to update project status",
+        "Project Update Failed",
+      );
+    } finally {
+      setStatusSaving(false);
+    }
   };
 
   // Filter by status
@@ -193,7 +301,10 @@ export default function Projects() {
           title={p.title}
           description={p.description || undefined}
           membersCount={p.members ? p.members.length : 0}
+          status={getStatus(p)}
+          canUpdateStatus={p.ownerId === user?.id}
           onPress={() => router.push(`/projects/${p.id}`)}
+          onStatusPress={() => openStatusModal(p)}
         />
       ))}
     </View>
@@ -218,7 +329,10 @@ export default function Projects() {
               title={p.title}
               description={p.description || undefined}
               membersCount={p.members ? p.members.length : 0}
+              status={getStatus(p)}
+              canUpdateStatus={p.ownerId === user?.id}
               onPress={() => router.push(`/projects/${p.id}`)}
+              onStatusPress={() => openStatusModal(p)}
             />
           ))}
         </BoardColumn>
@@ -234,7 +348,10 @@ export default function Projects() {
               title={p.title}
               description={p.description || undefined}
               membersCount={p.members ? p.members.length : 0}
+              status={getStatus(p)}
+              canUpdateStatus={p.ownerId === user?.id}
               onPress={() => router.push(`/projects/${p.id}`)}
+              onStatusPress={() => openStatusModal(p)}
             />
           ))}
         </BoardColumn>
@@ -250,7 +367,10 @@ export default function Projects() {
               title={p.title}
               description={p.description || undefined}
               membersCount={p.members ? p.members.length : 0}
+              status={getStatus(p)}
+              canUpdateStatus={p.ownerId === user?.id}
               onPress={() => router.push(`/projects/${p.id}`)}
+              onStatusPress={() => openStatusModal(p)}
             />
           ))}
         </BoardColumn>
@@ -458,6 +578,86 @@ export default function Projects() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={statusModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!statusSaving) {
+            setStatusModalVisible(false);
+            setStatusTargetProject(null);
+          }
+        }}
+      >
+        <View className="flex-1 bg-black/60 justify-center items-center px-5">
+          <View className="w-full max-w-[420px] rounded-2xl border border-gray-700 bg-gray-900 p-5">
+            <Text className="text-white text-lg font-bold">
+              Update Project Status
+            </Text>
+            <Text className="text-gray-400 text-sm mt-1">
+              {statusTargetProject?.title}
+            </Text>
+
+            <View className="mt-4 gap-3">
+              {statusOptions.map((option) => {
+                const active =
+                  statusTargetProject && getStatus(statusTargetProject) === option.value;
+                const meta = getStatusMeta(option.value);
+
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    disabled={statusSaving || active}
+                    onPress={() => handleProjectStatusUpdate(option.value)}
+                    className={`rounded-xl border px-4 py-3 ${active ? "bg-gray-800 border-gray-600" : "bg-gray-800/70 border-gray-700"}`}
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <View>
+                        <Text className="text-white font-semibold">
+                          {option.label}
+                        </Text>
+                        <Text className="text-gray-400 text-xs mt-0.5">
+                          {option.description}
+                        </Text>
+                      </View>
+                      <View
+                        className="rounded-full border px-2.5 py-1"
+                        style={{
+                          backgroundColor: meta.background,
+                          borderColor: meta.border,
+                        }}
+                      >
+                        <Text
+                          className="text-xs font-semibold"
+                          style={{ color: meta.tint }}
+                        >
+                          {active ? "Current" : "Move"}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Button
+              title={statusSaving ? "Updating..." : "Close"}
+              onPress={() => {
+                if (!statusSaving) {
+                  setStatusModalVisible(false);
+                  setStatusTargetProject(null);
+                }
+              }}
+              variant="secondary"
+              className="w-full mt-4"
+              disabled={statusSaving}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {AlertComponent}
 
       {/* Create Project Modal (unchanged) */}
       <Modal

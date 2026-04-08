@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import TaskModal from "@/src/components/UI/modals/TaskModal";
+import { useAuth } from "@/src/contexts/AuthContext";
 import { getProjectById, Project } from "@/src/services/projectService";
 import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
@@ -23,7 +24,8 @@ interface ProjectDetail extends Project {
 
 export default function ProjectTasks() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { user } = useAuth();
+  const { id, quickFilter } = useLocalSearchParams<{ id?: string; quickFilter?: string }>();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -93,6 +95,52 @@ export default function ProjectTasks() {
     });
   };
 
+  const startOfDay = (date: Date) => {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  };
+
+  const endOfWeek = (date: Date) => {
+    const normalized = new Date(date);
+    const day = normalized.getDay();
+    const offset = day === 0 ? 0 : 7 - day;
+    normalized.setDate(normalized.getDate() + offset);
+    normalized.setHours(23, 59, 59, 999);
+    return normalized;
+  };
+
+  const filteredTasks = useMemo(() => {
+    const allTasks = project?.tasks || [];
+    if (!quickFilter || quickFilter === "all") {
+      return allTasks;
+    }
+
+    const today = startOfDay(new Date());
+    const weekEnd = endOfWeek(today);
+
+    return allTasks.filter((task: any) => {
+      const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+
+      switch (quickFilter) {
+        case "completed":
+          return Boolean(task.isCompleted);
+        case "in-progress":
+          return !task.isCompleted;
+        case "overdue":
+          return Boolean(dueDate) && !task.isCompleted && startOfDay(dueDate as Date) < today;
+        case "unassigned":
+          return !task.assigneeId;
+        case "due-this-week":
+          if (!dueDate || task.isCompleted) return false;
+          const normalizedDue = startOfDay(dueDate);
+          return normalizedDue >= today && normalizedDue <= weekEnd;
+        default:
+          return true;
+      }
+    });
+  }, [project?.tasks, quickFilter]);
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-gray-900">
@@ -120,7 +168,9 @@ export default function ProjectTasks() {
     );
   }
 
-  const taskCount = project.tasks?.length || 0;
+  const taskCount = filteredTasks.length;
+  const totalTaskCount = project.tasks?.length || 0;
+  const isProjectOwner = project.ownerId === user?.id;
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
@@ -153,7 +203,9 @@ export default function ProjectTasks() {
               Tasks
             </Text>
             <Text className="text-gray-500 text-xs">
-              {taskCount} total
+              {quickFilter && quickFilter !== "all"
+                ? `${taskCount} shown / ${totalTaskCount} total`
+                : `${taskCount} total`}
             </Text>
           </View>
 
@@ -172,14 +224,14 @@ export default function ProjectTasks() {
               </Text>
             </View>
           ) : (
-            <View className="space-y-2">
-              {project.tasks!.slice(0, 10).map((task: any, index: number) => {
+            <View>
+              {filteredTasks.slice(0, 10).map((task: any, index: number) => {
                 const isDone = Boolean(task.isCompleted);
 
                 return (
                   <TouchableOpacity
                     key={task.id || index}
-                    className="flex-row items-center bg-gray-900/60 rounded-xl px-3 py-3"
+                    className="mb-2 flex-row items-center rounded-xl bg-gray-900/60 px-3 py-3"
                     onPress={() =>
                       task.id && router.push(`/tasks?taskId=${task.id}`)
                     }
@@ -236,15 +288,22 @@ export default function ProjectTasks() {
         </View>
       </ScrollView>
 
-      {/* Bottom bar with Add Task */}
-      <View className="border-t border-gray-800 bg-gray-900 px-4 py-3 mb-24">
-        <Button
-          title="Add Task"
-          onPress={() => setModalVisible(true)}
-          variant="primary"
-          icon="add-outline"
-        />
-      </View>
+      {isProjectOwner ? (
+        <View className="border-t border-gray-800 bg-gray-900 px-4 py-3 mb-24">
+          <Button
+            title="Add Task"
+            onPress={() => setModalVisible(true)}
+            variant="primary"
+            icon="add-outline"
+          />
+        </View>
+      ) : (
+        <View className="border-t border-gray-800 bg-gray-900 px-4 py-4 mb-24">
+          <Text className="text-center text-xs text-gray-500">
+            You can view project tasks. Only the project owner can edit them.
+          </Text>
+        </View>
+      )}
 
       {/* Create Task Modal */}
       <TaskModal

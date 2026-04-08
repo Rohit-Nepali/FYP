@@ -1,15 +1,26 @@
 import { google } from 'googleapis';
 import { prisma } from '../config/db.js';
 import { ApiError } from '../utils/error.utils.js';
-import { HTTP_STATUS, SUCCESS_MESSAGES } from '../utils/response.utils.js';
+import { ApiResponse, HTTP_STATUS, SUCCESS_MESSAGES } from '../utils/response.utils.js';
 
 // Create OAuth2 client
 const createOAuth2Client = () => {
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || undefined;
+
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
+    redirectUri
   );
+};
+
+const ensureGoogleOAuthConfigured = () => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    throw new ApiError(
+      'Google OAuth is not configured on the server. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in server/.env.',
+      HTTP_STATUS.INTERNAL_SERVER_ERROR
+    );
+  }
 };
 
 /**
@@ -18,27 +29,107 @@ const createOAuth2Client = () => {
 export const connectCalendarController = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { accessToken, refreshToken } = req.body;
+    const { accessToken, refreshToken, serverAuthCode } = req.body;
+
+    ensureGoogleOAuthConfigured();
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        email: true,
+        googleId: true,
+        googleRefreshToken: true,
+      },
+    });
+
+    if (!user) {
+      throw new ApiError('User not found', HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (!user.googleId) {
+      throw new ApiError(
+        'Google Calendar can only be connected by users signed in with Google.',
+        HTTP_STATUS.FORBIDDEN
+      );
+    }
+
+    const oauth2Client = createOAuth2Client();
+    let resolvedAccessToken = accessToken;
+    let resolvedRefreshToken = refreshToken || user.googleRefreshToken;
+
+    if (serverAuthCode) {
+      const configuredRedirectUri = process.env.GOOGLE_REDIRECT_URI;
+
+      try {
+
+        const tokenResponse = await oauth2Client.getToken(
+          configuredRedirectUri
+            ? { code: serverAuthCode, redirect_uri: configuredRedirectUri }
+            : { code: serverAuthCode, redirect_uri: 'postmessage' }
+        );
+
+        resolvedAccessToken = tokenResponse.tokens.access_token || resolvedAccessToken;
+        resolvedRefreshToken = tokenResponse.tokens.refresh_token || resolvedRefreshToken;
+      } catch (exchangeError) {
+        const message =
+          exchangeError?.response?.data?.error_description ||
+          exchangeError?.response?.data?.error ||
+          exchangeError?.message ||
+          'Unknown token exchange error';
+
+        console.error('❌ Google Auth Exchange Error:', {
+          message,
+          error: exchangeError?.response?.data,
+          redirectUri: configuredRedirectUri,
+        });
+
+        throw new ApiError(
+          `Failed to exchange Google server auth code (${message}). Check OAuth client type (Web), client secret, and redirect URI settings.`,
+          HTTP_STATUS.BAD_REQUEST
+        );
+      }
+    }
+
+    if (!resolvedRefreshToken) {
+      throw new ApiError(
+        'Could not obtain a Google refresh token. Please sign in with Google again and grant Calendar permissions.',
+        HTTP_STATUS.BAD_REQUEST
+      );
+    }
 
     // Update user with calendar tokens
     await prisma.user.update({
       where: { id: userId },
       data: {
-        googleRefreshToken: refreshToken,
+        googleRefreshToken: resolvedRefreshToken,
         calendarConnected: true,
       },
     });
 
     // Optionally verify the access token by making a test API call
-    const oauth2Client = createOAuth2Client();
     oauth2Client.setCredentials({
-      access_token: accessToken,
-      refresh_token: refreshToken,
+      access_token: resolvedAccessToken,
+      refresh_token: resolvedRefreshToken,
     });
 
     // Get user email from Google
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const userInfo = await oauth2.userinfo.get();
+
+    if (userInfo.data.email && userInfo.data.email !== user.email) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          calendarConnected: false,
+          googleRefreshToken: user.googleRefreshToken,
+        },
+      });
+
+      throw new ApiError(
+        'Selected Google account does not match your Taskora Google account.',
+        HTTP_STATUS.FORBIDDEN
+      );
+    }
 
     return ApiResponse.sendSuccessResponse(
       res,
@@ -104,7 +195,7 @@ export const getCalendarStatusController = async (req, res, next) => {
       );
     }
 
-    // Try to get user email (验证 token 是否有效)
+    // Try to get user email 
     try {
       const oauth2Client = createOAuth2Client();
       oauth2Client.setCredentials({

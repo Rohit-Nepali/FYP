@@ -22,6 +22,7 @@ export interface LoginResponse {
     role: string;
     profileImage?: string;
     createdAt: string;
+    googleId?: string;
   };
   accessToken: string;
   refreshToken: string;
@@ -35,6 +36,7 @@ interface RegisterResponse {
     role: string;
     emailVerified: boolean;
     createdAt: string;
+    googleId?: string;
   };
   requiresEmailVerification: boolean;
 }

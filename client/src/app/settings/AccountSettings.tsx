@@ -10,6 +10,7 @@ import { useAuth } from "@/src/contexts/AuthContext";
 export default function AccountSettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const isGoogleAccount = !!user?.googleId;
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
@@ -31,6 +32,14 @@ export default function AccountSettingsScreen() {
         <View className="bg-gray-800/80 rounded-xl p-6 border border-gray-700/50 mb-6">
           <Text className="text-gray-100 text-lg font-semibold mb-4">Profile Information</Text>
 
+          {isGoogleAccount && (
+            <View className="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+              <Text className="text-blue-200 text-xs font-semibold">
+                Email and password are managed by Google for this account.
+              </Text>
+            </View>
+          )}
+
           {/* Display Current Info */}
           <View className="mb-4">
             <View className="flex-row items-center">
@@ -42,6 +51,9 @@ export default function AccountSettingsScreen() {
               <View className="flex-1 justify-center">
                 <Text className="text-white font-semibold text-lg">{user?.name}</Text>
                 <Text className="text-gray-400 text-sm">{user?.email}</Text>
+                {isGoogleAccount && (
+                  <Text className="text-blue-300 text-xs mt-1">Google account</Text>
+                )}
               </View>
               {/* Edit button - redirects to EditProfile page */}
               <TouchableOpacity
@@ -62,19 +74,36 @@ export default function AccountSettingsScreen() {
         {/* Security Section */}
         <View className="bg-gray-800/80 rounded-xl border border-gray-700/50 mb-6">
           <TouchableOpacity
-            onPress={() => Alert.alert("Coming Soon", "Password reset feature coming soon")}
-            className="flex-row items-center justify-between px-4 py-3.5 border-b border-gray-700/30"
+            onPress={() => {
+              if (isGoogleAccount) {
+                Alert.alert("Google Account", "Password changes are managed through Google.");
+                return;
+              }
+
+              Alert.alert("Coming Soon", "Password reset feature coming soon");
+            }}
+            className={`flex-row items-center justify-between px-4 py-3.5 border-b border-gray-700/30 ${isGoogleAccount ? "opacity-70" : ""}`}
           >
             <View className="flex-row items-center">
               <View className="w-8 h-8 bg-gray-700/50 rounded-lg items-center justify-center mr-3">
                 <Ionicons name="key-outline" size={18} color="#9CA3AF" />
               </View>
               <View>
-                <Text className="text-gray-200 font-medium">Change Password</Text>
-                <Text className="text-gray-500 text-xs">Last changed 4 months ago</Text>
+                <Text className="text-gray-200 font-medium">
+                  {isGoogleAccount ? "Password managed by Google" : "Change Password"}
+                </Text>
+                <Text className="text-gray-500 text-xs">
+                  {isGoogleAccount
+                    ? "This action is disabled for Google sign-in accounts"
+                    : "Last changed 4 months ago"}
+                </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+            <Ionicons
+              name={isGoogleAccount ? "lock-closed" : "chevron-forward"}
+              size={20}
+              color="#6B7280"
+            />
           </TouchableOpacity>
 
           <TouchableOpacity

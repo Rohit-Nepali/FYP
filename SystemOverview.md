@@ -1,311 +1,336 @@
-1. High-Level Architecture
+## 1. High-Level Architecture
+
 The system consists of three interconnected layers:
 
-React Native Frontend (client) - User-facing interface
-Node.js/Express Backend (server) - Orchestration and business logic
-Python FastAPI ML Service (ml-service) - Model inference and training
-Flow Pattern:
+* **React Native Frontend (client)** - User-facing interface
+* **Node.js/Express Backend (server)** - Orchestration and business logic
+* **Python FastAPI ML Service (ml-service)** - Model inference and training
 
-Key API Endpoints:
+### Flow Pattern:
+*(Add flow details or diagrams here)*
 
-Endpoint	Method	Purpose	Called By
-/chatbot/message	POST	User chatbot interaction	Frontend
-/classify	POST	Text classification (ML Service)	Backend
-/predict-task-risk	POST	Task risk prediction (ML Service)	Backend
-/predictions/task-risk	POST	Create risk snapshot	Frontend
-/insights/user-behavior	GET	Behavior analytics	Frontend
+### Key API Endpoints
 
-2. Data Sources
-Classifier Dataset (Text + Labels)
-Location: classifier
-File: productivity_dataset_2.csv
-Structure: Text messages + 8 behavioral labels
-Labels: HIGH_MOTIVATION, CONSISTENT_PRODUCTIVITY, LOW_ENERGY, WORK_OVERLOAD, DISTRACTION, PROCRASTINATION, POOR_PLANNING, FORGETFULNESS
-Used for: Training text classifier (TF-IDF + Logistic Regression)
-Risk Prediction Dataset (Gryzzly Dataset)
-Location: risk
-Files:
-tasks.csv - Task metadata
-tasks_computed.csv - Computed task statistics
-declarations.csv - User activity declarations (time tracking)
-(Optional) projects.csv, users.csv, teams.csv - Context data
-Used for: Training task risk prediction model
-Live Data Sources (Database)
-Database: PostgreSQL via Prisma ORM
-Tables:
-UserBehaviorSignal - Stores classified chatbot messages + confidence
-Task - Task metadata (due dates, completion status)
-Activity - Task activity history (7-day windows used for feature engineering)
-3. Data Processing Pipeline
-Classifier Text Preprocessing (train_classifier.py)
-Pipeline Steps:
+| Endpoint | Method | Purpose | Called By |
+| :--- | :--- | :--- | :--- |
+| `/chatbot/message` | `POST` | User chatbot interaction | Frontend |
+| `/classify` | `POST` | Text classification (ML Service) | Backend |
+| `/predict-task-risk` | `POST` | Task risk prediction (ML Service) | Backend |
+| `/predictions/task-risk` | `POST` | Create risk snapshot | Frontend |
+| `/insights/user-behavior` | `GET` | Behavior analytics | Frontend |
 
-Load CSV (infer text/label columns automatically)
-Clean text with regex preprocessing
-Remove empty rows and invalid labels
-Stratified train/test split (default 80/20)
-TF-IDF vectorization (max 10,000 features, 1-2 grams, min_df=2)
-Store train/test metrics for validation
-Risk Model Feature Engineering (train_risk_model.py)
-Input Features (from Gryzzly data):
 
-is_completed - Task completion status
-due_in_days - Remaining time to deadline
-days_overdue - Days past deadline
-recent_activity_count - Activity in last 7 days
-behavior_risk_score - Aggregated behavior signal risk
-Feature Derivation:
+## 2. Data Sources
 
-Merge tasks.csv + tasks_computed.csv + declarations.csv
-Normalize duration fields (nanoseconds → seconds)
-Compute aggregations:
-recent_activity_count = declarations in last 7 days
-task_delay_days = (completion_date - created_at)
-completion_rate_project = completed / total in project
-Fill missing values with 0 (imputation)
-Standardize numeric features
-4. Model Training Pipeline
-Classifier Training (train_classifier.py)
-Command:
+### Classifier Dataset (Text + Labels)
+* **Location:** `classifier`
+* **File:** `productivity_dataset_2.csv`
+* **Structure:** Text messages + 8 behavioral labels
+* **Labels:** HIGH_MOTIVATION, CONSISTENT_PRODUCTIVITY, LOW_ENERGY, WORK_OVERLOAD, DISTRACTION, PROCRASTINATION, POOR_PLANNING, FORGETFULNESS
+* **Used for:** Training text classifier (TF-IDF + Logistic Regression)
 
-Training Details:
+### Risk Prediction Dataset (Gryzzly Dataset)
+* **Location:** `risk`
+* **Files:**
+  * `tasks.csv` - Task metadata
+  * `tasks_computed.csv` - Computed task statistics
+  * `declarations.csv` - User activity declarations (time tracking)
+  * *(Optional)* `projects.csv`, `users.csv`, `teams.csv` - Context data
+* **Used for:** Training task risk prediction model
 
-Vectorizer: TfidfVectorizer (1-2 grams, 10K features)
-Model: LogisticRegression (multinomial, balanced class weights)
-Evaluation: Accuracy + Macro F1-Score
-Output: taskora_classifier.pkl, taskora_tfidf.pkl
-Risk Model Training (train_risk_model.py)
-Command:
+### Live Data Sources (Database)
+* **Database:** PostgreSQL via Prisma ORM
+* **Tables:**
+  * `UserBehaviorSignal` - Stores classified chatbot messages + confidence
+  * `Task` - Task metadata (due dates, completion status)
+  * `Activity` - Task activity history (7-day windows used for feature engineering)
 
-Training Details:
 
-Model: LogisticRegression (with pipeline preprocessing)
-Features: 5 model-aligned features (see #3)
-Preprocessing: SimpleImputer + StandardScaler in pipeline
-Evaluation: Accuracy, F1-Score, ROC-AUC
-Output: taskora_risk_model.pkl, taskora_risk_preprocessor.pkl
-Validation & Metrics
-All metrics logged to models/model_metadata.json
-Tracks: dataset paths, classes, accuracy, F1, train/test samples, update timestamps
-5. Model Storage and Versioning
-Model Artifacts Location
-Path: models
-Files:
-taskora_classifier.pkl - Text classifier (LogisticRegression)
-taskora_tfidf.pkl - TF-IDF vectorizer
-taskora_risk_model.pkl - Task risk classifier (can be disabled)
-taskora_risk_preprocessor.pkl - Risk model preprocessing pipeline
-model_metadata.json - Training metadata and metrics
-Versioning & Fallback Mechanism
-The system implements environment-based versioning:
 
-Fallback Strategy:
+## 3. Data Processing Pipeline
 
-Classifier: Mandatory - fails if missing
-Risk Model: Optional - controlled by ML_RISK_MODEL_ENABLED=true
-Risk Fallback: If risk model fails, ML_RISK_FALLBACK_ENABLED=true triggers rule-based fallback
-Current Approach:
+### Classifier Text Preprocessing (`train_classifier.py`)
+**Pipeline Steps:**
 
-No explicit versioning (single "active" model per type)
-Models are hot-reloaded at FastAPI startup
-No A/B testing or canary deployment infrastructure
-6. Model Serving (Inference Layer)
-FastAPI Service (main.py)
-Startup:
+1. **Load CSV:** Infer text and label columns automatically.
+2. **Clean Text:** Apply regex preprocessing for noise reduction.
+3. **Data Cleaning:** Remove empty rows and filter for invalid labels.
+4. **Data Splitting:** Stratified train/test split (default 80/20).
+5. **TF-IDF Vectorization:** * Max 10,000 features
+   * 1-2 grams (unigrams and bigrams)
+   * `min_df=2`
+6. **Validation:** Store train/test metrics for performance tracking.
 
-Endpoint 1: /classify (POST)
-Request:
+---
 
-Processing:
+### Risk Model Feature Engineering (`train_risk_model.py`)
 
-Clean text using same clean_text() function as training
-Vectorize with TF-IDF
-Get class probabilities from LogisticRegression
-Return top class + confidence
-Response:
+#### Input Features (from Gryzzly data):
+* `is_completed` – Task completion status.
+* `due_in_days` – Remaining time until the deadline.
+* `days_overdue` – Number of days past the deadline.
+* `recent_activity_count` – Activity logs within the last 7 days.
+* `behavior_risk_score` – Aggregated risk from behavior signals.
 
-Fallback: Returns null if message empty or invalid labels
+#### Feature Derivation:
+1. **Merge Data:** Combine `tasks.csv` + `tasks_computed.csv` + `declarations.csv`.
+2. **Normalize Duration:** Convert time fields (nanoseconds → seconds).
+3. **Compute Aggregations:**
+   * `recent_activity_count`: Count of declarations in the last 7 days.
+   * `task_delay_days`: Calculated as `(completion_date - created_at)`.
+   * `completion_rate_project`: Ratio of `completed / total` tasks within the project.
+4. **Imputation:** Fill missing values with `0`.
+5. **Scaling:** Standardize numeric features for model stability.
 
-Endpoint 2: /predict-task-risk (POST)
-Request:
 
-Processing (Two Paths):
 
-Path A: Model-Based (if enabled)
+## 4. Model Training Pipeline
 
-Transform features through preprocessor pipeline
-Get probability from risk_model.predict_proba()
-Map probability to risk level using thresholds
-Path B: Fallback / Rule-Based
+### Classifier Training (`train_classifier.py`)
+**Command:**
+`python ml-service/train_classifier.py`
 
-If model disabled, ML_RISK_FALLBACK_ENABLED=true, or model fails
-Use weighted heuristics:
-Base: 0.15
-days_overdue > 0: +0.08 × days (max 0.45)
-due_in_days <= 2: +0.12
-recent_activity_count == 0: +0.20
-behavior_risk_score > 0: +0.25 × score
-Response:
+**Training Details:**
+* **Vectorizer:** `TfidfVectorizer` (1-2 grams, 10K features)
+* **Model:** `LogisticRegression` (Multinomial, balanced class weights)
+* **Evaluation:** Accuracy + Macro F1-Score
+* **Output Artifacts:** * `taskora_classifier.pkl`
+  * `taskora_tfidf.pkl`
 
-Configuration Thresholds:
+---
 
-ML_RISK_THRESHOLD_MEDIUM = 0.45 (default)
-ML_RISK_THRESHOLD_HIGH = 0.75 (default)
-Health Check Endpoint
-Returns status of all loaded models and fallback availability
+### Risk Model Training (`train_risk_model.py`)
+**Command:**
+`python ml-service/train_risk_model.py`
 
-7. Backend Integration
-Service Layer
-Two main integrations:
+**Training Details:**
+* **Model:** `LogisticRegression` (with Scikit-learn pipeline preprocessing)
+* **Features:** 5 model-aligned features (defined in Section 3)
+* **Preprocessing:** `SimpleImputer` + `StandardScaler` within the pipeline
+* **Evaluation:** Accuracy, F1-Score, ROC-AUC
+* **Output Artifacts:** * `taskora_risk_model.pkl`
+  * `taskora_risk_preprocessor.pkl`
 
-A. Chatbot Classification (mlClassification.service.js)
-Error Handling: Silently returns null on any ML service error
+---
 
-B. Task Risk Prediction (taskRiskPrediction.service.js)
-Data Storage
-UserBehaviorSignal Table (schema.prisma:165)
-Stores every classification result:
+### Validation & Metrics
+All metrics are automatically logged to `models/model_metadata.json` for version tracking.
 
-TaskRiskSnapshot Table (schema.prisma:320)
-Caches risk predictions per task per day:
+**Tracked Parameters:**
+* Dataset file paths
+* Target classes/labels
+* Performance metrics (Accuracy, F1)
+* Sample sizes (Train/Test split)
+* Last update timestamps
 
-Controller Layer (controllers)
-Chatbot Controller: Calls chatbot.service.js → detects intent → calls classifyMessage → stores UserBehaviorSignal
 
-Prediction Controller: Calls taskRiskPredictionService.predictTaskRisk() → returns risk prediction
+## 5. Model Storage and Versioning
 
-8. Frontend Integration
-Service Clients (services)
-Chatbot Service (chatbotService.ts)
-Returns: { reply, intent, classification }
+### Model Artifacts Location
+**Path:** `models/`
 
-Insights Service (insightsService.ts)
-Returns:
+| File | Description |
+| :--- | :--- |
+| `taskora_classifier.pkl` | Text classifier (LogisticRegression) |
+| `taskora_tfidf.pkl` | TF-IDF vectorizer |
+| `taskora_risk_model.pkl` | Task risk classifier (can be disabled) |
+| `taskora_risk_preprocessor.pkl` | Risk model preprocessing pipeline |
+| `model_metadata.json` | Training metadata and metrics |
 
-Summary (completion rate, dominant label, top missed weekday)
-Trends (completion, risk, labels by date)
-Insights (actionable recommendations)
-Metadata (cache status, timezone, generated timestamp)
-UI Display Locations
-Feature	Screen	Component
-Chatbot with classifications	chatbot.tsx	Chatbot conversation interface
-Behavior insights	insights.tsx	Charts + recommendations
-Task risk indicators	tasks.tsx	Visual risk badges on task list
-Risk snapshots	ProjectStatusReport, ProjectTasksList	Risk displays in project views
-9. End-to-End Flow (Step-by-Step)
-Flow A: Chatbot Classification Flow
-Flow B: Task Risk Prediction Flow
-10. Current Limitations / Gaps
-Data Pipeline Gaps
-No data validation at ingestion
+---
 
-CSV files can have inconsistent column names → relies on heuristic detection
-No schema validation before training
-No automated data quality checks (duplicates, outliers, missing patterns)
-Limited preprocessing
+### Versioning & Fallback Mechanism
+The system implements environment-based versioning and safety nets to ensure service availability.
 
-Text preprocessing is identical for training and inference (good!)
-But risk model preprocessing is optional (risk_preprocessor_path may not exist)
-No feature scaling consistency between training and inference
-No active data ingestion
+#### Fallback Strategy:
+* **Classifier:** **Mandatory** — The service will fail to initialize if this artifact is missing.
+* **Risk Model:** **Optional** — Controlled via the environment variable `ML_RISK_MODEL_ENABLED=true`.
+* **Risk Fallback:** If the risk model fails or is disabled, `ML_RISK_FALLBACK_ENABLED=true` triggers a rule-based heuristic fallback.
 
-Gryzzly dataset is static (training/raw/risk/)
-No mechanism to automatically add new task data to training pipeline
-No scheduled retraining process
-Model & Training Gaps
-Single model architecture
+#### Current Deployment Approach:
+> [!NOTE]
+> The current architecture uses a simplified deployment flow.
+* **Single Active Model:** No explicit versioning (only one "active" model per type is stored).
+* **Hot-Reloading:** Models are loaded into memory at FastAPI startup.
+* **Infrastructure Limits:** No current support for A/B testing or canary deployments.
 
-No ensemble methods or multiple model voting
-Logistic Regression is simple but may lack non-linear patterns
-Risk model not guaranteed to be trained (ML_RISK_MODEL_ENABLED defaults to false)
-No hyperparameter tuning
 
-Fixed hyperparameters in both train scripts
-No GridSearchCV or cross-validation for optimization
-Max-features (10K), test-size (0.2), random-state (42) hardcoded
-Missing model evaluation on test data
+## 6. Model Serving (Inference Layer)
 
-Metrics logged to metadata but no automated quality gates
-No A/B testing of model versions
-No drift detection (if production data distribution changes)
-Inference Gaps
-Risk model inference dependency
+### FastAPI Service (`main.py`)
+**Startup:**
+The service initializes by loading model artifacts from the `models/` directory into memory.
 
-Fallback mechanism exists but it's rule-based, not data-driven
-If model fails or is disabled, quality degrades to heuristics
-No confidence intervals or uncertainty quantification
-No real-time feedback loop
+---
 
-Predictions are cached per day but not validated against actual outcomes
-No feedback mechanism to detect when fallback outperforms model
-No retraining triggers based on degrading performance
-Frontend Integration Gaps
-Risk prediction not visible on main UI
+### Endpoint 1: `/classify` (POST)
+**Request:**
+Accepts raw text messages from the user chatbot.
 
-Risk predictions computed but Insights only shown in dedicated screen
-No at-glance risk indicators on task list by default
-Risk snapshots stored but not actively displayed during task management
-Missing model explainability
+**Processing:**
+1. **Sanitization:** Clean text using the same `clean_text()` utility function used during training.
+2. **Vectorization:** Transform cleaned text via the loaded TF-IDF vectorizer.
+3. **Inference:** Generate class probabilities using `LogisticRegression.predict_proba()`.
+4. **Ranking:** Extract the top-performing class and its associated confidence score.
 
-Backend returns top_factors but frontend doesn't prominently explain them
-User doesn't understand why a task is high-risk
-No feature importance visualization
-Storage & Monitoring Gaps
-No model versioning infrastructure
+**Response:**
+* Returns the predicted behavior label and confidence.
+* **Fallback:** Returns `null` if the message is empty or contains invalid labels.
 
-Only one "active" model per type
-No model registry, version control, or rollback capability
-ML_MODELS_DIR path is environment-based (fragile)
-No monitoring or logging
+---
 
-No metrics tracking (response times, prediction distributions, error rates)
-No alerting if ML service is down or models are stale
-Training metadata updated but no inference logging
-Database schema limitations
+### Endpoint 2: `/predict-task-risk` (POST)
+**Request:**
+Accepts task metadata and behavior signal scores.
 
-UserBehaviorSignal stores raw predictions but no model version info
-TaskRiskSnapshot source field is low-cardinality (on_demand vs scheduled)
-No audit trail of model changes affecting predictions
-11. Recommended Next Steps
-Phase 1: Short-term (Data & Quality)
-Implement data validation pipeline
+**Processing (Two-Path Logic):**
 
-Add JSON schema validation for input CSVs
-Automatic column detection with fallbacks
-Check for duplicates, missing values, outliers before training
-Log data quality metrics to model_metadata.json
-Add model evaluation gating
+#### Path A: Model-Based (Primary)
+*Activated if `ML_RISK_MODEL_ENABLED=true`*
+1. **Transform:** Pass raw features through the `taskora_risk_preprocessor` pipeline.
+2. **Predict:** Get probability scores from `taskora_risk_model`.
+3. **Categorize:** Map probabilities to risk levels using defined thresholds.
 
-Require minimum accuracy/F1 scores before saving models
-Auto-reject model if metrics degrade vs previous version
-Test on holdout validation set (not just train/test split)
-Implement active risk model training by default
+#### Path B: Fallback / Rule-Based (Secondary)
+*Activated if model is disabled, fails, or `ML_RISK_FALLBACK_ENABLED=true`*
+Uses weighted heuristics to calculate risk:
+* **Base Risk:** `0.15`
+* **Overdue:** `+0.08` per day (capped at `0.45`)
+* **Urgency:** `+0.12` if `due_in_days <= 2`
+* **Inactivity:** `+0.20` if `recent_activity_count == 0`
+* **Behavior:** `+0.25` multiplied by the `behavior_risk_score`
 
-Change ML_RISK_MODEL_ENABLED default to true
-Train risk model in the pipeline (not optional)
-Fall back to rules only if model training fails
-Add cross-validation
+**Response:**
+Returns a numerical `risk_score` and a categorical `risk_level` (Low, Medium, High).
 
-Phase 2: Medium-term (Inference & Monitoring)
-Implement model versioning
+---
 
-Timestamp-based model storage: /models/classifier_20260328_104532.pkl
-Maintain model registry: models/registry.json
-Store active version pointer
-Support model rollback if new version fails
-Add inference logging & monitoring
+### Configuration Thresholds
+The risk levels are determined by the following default environment variables:
+* **Medium Risk:** `0.45`
+* **High Risk:** `0.75`
 
-Log every prediction to inference.log (timestamp, input, output, latency, model_version)
-Track prediction distributions (drift detection)
-Alert if ML service latency > 500ms or error rate > 5%
-Implement feedback loop
+### Health Check Endpoint
+A dedicated endpoint that returns the operational status of all loaded models and indicates whether fallback mechanisms are currently active.
 
-Create API endpoint to log actual task outcomes
-After 30 days, mark task as missed/completed
-Compare prediction vs actual for accuracy audit
-Retrain on data with outcomes labeled
-Add model explainability
 
-For classifier: Return top contributing TF-IDF features
-For risk: Return feature importance from LogisticRegression coefficients
-expose explanation in API response and frontend
+## 7. Backend Integration
+
+### Service Layer
+The Node.js backend integrates with the ML service through two primary dedicated services:
+
+#### A. Chatbot Classification (`mlClassification.service.js`)
+* **Role:** Acts as the bridge between the Express controller and the FastAPI `/classify` endpoint.
+* **Error Handling:** Implements a "fail-silent" strategy—returns `null` on any ML service error to prevent interrupting the user chat experience.
+
+#### B. Task Risk Prediction (`taskRiskPrediction.service.js`)
+* **Role:** Orchestrates data gathering (Task + Activity) to send to the FastAPI `/predict-task-risk` endpoint.
+* **Optimization:** Handles the logic for choosing between the ML model and the rule-based fallback.
+
+---
+
+### Data Storage (Prisma ORM)
+
+#### `UserBehaviorSignal` Table (`schema.prisma:165`)
+Stores every classification result for historical analysis and feature engineering.
+* **Fields:** `id`, `userId`, `messageText`, `label`, `confidence`, `createdAt`.
+
+#### `TaskRiskSnapshot` Table (`schema.prisma:320`)
+Caches risk predictions per task per day to provide time-series insights.
+* **Fields:** `id`, `taskId`, `riskScore`, `riskLevel`, `snapshotDate`.
+
+---
+
+### Controller Layer (`controllers/`)
+
+* **Chatbot Controller:** 1. Receives message via `chatbot.service.js`.
+  2. Detects user intent.
+  3. Calls `classifyMessage` (ML).
+  4. Persists result in `UserBehaviorSignal`.
+
+* **Prediction Controller:** 1. Triggered by frontend or scheduled jobs.
+  2. Calls `taskRiskPredictionService.predictTaskRisk()`.
+  3. Returns final risk assessment to the client.
+
+
+## 8. Frontend Integration
+
+### Service Clients (`services/`)
+
+#### Chatbot Service (`chatbotService.ts`)
+* **Role:** Manages real-time communication with the Express backend.
+* **Output:** Returns a response object containing `{ reply, intent, classification }`.
+
+#### Insights Service (`insightsService.ts`)
+**Returns:**
+* **Summary:** Completion rate, dominant behavior label, and "top missed weekday" analytics.
+* **Trends:** Time-series data for task completion, risk fluctuations, and labels by date.
+* **Insights:** AI-generated actionable recommendations for the user.
+* **Metadata:** Cache status, timezone, and generation timestamps.
+
+---
+
+### UI Display Locations
+
+The frontend consumes ML data across several key screens to provide a cohesive user experience:
+
+| Feature Screen | Component | Description |
+| :--- | :--- | :--- |
+| **Chatbot** | `chatbot.tsx` | Interactive conversation interface displaying classifications. |
+| **Behavior Insights** | `insights.tsx` | Visual charts and productivity recommendations. |
+| **Task Risk Indicators** | `tasks.tsx` | Visual risk badges (Low/Med/High) displayed on the task list. |
+| **Risk Snapshots** | `ProjectStatusReport` | High-level risk displays within project management views. |
+
+## 9. End-to-End Flow (Step-by-Step)
+
+### Flow A: Chatbot Classification Flow
+This flow describes how user messages are transformed into behavioral insights.
+
+1.  **Frontend:** User types a message in `chatbot.tsx` and sends it to the Express backend.
+2.  **Backend (Controller):** `ChatbotController` receives the message and triggers `chatbot.service.js`.
+3.  **Backend (Service):** The service calls the Python ML Service `/classify` endpoint.
+4.  **ML Service (FastAPI):** * Preprocesses text (regex/cleaning).
+    * Runs TF-IDF vectorization.
+    * Predicts class probabilities using the Logistic Regression model.
+    * Returns the top label (e.g., `WORK_OVERLOAD`) and confidence score.
+5.  **Backend (Persistence):** The result is saved to the `UserBehaviorSignal` table via Prisma.
+6.  **Frontend (Display):** The chatbot UI displays the reply, and the classification is used to update the user's productivity insights.
+
+---
+
+### Flow B: Task Risk Prediction Flow
+This flow describes how task metadata and behavioral history are used to predict deadlines at risk.
+
+1.  **Frontend:** User opens the task list or project report (`tasks.tsx`).
+2.  **Backend (Service):** `taskRiskPrediction.service.js` gathers data for the specific task:
+    * Task metadata (due dates, status).
+    * Historical activity (7-day window).
+    * Aggregated `UserBehaviorSignal` scores.
+3.  **Backend (ML Call):** Data is POSTed to the `/predict-task-risk` endpoint.
+4.  **ML Service (FastAPI):**
+    * **Primary:** If enabled, the ML model processes features through the pipeline and returns a probability.
+    * **Secondary:** If the model is offline, the rule-based heuristic calculates a score based on overdue days and activity.
+5.  **Backend (Caching):** The result is stored in `TaskRiskSnapshot` to track risk trends over time.
+6.  **Frontend (Visual):** The UI renders a color-coded risk badge (e.g., a Red "High Risk" badge) next to the task.
+
+## 10. Current Limitations / Gaps
+
+### Data Pipeline Gaps
+* **Ingestion Validation:** No schema validation for input CSVs; column detection relies on heuristics which may fail if headers change.
+* **Preprocessing Inconsistency:** While text cleaning is synced, risk model scaling/preprocessing is optional and may lead to inconsistent inference if the preprocessor artifact is missing.
+* **Static Datasets:** The system uses static files (Gryzzly dataset) with no automated pipeline to ingest new production data for retraining.
+
+### Model & Training Gaps
+* **Simplistic Architecture:** Relies solely on Logistic Regression; lacks ensemble methods or non-linear pattern recognition (e.g., Random Forest or XGBoost).
+* **Optimization:** No hyperparameter tuning (GridSearchCV) or cross-validation; training uses hardcoded constants for features and splits.
+* **Quality Gates:** Metrics are logged but not enforced; models are saved even if accuracy drops significantly compared to previous versions.
+
+### Inference & Integration Gaps
+* **Heuristic Reliance:** The risk fallback is rule-based rather than data-driven, leading to degraded accuracy when the ML model is disabled.
+* **UI/UX Visibility:** Risk indicators are not yet integrated into the primary task list; "Explainability" is missing, so users don't know *why* a task is flagged as high-risk.
+* **Feedback Loop:** No mechanism to compare predicted risk vs. actual task outcomes to measure real-world precision.
+
+### Monitoring & Infrastructure Gaps
+* **Versioning:** No model registry or rollback capability; the system only supports one "active" model at a time.
+* **Observability:** Lack of telemetry for inference latency, prediction drift, or error rates.
+* **Schema Limits:** Database tables store predictions but fail to record which model version generated them.

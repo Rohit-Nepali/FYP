@@ -166,6 +166,7 @@ export default function LoginScreen() {
         role: 'user', // Default role for Google sign-in users
         profileImage: result.user.picture,
         createdAt: new Date().toISOString(),
+        googleId: result.googleId,
       });
       router.replace("/");
     } catch (error: any) {

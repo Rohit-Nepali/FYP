@@ -22,6 +22,7 @@ import { resolveFileUrl } from "@/src/utils/url";
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user, setUserFromGoogle } = useAuth();
+  const isGoogleAccount = !!user?.googleId;
 
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
@@ -40,7 +41,9 @@ export default function EditProfileScreen() {
 
   // Check if there are any changes
   const hasChanges =
-    name !== originalName || email !== originalEmail || password.trim() !== "";
+    name !== originalName ||
+    (!isGoogleAccount && email !== originalEmail) ||
+    (!isGoogleAccount && password.trim() !== "");
 
   const handlePickAvatar = async () => {
     try {
@@ -70,6 +73,7 @@ export default function EditProfileScreen() {
           role: updatedUser.role,
           profileImage: updatedUser.profileImage,
           createdAt: updatedUser.createdAt,
+          googleId: updatedUser.googleId ?? user?.googleId,
         });
 
         Alert.alert("Success", "Profile image updated successfully!");
@@ -90,11 +94,16 @@ export default function EditProfileScreen() {
     }
     setSaving(true);
     try {
-      // Call the API to update profile
-      const updatedUser = await updateProfile({
+      const profileUpdatePayload: { name: string; email?: string } = {
         name: name.trim(),
-        email: email.trim(),
-      });
+      };
+
+      if (!isGoogleAccount) {
+        profileUpdatePayload.email = email.trim();
+      }
+
+      // Call the API to update profile
+      const updatedUser = await updateProfile(profileUpdatePayload);
 
       // Update AuthContext with the new user data
       setUserFromGoogle({
@@ -104,6 +113,7 @@ export default function EditProfileScreen() {
         role: updatedUser.role,
         profileImage: updatedUser.profileImage,
         createdAt: updatedUser.createdAt,
+        googleId: updatedUser.googleId ?? user?.googleId,
       });
 
       Alert.alert("Success", "Profile updated successfully!");
@@ -134,6 +144,13 @@ export default function EditProfileScreen() {
       >
         <View className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-6">
           <View className="items-center mb-6">
+            {isGoogleAccount && (
+              <View className="mb-3 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1">
+                <Text className="text-blue-300 text-xs font-semibold">
+                  Google-managed account
+                </Text>
+              </View>
+            )}
             {/* Avatar with gradient and camera overlay - matching Profile screen style */}
             <View className="relative mb-3">
               {localAvatarUri ? (
@@ -174,7 +191,7 @@ export default function EditProfileScreen() {
           {/* Email - Read-only with lock icon */}
           <Text className="text-gray-400 text-sm mb-1">Email</Text>
           <View
-            className={`bg-gray-700 rounded-lg px-4 py-3 mb-4 border ${focusedField === "email" ? "border-blue-500" : "border-transparent"} flex-row items-center`}
+            className={`bg-gray-700 rounded-lg px-4 py-3 mb-2 border ${focusedField === "email" && !isGoogleAccount ? "border-blue-500" : "border-transparent"} flex-row items-center ${isGoogleAccount ? "opacity-70" : ""}`}
           >
             <TextInput
               value={email}
@@ -182,21 +199,22 @@ export default function EditProfileScreen() {
               placeholderTextColor="#6B7280"
               keyboardType="email-address"
               autoCapitalize="none"
-              editable={false}
+              editable={!isGoogleAccount}
               onFocus={() => setFocusedField("email")}
               onBlur={() => setFocusedField(null)}
-              className="flex-1 text-white opacity-60"
+              className={`flex-1 text-white ${isGoogleAccount ? "opacity-60" : ""}`}
             />
             <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
           </View>
-
           {/* Password */}
           <Text className="text-gray-400 text-sm mb-1">New Password</Text>
           <Text className="text-gray-500 text-xs mb-2">
-            Leave blank to keep your current password.
+            {isGoogleAccount
+              ? "Email and password are disabled for Google accounts."
+              : "Leave blank to keep your current password."}
           </Text>
           <View
-            className={`bg-gray-700 rounded-lg px-4 py-3 mb-6 border ${focusedField === "password" ? "border-blue-500" : "border-transparent"} flex-row items-center`}
+            className={`bg-gray-700 rounded-lg px-4 py-3 mb-6 border ${focusedField === "password" && !isGoogleAccount ? "border-blue-500" : "border-transparent"} flex-row items-center ${isGoogleAccount ? "opacity-70" : ""}`}
           >
             <TextInput
               value={password}
@@ -204,13 +222,15 @@ export default function EditProfileScreen() {
               placeholder="Enter new password"
               placeholderTextColor="#6B7280"
               secureTextEntry={!showPassword}
+              editable={!isGoogleAccount}
               onFocus={() => setFocusedField("password")}
               onBlur={() => setFocusedField(null)}
-              className="flex-1 text-white"
+              className={`flex-1 text-white ${isGoogleAccount ? "opacity-60" : ""}`}
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
-              className="p-1"
+              disabled={isGoogleAccount}
+              className={`p-1 ${isGoogleAccount ? "opacity-40" : ""}`}
             >
               <Ionicons
                 name={showPassword ? "eye-outline" : "eye-off-outline"}
@@ -219,6 +239,20 @@ export default function EditProfileScreen() {
               />
             </TouchableOpacity>
           </View>
+
+          {isGoogleAccount && (
+            <View className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex-row items-start">
+              <Ionicons
+                name="alert-circle-outline"
+                size={18}
+                color="#F87171"
+                style={{ marginTop: 1 }}
+              />
+              <Text className="ml-2 flex-1 text-red-200 text-sm leading-5">
+                You are a Google user. You can't update your email or password here.
+              </Text>
+            </View>
+          )}
 
           <Button
             title="Save Changes"

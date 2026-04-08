@@ -10,8 +10,8 @@ import {
   ScrollView,
   Image,
   Linking,
+  Dimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Status, createStatus } from "../../../services/statusService";
 import { Priority, createPriority } from "../../../services/priorityService";
@@ -21,7 +21,13 @@ import * as DocumentPicker from "expo-document-picker";
 import { Task, uploadAttachments } from "@/src/services/taskService";
 import useAlert from "@/src/hooks/useAlert";
 import { resolveFileUrl } from "@/src/utils/url";
+import { LinearGradient } from "expo-linear-gradient";
+import { AddChip, RowDivider, RowIcon, SelectionChip } from "@/src/components/common";
+import MiniInputModal from "@/src/components/modals/MiniInputModal";
+import { APP_THEME } from "@/src/constants/theme";
+import { chipDotColor, COLORS } from "@/src/utils";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface InitialValues {
   title?: string;
   description?: string;
@@ -43,10 +49,8 @@ interface Props {
   }) => Promise<Task>;
   initialValues?: InitialValues;
   statuses: Status[];
-  // setStatuses: (s: Status[]) => void;
   setStatuses: React.Dispatch<React.SetStateAction<Status[]>>;
   priorities: Priority[];
-  // setPriorities: (p: Priority[]) => void;
   setPriorities: React.Dispatch<React.SetStateAction<Priority[]>>;
   projectId?: string;
   projectMembers?: Array<{
@@ -64,6 +68,29 @@ interface Attachment {
   mimeType?: string;
 }
 
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+const TASK_MODAL_MAX_HEIGHT_RATIO = 0.85;
+
+const getStartOfToday = () => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const setToEndOfDay = (date: Date) => {
+  const normalized = new Date(date);
+  normalized.setHours(23, 59, 59, 999);
+  return normalized;
+};
+
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// ─── TaskModal ────────────────────────────────────────────────────────────────
 export default function TaskModal({
   visible,
   onClose,
@@ -76,6 +103,8 @@ export default function TaskModal({
   projectId,
   projectMembers = [],
 }: Props) {
+
+
   const [title, setTitle] = useState(initialValues?.title || "");
   const [description, setDescription] = useState(initialValues?.description || "");
   const [statusId, setStatusId] = useState<string>(initialValues?.statusId || "");
@@ -85,7 +114,6 @@ export default function TaskModal({
     initialValues?.dueDate ? new Date(initialValues.dueDate) : null
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
-
   const [saving, setSaving] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [priorityModalVisible, setPriorityModalVisible] = useState(false);
@@ -97,7 +125,6 @@ export default function TaskModal({
   const [creatingPriority, setCreatingPriority] = useState(false);
   const wasVisibleRef = useRef(false);
 
-  // Use custom alert hook
   const { showError, showSuccess, showValidationError, hideAlert, AlertComponent } = useAlert();
 
   useEffect(() => {
@@ -111,7 +138,6 @@ export default function TaskModal({
       setPriorityId(initialValues?.priorityId || "");
       setAssigneeId(initialValues?.assigneeId);
       setDueDate(initialValues?.dueDate ? new Date(initialValues.dueDate) : null);
-
       setAttachments([]);
       setPreviewAttachment(null);
       hideAlert();
@@ -141,32 +167,18 @@ export default function TaskModal({
 
   const handlePickAttachment = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        multiple: true,
-        copyToCacheDirectory: true,
-      });
-
+      const result = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
       if (!result.canceled) {
-        const files = result.assets.map((file) => ({
-          uri: file.uri,
-          name: file.name,
-          size: file.size,
-          mimeType: file.mimeType,
-        }));
-
-        setAttachments((prev) => [...prev, ...files]);
+        setAttachments((prev) => [
+          ...prev,
+          ...result.assets.map((f) => ({ uri: f.uri, name: f.name, size: f.size, mimeType: f.mimeType })),
+        ]);
       }
-    } catch (err) {
-      showError("Failed to pick file");
-    }
+    } catch { showError("Failed to pick file"); }
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      showValidationError("Please enter a task title");
-      return;
-    }
-
+    if (!title.trim()) { showValidationError("Please enter a task title"); return; }
     try {
       setSaving(true);
       const task = await onSave({
@@ -176,125 +188,91 @@ export default function TaskModal({
         ...(priorityId ? { priorityId } : {}),
         dueDate: dueDate ? dueDate.toISOString() : undefined,
       });
-
-      //upload attachments logic can be added here
-      if (attachments.length > 0 && task?.id) {
-        await uploadAttachments(task.id, attachments);
-      }
-
+      if (attachments.length > 0 && task?.id) await uploadAttachments(task.id, attachments);
       onClose();
     } catch (err) {
       showError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handleOpenAttachment = async () => {
-    if (!previewAttachment?.uri) {
-      return;
-    }
-
-    try {
-      await Linking.openURL(previewAttachment.uri);
-    } catch {
-      showError("Failed to open attachment");
-    }
+    if (!previewAttachment?.uri) return;
+    try { await Linking.openURL(previewAttachment.uri); }
+    catch { showError("Failed to open attachment"); }
   };
 
   const handleCreateStatus = async () => {
-    if (creatingStatus) {
-      return;
-    }
-
-    if (!newStatusName.trim()) {
-      showValidationError("Status name is required");
-      return;
-    }
-
+    if (creatingStatus) return;
+    if (!newStatusName.trim()) { showValidationError("Status name is required"); return; }
     try {
       setCreatingStatus(true);
-      const newStatus = await createStatus(projectId, { name: newStatusName.trim() });
-      setStatuses((prev) => [...prev, newStatus]);
-      setStatusId(newStatus.id);
+      const newS = await createStatus(projectId, { name: newStatusName.trim() });
+      setStatuses((prev) => [...prev, newS]);
+      setStatusId(newS.id);
       setStatusModalVisible(false);
       setNewStatusName("");
       showSuccess("Status added!");
-    } catch (err) {
-      showError("Failed to create status");
-    } finally {
-      setCreatingStatus(false);
-    }
+    } catch { showError("Failed to create status"); }
+    finally { setCreatingStatus(false); }
   };
 
   const handleCreatePriority = async () => {
-    if (creatingPriority) {
-      return;
-    }
-
-    if (!newPriorityName.trim()) {
-      showValidationError("Priority name is required");
-      return;
-    }
-
+    if (creatingPriority) return;
+    if (!newPriorityName.trim()) { showValidationError("Priority name is required"); return; }
     try {
       setCreatingPriority(true);
-      const newPriority = await createPriority(projectId, { name: newPriorityName.trim() });
-      setPriorities((prev) => [...prev, newPriority]);
-      setPriorityId(newPriority.id);
+      const newP = await createPriority(projectId, { name: newPriorityName.trim() });
+      setPriorities((prev) => [...prev, newP]);
+      setPriorityId(newP.id);
       setPriorityModalVisible(false);
       setNewPriorityName("");
       showSuccess("Priority added!");
-    } catch (err) {
-      showError("Failed to create priority");
-    } finally {
-      setCreatingPriority(false);
-    }
-  };;
+    } catch { showError("Failed to create priority"); }
+    finally { setCreatingPriority(false); }
+  };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View className="flex-1 justify-end bg-black/50">
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
+      <View className={`flex-1 justify-end bg-black/40`}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
-          className="max-h-[80%]"
+          // className="max-h-[85%]"
         >
-          <LinearGradient colors={["#1F2937", "#111827"]} className="rounded-t-2xl overflow-hidden p-4">
-            <View className="flex-row items-center justify-between mb-6">
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="add-circle" size={24} color="#60A5FA" />
-                <Text className="text-2xl font-bold text-white">New Task</Text>
-              </View>
-              <TouchableOpacity onPress={onClose}>
-                <Ionicons name="close-circle" size={28} color="#9CA3AF" />
+          <LinearGradient
+            colors={[APP_THEME.colors.surfaceAlt, APP_THEME.colors.bg]}
+            className=" overflow-hidden rounded-t-[20px] border-x border-t border-[#4B5563] "
+            style={{ maxHeight: SCREEN_HEIGHT * TASK_MODAL_MAX_HEIGHT_RATIO }}
+          >
+
+            {/* Header */}
+            <View className="flex-row items-center justify-between border-b border-[#374151] px-[18px] pb-[14px] pt-[18px]">
+              <Text className="text-base font-bold text-[#F3F4F6]">New Task</Text>
+              <TouchableOpacity
+                onPress={onClose}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                className="h-7 w-7 items-center justify-center rounded-full border border-[#4B5563] bg-[#374151]"
+              >
+                <Ionicons name="close" size={15} color={COLORS.textSub} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView>
-              <View className="mb-4">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <Ionicons name="document-text-outline" size={16} color="#60A5FA" />
-                  <Text className="text-gray-300 font-medium">Title *</Text>
-                </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }}>
+
+              {/* Title + Description — single card, no label overhead */}
+              <View className="mb-[14px] mt-[14px] mx-[18px] overflow-hidden rounded-xl border border-[#4B5563] bg-[#374151]">
                 <TextInput
-                  className="bg-gray-800 rounded-lg px-4 py-3 text-gray-200 border border-gray-700"
-                  placeholder="Enter task title"
-                  placeholderTextColor="#6B7280"
+                  className="px-[14px] pb-[10px] pt-3 text-[15px] font-semibold text-[#F3F4F6]"
+                  placeholder="Task title"
+                  placeholderTextColor={COLORS.textMuted}
                   value={title}
                   onChangeText={setTitle}
                   editable={!saving}
                 />
-              </View>
-
-              <View className="mb-4">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <Ionicons name="chatbox-outline" size={16} color="#60A5FA" />
-                  <Text className="text-gray-300 font-medium">Description</Text>
-                </View>
+                <View className="mx-[14px] h-px bg-[#4B5563]" />
                 <TextInput
-                  className="bg-gray-800 rounded-lg px-4 py-3 text-gray-200 border border-gray-700 min-h-[80px]"
-                  placeholder="Add optional description..."
-                  placeholderTextColor="#6B7280"
+                  className="min-h-[52px] px-[14px] pb-3 pt-[10px] text-[13px] text-[#9CA3AF]"
+                  placeholder="Description (optional)"
+                  placeholderTextColor={COLORS.textMuted}
                   value={description}
                   onChangeText={setDescription}
                   multiline
@@ -303,361 +281,267 @@ export default function TaskModal({
                 />
               </View>
 
-              <View className="mb-4">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <Ionicons name="flag-outline" size={16} color="#60A5FA" />
-                  <Text className="text-gray-300 font-medium">
-                    Status{projectId ? " *" : ""}
-                  </Text>
-                </View>
-                <View className="flex-row flex-wrap gap-2 mb-2">
-                  {statuses.map((status) => (
-                    <TouchableOpacity
-                      key={status.id}
-                      onPress={() => setStatusId(status.id)}
-                      className={`px-4 py-2 rounded-lg border-2 ${statusId === status.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
-                        }`}
-                    >
-                      <Text className={`text-sm font-medium ${statusId === status.id ? "text-white" : "text-gray-300"}`}>
-                        {status.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+              <RowDivider />
 
-                  <TouchableOpacity
-                    onPress={() => setStatusModalVisible(true)}
-                    disabled={saving || creatingStatus}
-                    className="px-4 py-2 rounded-lg border-2 border-dashed border-gray-600 items-center"
-                  >
-                    <Ionicons name="add-outline" size={16} color="#60A5FA" />
-                    <Text className="text-sm text-gray-400 ml-1">Add New</Text>
-                  </TouchableOpacity>
-                </View>
+              {/* Status */}
+              <View className="flex-row items-center gap-3 px-[18px] py-[13px]">
+                <RowIcon name="flag-outline" />
+                <Text className="flex-1 text-[13px] font-medium text-[#F3F4F6]">Status{projectId ? " *" : ""}</Text>
+              </View>
+              <View className="flex-row flex-wrap gap-[6px] pb-[14px] pl-[58px] pr-[18px]">
+                {statuses.map((st) => (
+                  <SelectionChip
+                    key={st.id}
+                    label={st.name}
+                    selected={statusId === st.id}
+                    onPress={() => setStatusId(st.id)}
+                    disabled={saving}
+                    dotColor={chipDotColor(st.name)}
+                  />
+                ))}
+                <AddChip onPress={() => setStatusModalVisible(true)} disabled={saving || creatingStatus} />
               </View>
 
-              <View className="mb-6">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <Ionicons name="alert-circle-outline" size={16} color="#60A5FA" />
-                  <Text className="text-gray-300 font-medium">
-                    Priority{projectId ? " *" : ""}
-                  </Text>
-                </View>
-                <View className="flex-row flex-wrap gap-2 mb-2">
-                  {priorities.map((priority) => (
-                    <TouchableOpacity
-                      key={priority.id}
-                      onPress={() => setPriorityId(priority.id)}
-                      className={`px-4 py-2 rounded-lg border-2 ${priorityId === priority.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
-                        }`}
-                    >
-                      <Text className={`text-sm font-medium ${priorityId === priority.id ? "text-white" : "text-gray-300"}`}>
-                        {priority.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+              <RowDivider />
 
-                  <TouchableOpacity
-                    onPress={() => setPriorityModalVisible(true)}
-                    disabled={saving || creatingPriority}
-                    className="px-4 py-2 rounded-lg border-2 border-dashed border-gray-600 items-center"
-                  >
-                    <Ionicons name="add-outline" size={16} color="#60A5FA" />
-                    <Text className="text-sm text-gray-400 ml-1">Add New</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Assignee Selection */}
-                {projectMembers && projectMembers.length > 0 && (
-                  <View className="mb-4">
-                    <View className="flex-row items-center gap-2 mb-2">
-                      <Ionicons name="person-outline" size={16} color="#60A5FA" />
-                      <Text className="text-gray-300 font-medium">Assignee</Text>
-                    </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
-                      {/* Unassigned Option */}
-                      <TouchableOpacity
-                        onPress={() => setAssigneeId(undefined)}
-                        className={`px-4 py-2 rounded-lg border-2 items-center justify-center min-w-[80px] ${!assigneeId ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
-                          }`}
-                      >
-                        <Ionicons name="person-remove-outline" size={20} color={!assigneeId ? "#fff" : "#9CA3AF"} />
-                        <Text className={`text-xs mt-1 ${!assigneeId ? "text-white" : "text-gray-400"}`}>
-                          Unassigned
-                        </Text>
-                      </TouchableOpacity>
-
-                      {/* Project Members */}
-                      {projectMembers.map((member) => (
-                        <TouchableOpacity
-                          key={member.id}
-                          onPress={() => setAssigneeId(member.id)}
-                          className={`px-3 py-2 rounded-lg border-2 items-center min-w-[80px] ${assigneeId === member.id ? "bg-blue-600 border-blue-400" : "bg-gray-800 border-gray-700"
-                            }`}
-                        >
-                          {member.profileImage ? (
-                            <Image
-                              source={{ uri: resolveFileUrl(member.profileImage) }}
-                              className="w-10 h-10 rounded-full mb-1"
-                            />
-                          ) : (
-                            <View className="w-10 h-10 rounded-full bg-gray-700 items-center justify-center mb-1">
-                              <Text className="text-white text-sm font-semibold">
-                                {member.name?.charAt(0)?.toUpperCase() || "?"}
-                              </Text>
-                            </View>
-                          )}
-                          <Text
-                            className={`text-xs text-center ${assigneeId === member.id ? "text-white" : "text-gray-300"
-                              }`}
-                            numberOfLines={1}
-                          >
-                            {member.name || member.email}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-
-                <View className="mb-4">
-                  <Text className="text-gray-300 mb-2 font-medium">Due Date</Text>
-
-                  <TouchableOpacity
-                    onPress={() => setShowDatePicker(true)}
-                    className="bg-gray-800 rounded-xl px-4 py-3 border border-gray-700 flex-row items-center justify-between"
+              {/* Priority */}
+              <View className="flex-row items-center gap-3 px-[18px] py-[13px]">
+                <RowIcon name="alert-circle-outline" />
+                <Text className="flex-1 text-[13px] font-medium text-[#F3F4F6]">Priority{projectId ? " *" : ""}</Text>
+              </View>
+              <View className="flex-row flex-wrap gap-[6px] pb-[14px] pl-[58px] pr-[18px]">
+                {priorities.map((pr) => (
+                  <SelectionChip
+                    key={pr.id}
+                    label={pr.name}
+                    selected={priorityId === pr.id}
+                    onPress={() => setPriorityId(pr.id)}
                     disabled={saving}
-                  >
-                    <Text className="text-gray-200">
-                      {dueDate ? dueDate.toISOString().split("T")[0] : "Select a date (optional)"}
-                    </Text>
-                    <Ionicons name="calendar-outline" size={20} color="#9CA3AF" />
-                  </TouchableOpacity>
+                    dotColor={chipDotColor(pr.name)}
+                  />
+                ))}
+                <AddChip onPress={() => setPriorityModalVisible(true)} disabled={saving || creatingPriority} />
+              </View>
 
-                  {showDatePicker && (
-                    <DateTimePicker
-                      value={dueDate ?? new Date()}
-                      mode="date"
-                      display={Platform.OS === "ios" ? "spinner" : "default"}
-                      onChange={(event, selectedDate) => {
-                        setShowDatePicker(false);
-                        if (selectedDate) {
-                          setDueDate(selectedDate);
-                        }
-                      }}
-                    />
-                  )}
-                </View>
+              <RowDivider />
 
-                <View className="mb-6">
-                  <View className="flex-row items-center gap-2 mb-2">
-                    <Ionicons name="attach-outline" size={16} color="#60A5FA" />
-                    <Text className="text-gray-300 font-medium">Attachments</Text>
+              {/* Assignee */}
+              {projectMembers.length > 0 && (
+                <>
+                  <View className="flex-row items-center gap-3 px-[18px] py-[13px]">
+                    <RowIcon name="person-outline" />
+                    <Text className="flex-1 text-[13px] font-medium text-[#F3F4F6]">Assignee</Text>
                   </View>
-
-                  {/* Attach Button */}
-                  <TouchableOpacity
-                    onPress={handlePickAttachment}
-                    disabled={saving}
-                    className="flex-row items-center justify-center gap-2 bg-gray-800 border border-dashed border-gray-600 rounded-lg py-3 mb-3"
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerClassName="flex-row gap-2 pb-[14px] pl-[58px] pr-[18px]"
                   >
-                    <Ionicons name="add-outline" size={18} color="#60A5FA" />
-                    <Text className="text-gray-400">Add Attachment</Text>
-                  </TouchableOpacity>
-
-                  {/* Attached Files List */}
-                  {attachments.map((file, index) => (
                     <TouchableOpacity
-                      key={index}
-                      onPress={() => setPreviewAttachment(file)}
-                      activeOpacity={0.85}
-                      className="flex-row items-center justify-between bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 mb-2"
+                      onPress={() => setAssigneeId(undefined)}
+                      activeOpacity={0.7}
+                      className={`min-w-[58px] items-center rounded-[10px] border px-[10px] py-2 ${
+                        !assigneeId ? "border-[#2563EB] bg-[#1E3A8A]" : "border-[#4B5563] bg-[#374151]"
+                      }`}
                     >
-                      <View className="flex-row items-center gap-2 flex-1">
-                        <Ionicons name="document-outline" size={18} color="#9CA3AF" />
-                        <Text className="text-gray-300 text-sm flex-shrink">
-                          {file.name}
-                        </Text>
+                      <View className="mb-1 h-8 w-8 items-center justify-center rounded-full bg-[#1F2937]">
+                        <Ionicons name="person-outline" size={14} color={!assigneeId ? COLORS.accent : COLORS.textSub} />
                       </View>
+                      <Text className={`text-[11px] ${!assigneeId ? "font-medium text-[#F3F4F6]" : "text-[#9CA3AF]"}`}>
+                        None
+                      </Text>
+                    </TouchableOpacity>
 
+                    {projectMembers.map((m) => (
                       <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() =>
-                          setAttachments((prev) => prev.filter((_, i) => i !== index))
-                        }
+                        key={m.id}
+                        onPress={() => setAssigneeId(m.id)}
+                        activeOpacity={0.7}
+                        className={`min-w-[58px] items-center rounded-[10px] border px-[10px] py-2 ${
+                          assigneeId === m.id ? "border-[#2563EB] bg-[#1E3A8A]" : "border-[#4B5563] bg-[#374151]"
+                        }`}
                       >
-                        <Ionicons name="close-circle" size={20} color="#EF4444" />
+                        {m.profileImage ? (
+                          <Image source={{ uri: resolveFileUrl(m.profileImage) }} className="mb-1 h-8 w-8 rounded-full" />
+                        ) : (
+                          <View className="mb-1 h-8 w-8 items-center justify-center rounded-full bg-[#1F2937]">
+                            <Text className={`text-[13px] font-semibold ${assigneeId === m.id ? "text-[#3B82F6]" : "text-[#9CA3AF]"}`}>
+                              {m.name?.charAt(0)?.toUpperCase() || "?"}
+                            </Text>
+                          </View>
+                        )}
+                        <Text
+                          className={`text-[11px] ${assigneeId === m.id ? "font-medium text-[#F3F4F6]" : "text-[#9CA3AF]"}`}
+                          numberOfLines={1}
+                        >
+                          {m.name || m.email}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <RowDivider />
+                </>
+              )}
+
+              {/* Due Date */}
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+                disabled={saving}
+                activeOpacity={0.7}
+                className="flex-row items-center gap-3 px-[18px] py-[13px]"
+              >
+                <RowIcon name="calendar-outline" />
+                <Text className="flex-1 text-[13px] font-medium text-[#F3F4F6]">Due date</Text>
+                <Text className={`text-[13px] ${dueDate ? "text-[#9CA3AF]" : "text-[#6B7280]"}`}>
+                  {dueDate ? formatLocalDate(dueDate) : "Select"}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={dueDate ?? new Date()}
+                  minimumDate={getStartOfToday()}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(_, d) => { setShowDatePicker(false); if (d) setDueDate(setToEndOfDay(d)); }}
+                />
+              )}
+
+              <RowDivider />
+
+              {/* Attachments */}
+              <TouchableOpacity
+                onPress={handlePickAttachment}
+                disabled={saving}
+                activeOpacity={0.7}
+                className="flex-row items-center gap-3 px-[18px] py-[13px]"
+              >
+                <RowIcon name="attach-outline" />
+                <Text className="flex-1 text-[13px] font-medium text-[#F3F4F6]">Attachments</Text>
+                {attachments.length > 0 ? (
+                  <View className="rounded-[10px] bg-[#1E3A8A] px-2 py-[2px]">
+                    <Text className="text-xs font-semibold text-[#3B82F6]">{attachments.length}</Text>
+                  </View>
+                ) : (
+                  <Text className="text-[13px] text-[#6B7280]">Add files</Text>
+                )}
+                <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} />
+              </TouchableOpacity>
+
+              {attachments.length > 0 && (
+                <View className="gap-[6px] pb-[10px] pl-[58px] pr-[18px]">
+                  {attachments.map((file, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => setPreviewAttachment(file)}
+                      activeOpacity={0.8}
+                      className="flex-row items-center gap-2 rounded-lg border border-[#4B5563] bg-[#374151] px-[10px] py-2"
+                    >
+                      <Ionicons name="document-outline" size={14} color={COLORS.accent} />
+                      <Text className="flex-1 text-xs text-[#9CA3AF]" numberOfLines={1}>{file.name}</Text>
+                      <TouchableOpacity
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        onPress={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                      >
+                        <Ionicons name="close-circle" size={16} color={COLORS.danger} />
                       </TouchableOpacity>
                     </TouchableOpacity>
                   ))}
                 </View>
-              </View>
+              )}
+
+              <View className="h-2" />
             </ScrollView>
+
+            {/* Footer */}
+            <View className={`gap-2 border-t border-[#374151] bg-transparent px-[18px] pt-[14px] ${Platform.OS === "ios" ? "pb-[34px]" : "pb-5"}`}>
+              <TouchableOpacity
+                onPress={handleSubmit}
+                disabled={saving}
+                activeOpacity={0.85}
+                className={`flex-row items-center justify-center gap-[7px] rounded-xl bg-[#3B82F6] py-[14px] ${saving ? "opacity-70" : "opacity-100"}`}
+              >
+                {saving
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : (
+                    <>
+                      <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                      <Text className="text-[15px] font-bold text-white">Create Task</Text>
+                    </>
+                  )
+                }
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} disabled={saving} activeOpacity={0.7} className="items-center py-[6px]">
+                <Text className="text-[13px] text-[#9CA3AF]">Cancel</Text>
+              </TouchableOpacity>
+            </View>
+
           </LinearGradient>
         </KeyboardAvoidingView>
-        <View className="px-6 pb-6 pt-4 border-t border-gray-700 bg-gray-900">
-          <View className="flex-row gap-3">
-            <TouchableOpacity onPress={handleSubmit} disabled={saving} className="flex-1 bg-blue-600 rounded-lg py-3 items-center flex-row justify-center gap-2">
-              {saving ? <ActivityIndicator color="#fff" size="small" /> : <>
-                <Ionicons name="checkmark" size={18} color="#fff" />
-                <Text className="text-white font-semibold">Create</Text>
-              </>}
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-gray-800 border border-gray-700 rounded-lg py-3 items-center">
-              <Text className="text-gray-300 font-semibold">Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </View>
-      
-      {/* Mini-Modal for Adding Status */}
-      <Modal
+
+      {/* New Status */}
+      <MiniInputModal
         visible={statusModalVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setStatusModalVisible(false)}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setStatusModalVisible(false)}
-          className="flex-1 justify-center items-center bg-black/60 px-6"
-        >
-          <TouchableOpacity activeOpacity={1} className="bg-gray-800 rounded-2xl p-6 w-full">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-white">New Status</Text>
-              <TouchableOpacity onPress={() => setStatusModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
+        title="New Status"
+        placeholder="e.g. Blocked, In Review..."
+        value={newStatusName}
+        onChange={setNewStatusName}
+        onConfirm={handleCreateStatus}
+        onDismiss={() => setStatusModalVisible(false)}
+        loading={creatingStatus}
+        confirmLabel="Create Status"
+      />
 
-            <TextInput
-              className="bg-gray-700 rounded-lg px-4 py-3 text-white mb-4"
-              placeholder="Enter status name (e.g., Blocked)"
-              placeholderTextColor="#6B7280"
-              value={newStatusName}
-              onChangeText={setNewStatusName}
-              editable={!creatingStatus}
-              autoFocus={true}
-            />
-
-            <TouchableOpacity
-              onPress={handleCreateStatus}
-              disabled={creatingStatus}
-              className="bg-blue-600 rounded-lg py-3 items-center"
-            >
-              {creatingStatus ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text className="text-white font-semibold">Create Status</Text>
-              )}
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Mini-Modal for Adding Priority */}
-      <Modal
+      {/* New Priority */}
+      <MiniInputModal
         visible={priorityModalVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setPriorityModalVisible(false)}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setPriorityModalVisible(false)}
-          className="flex-1 justify-center items-center bg-black/60 px-6"
-        >
-          <TouchableOpacity activeOpacity={1} className="bg-gray-800 rounded-2xl p-6 w-full">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xl font-bold text-white">New Priority</Text>
-              <TouchableOpacity onPress={() => setPriorityModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#9CA3AF" />
-              </TouchableOpacity>
-            </View>
+        title="New Priority"
+        placeholder="e.g. Critical, Blocker..."
+        value={newPriorityName}
+        onChange={setNewPriorityName}
+        onConfirm={handleCreatePriority}
+        onDismiss={() => setPriorityModalVisible(false)}
+        loading={creatingPriority}
+        confirmLabel="Create Priority"
+      />
 
-            <TextInput
-              className="bg-gray-700 rounded-lg px-4 py-3 text-white mb-4"
-              placeholder="Enter priority name (e.g., Critical)"
-              placeholderTextColor="#6B7280"
-              value={newPriorityName}
-              onChangeText={setNewPriorityName}
-              editable={!creatingPriority}
-              autoFocus={true}
-            />
-
-            <TouchableOpacity
-              onPress={handleCreatePriority}
-              disabled={creatingPriority}
-              className="bg-blue-600 rounded-lg py-3 items-center"
-            >
-              {creatingPriority ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text className="text-white font-semibold">Create Priority</Text>
-              )}
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Attachment Preview Modal */}
-      <Modal
-        visible={!!previewAttachment}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setPreviewAttachment(null)}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setPreviewAttachment(null)}
-          className="flex-1 justify-center items-center bg-black/70 px-6"
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            className="bg-gray-800 rounded-2xl p-5 w-full border border-gray-700"
-          >
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-white text-lg font-semibold flex-1 mr-3" numberOfLines={1}>
+      {/* Attachment preview */}
+      <Modal visible={!!previewAttachment} animationType="fade" transparent onRequestClose={() => setPreviewAttachment(null)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setPreviewAttachment(null)} className="flex-1 items-center justify-center bg-black/70 px-6">
+          <TouchableOpacity activeOpacity={1} className="w-full rounded-2xl border border-[#4B5563] bg-[#1F2937] p-5">
+            <View className="mb-[14px] flex-row items-center justify-between">
+              <Text className="mr-3 flex-1 text-[15px] font-bold text-[#F3F4F6]" numberOfLines={1}>
                 {previewAttachment?.name}
               </Text>
               <TouchableOpacity onPress={() => setPreviewAttachment(null)}>
-                <Ionicons name="close" size={24} color="#9CA3AF" />
+                <Ionicons name="close" size={18} color={COLORS.textSub} />
               </TouchableOpacity>
             </View>
-
-            <View className="bg-gray-900 rounded-xl border border-gray-700 h-56 items-center justify-center mb-4 overflow-hidden">
+            <View className="mb-[14px] h-[200px] items-center justify-center overflow-hidden rounded-[10px] border border-[#4B5563] bg-[#111827]">
               {previewAttachment?.mimeType?.startsWith("image/") ? (
-                <Image
-                  source={{ uri: previewAttachment.uri }}
-                  className="w-full h-full"
-                  resizeMode="contain"
-                />
+                <Image source={{ uri: previewAttachment.uri }} className="h-full w-full" resizeMode="contain" />
               ) : (
-                <Ionicons name="document-outline" size={64} color="#9CA3AF" />
+                <Ionicons name="document-outline" size={48} color={COLORS.textSub} />
               )}
             </View>
-
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={handleOpenAttachment}
-                className="flex-1 bg-blue-600 rounded-lg py-3 items-center flex-row justify-center gap-2"
-              >
-                <Ionicons name="open-outline" size={18} color="#fff" />
-                <Text className="text-white font-semibold">Open</Text>
+            <View className="flex-row gap-[10px]">
+              <TouchableOpacity onPress={handleOpenAttachment} className="flex-1 flex-row items-center justify-center gap-[6px] rounded-[10px] bg-[#3B82F6] py-3">
+                <Ionicons name="open-outline" size={15} color="#fff" />
+                <Text className="text-sm font-semibold text-white">Open</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={() => setPreviewAttachment(null)}
-                className="flex-1 bg-gray-700 rounded-lg py-3 items-center"
+                className="flex-1 items-center justify-center rounded-[10px] border border-[#4B5563] bg-[#374151] py-3"
               >
-                <Text className="text-gray-200 font-semibold">Close</Text>
+                <Text className="text-sm font-semibold text-[#9CA3AF]">Close</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-      {/* Custom Alert */}
       {AlertComponent}
     </Modal>
   );

@@ -55,6 +55,8 @@ model User {
   behaviorSignals     UserBehaviorSignal[]
   taskRiskSnapshots   TaskRiskSnapshot[]
   dailyDigestLogs     DailyDigestLog[]
+  standaloneStatuses  Status[]
+  standalonePriorities Priority[]
 }
 
 model EmailVerification {
@@ -101,12 +103,16 @@ model Status {
   order     Int      @default(0)
   projectId String?  // Optional - null for global statuses
   project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tasks Task[]
 
+  @@unique([userId, name])
   @@unique([projectId, name])
+  @@index([userId])
   @@index([projectId])
 }
 
@@ -117,12 +123,16 @@ model Priority {
   order     Int      @default(0)
   projectId String?  // Optional - null for global priorities
   project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tasks Task[]
 
+  @@unique([userId, name])
   @@unique([projectId, name])
+  @@index([userId])
   @@index([projectId])
 }
 
@@ -186,6 +196,7 @@ model Project {
   ownerId     String
   owner       User     @relation("ownerProjects", fields: [ownerId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
+  status      String   @default("todo")
 
   members    ProjectMember[]
   tasks      Task[]

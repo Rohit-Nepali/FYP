@@ -1,6 +1,6 @@
 {
   "classifier": {
-    "dataset": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\training\\raw\\classifier\\productivity_dataset_2.csv",
+    "dataset": "training\\raw\\classifier\\productivity_dataset_2.csv",
     "text_column": "text",
     "label_column": "label",
     "classes": [
@@ -87,11 +87,11 @@
     "train_samples": 8000,
     "test_samples": 2000,
     "random_state": 42,
-    "updated_at": "2026-03-28T09:29:18.900494+00:00"
+    "updated_at": "2026-03-29T02:14:50.488937+00:00"
   },
   "risk_model": {
-    "raw_risk_dir": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\training\\raw\\risk",
-    "dataset": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\data\\processed\\risk_training.csv",
+    "raw_risk_dir": "training\\raw\\risk",
+    "dataset": "data\\processed\\risk_training.csv",
     "target_column": "risk_target",
     "feature_columns": [
       "is_completed",
@@ -101,9 +101,9 @@
       "behavior_risk_score"
     ],
     "metrics": {
-      "accuracy": 0.987064,
-      "macro_f1": 0.984165,
-      "roc_auc": 0.998788
+      "accuracy": 0.986833,
+      "macro_f1": 0.983886,
+      "roc_auc": 0.998803
     },
     "thresholds": {
       "medium": 0.45,
@@ -115,34 +115,34 @@
     },
     "report": {
       "0": {
-        "precision": 0.9557803704005874,
+        "precision": 0.9550259517921683,
         "recall": 1.0,
-        "f1-score": 0.9773902886701151,
-        "support": 35145.0
+        "f1-score": 0.9769956771332861,
+        "support": 35144.0
       },
       "1": {
         "precision": 1.0,
-        "recall": 0.9820428718152603,
-        "f1-score": 0.9909400909334046,
-        "support": 90549.0
+        "recall": 0.9817228050800663,
+        "f1-score": 0.9907771183370949,
+        "support": 90550.0
       },
-      "accuracy": 0.9870638216621318,
+      "accuracy": 0.9868331026142855,
       "macro avg": {
-        "precision": 0.9778901852002937,
-        "recall": 0.9910214359076301,
-        "f1-score": 0.9841651898017598,
+        "precision": 0.9775129758960841,
+        "recall": 0.9908614025400331,
+        "f1-score": 0.9838863977351905,
         "support": 125694.0
       },
       "weighted avg": {
-        "precision": 0.9876358546766644,
-        "recall": 0.9870638216621318,
-        "f1-score": 0.9871514629913922,
+        "precision": 0.9874252712920583,
+        "recall": 0.9868331026142855,
+        "f1-score": 0.9869238320253644,
         "support": 125694.0
       }
     },
     "train_samples": 502772,
     "test_samples": 125694,
     "random_state": 42,
-    "updated_at": "2026-03-28T09:34:22.869034+00:00"
+    "updated_at": "2026-04-04T11:24:47.491009+00:00"
   }
 }

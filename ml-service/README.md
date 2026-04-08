@@ -51,6 +51,18 @@ Then run:
 python training/train_risk_model.py --raw-risk-dir training/raw/risk --dataset data/processed/risk_training.csv --target-col risk_target
 ```
 
+Risk model training now also saves data-visualization artifacts for before and after preprocessing (histograms, correlations, missingness comparison, and class balance) under:
+
+- `reports/figures/risk/before_preprocessing/`
+- `reports/figures/risk/after_preprocessing/`
+- `reports/figures/risk/`
+
+You can override this location with:
+
+```bash
+python training/train_risk_model.py --visualization-dir reports/figures/risk
+```
+
 ## Run inference API
 
 ```bash

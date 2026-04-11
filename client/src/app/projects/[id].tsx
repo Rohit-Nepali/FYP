@@ -14,7 +14,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -36,10 +35,12 @@ import ActivitySection from "../../components/ActivitySection";
 import ProjectStatusReport from "../../components/ProjectStatusReport";
 import CustomAlert from "../../components/UI/CustomAlert";
 import { Button } from "@/src/components/UI/Buttons";
-import { resolveFileUrl } from "@/src/utils/url";
 import { getProjectPermissions } from "@/src/utils/permissions";
+import { AvatarGroup } from "@/src/components/project/AvatarGroup";
+import { SectionHeader } from "@/src/components/project/SectionHeader";
+import { StatCard } from "@/src/components/project/StatCard";
 
-interface ProjectMember {
+export interface ProjectMember {
   id: string;
   userId?: string;
   name?: string;
@@ -90,177 +91,6 @@ function SkeletonLoader() {
           <View className="w-2/3 h-3 bg-gray-700 rounded animate-pulse mt-2" />
         </View>
       ))}
-    </View>
-  );
-}
-
-// ─── Stat Card ─────────────────────────────────────────────────────
-function StatCard({
-  icon,
-  label,
-  value,
-  color,
-  onPress,
-  suffix,
-  index,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: number | string;
-  color: string;
-  onPress?: () => void;
-  suffix?: string;
-  index: number;
-}) {
-  const Container = onPress ? TouchableOpacity : View;
-
-  return (
-    <Animated.View
-      entering={FadeInUp.delay(index * 80).duration(400)}
-      className="flex-1"
-    >
-      <Container
-        onPress={onPress}
-        activeOpacity={0.7}
-        className="bg-gray-800/80 rounded-2xl border border-gray-700/50 p-4"
-      >
-        <View className="flex-row items-center justify-between">
-          <View
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${color}20` }}
-          >
-            <Ionicons name={icon} size={18} color={color} />
-          </View>
-          {onPress && (
-            <Ionicons name="chevron-forward" size={16} color="#6B7280" />
-          )}
-        </View>
-        <Text className="text-2xl font-bold text-white mt-3">
-          {value}
-          {suffix && (
-            <Text className="text-sm font-normal text-gray-400">
-              {" "}
-              {suffix}
-            </Text>
-          )}
-        </Text>
-        <Text className="text-gray-400 text-xs mt-0.5">{label}</Text>
-      </Container>
-    </Animated.View>
-  );
-}
-
-// ─── Avatar Group ──────────────────────────────────────────────────
-function AvatarGroup({
-  members,
-  maxVisible = 4,
-}: {
-  members: ProjectMember[];
-  maxVisible?: number;
-}) {
-  const visible = members.slice(0, maxVisible);
-  const extra = members.length - visible.length;
-
-  const getInitials = (member: ProjectMember) => {
-    const name = member.name || member.fullName || member.username || "?";
-    const parts = name.trim().split(" ");
-    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-    return (
-      parts[0].charAt(0).toUpperCase() +
-      parts[parts.length - 1].charAt(0).toUpperCase()
-    );
-  };
-
-  const getColor = (name?: string) => {
-    if (!name) return "#6B7280";
-    const colors = [
-      "#60A5FA",
-      "#34D399",
-      "#F472B6",
-      "#A78BFA",
-      "#FBBF24",
-      "#F87171",
-    ];
-    const index = name
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[index % colors.length];
-  };
-
-  return (
-    <View className="flex-row items-center">
-      {visible.map((member, index) => {
-        const name =
-          member.name || member.fullName || member.username || "User";
-        return (
-          <View
-            key={member.id ?? index}
-            style={{
-              marginLeft: index === 0 ? 0 : -10,
-              zIndex: visible.length - index,
-            }}
-          >
-            {member.avatarUrl ? (
-              <Image
-                source={{ uri: resolveFileUrl(member.avatarUrl) }}
-                className="w-8 h-8 rounded-full border-2 border-gray-900"
-              />
-            ) : (
-              <View
-                className="w-8 h-8 rounded-full border-2 border-gray-900 items-center justify-center"
-                style={{ backgroundColor: `${getColor(name)}30` }}
-              >
-                <Text
-                  className="text-xs font-semibold"
-                  style={{ color: getColor(name) }}
-                >
-                  {getInitials(member)}
-                </Text>
-              </View>
-            )}
-          </View>
-        );
-      })}
-      {extra > 0 && (
-        <View
-          className="w-8 h-8 rounded-full bg-gray-700/80 border-2 border-gray-900 items-center justify-center"
-          style={{ marginLeft: -10 }}
-        >
-          <Text className="text-xs text-gray-300 font-semibold">
-            +{extra}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─── Section Header ────────────────────────────────────────────────
-function SectionHeader({
-  icon,
-  title,
-  count,
-  action,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  count?: number;
-  action?: React.ReactNode;
-}) {
-  return (
-    <View className="flex-row items-center justify-between mb-3">
-      <View className="flex-row items-center">
-        <Ionicons name={icon} size={18} color="#60A5FA" />
-        <Text className="text-white font-semibold text-base ml-2">
-          {title}
-        </Text>
-        {count !== undefined && (
-          <View className="bg-gray-700/60 rounded-full px-2 py-0.5 ml-2">
-            <Text className="text-gray-300 text-xs font-medium">{count}</Text>
-          </View>
-        )}
-      </View>
-      {action}
     </View>
   );
 }

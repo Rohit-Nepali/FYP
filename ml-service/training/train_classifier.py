@@ -24,6 +24,10 @@ from common import (
 
 
 def parse_args() -> argparse.Namespace:
+    """
+    Sets up and parses command-line arguments. 
+    This allows the user to override default training parameters without changing the code.
+    """
     parser = argparse.ArgumentParser(description="Train Taskora text classifier locally.")
     parser.add_argument(
         "--dataset",
@@ -31,8 +35,11 @@ def parse_args() -> argparse.Namespace:
         default=RAW_CLASSIFIER_DIR / "productivity_dataset_2.csv",
         help="Path to classifier dataset CSV.",
     )
+    # Allows specifying exactly which columns contain the text and the target labels
     parser.add_argument("--text-col", type=str, default=None, help="Text column name.")
     parser.add_argument("--label-col", type=str, default=None, help="Label column name.")
+
+    # Hyperparameters for the train/test split and vectorizer
     parser.add_argument("--test-size", type=float, default=0.2, help="Test set size ratio.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed.")
     parser.add_argument("--max-features", type=int, default=10000, help="TF-IDF max features.")

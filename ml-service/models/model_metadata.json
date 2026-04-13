@@ -87,23 +87,22 @@
     "train_samples": 8000,
     "test_samples": 2000,
     "random_state": 42,
-    "updated_at": "2026-03-29T02:14:50.488937+00:00"
+    "updated_at": "2026-04-11T16:30:04.064870+00:00"
   },
   "risk_model": {
     "raw_risk_dir": "training\\raw\\risk",
     "dataset": "data\\processed\\risk_training.csv",
     "target_column": "risk_target",
     "feature_columns": [
-      "is_completed",
       "due_in_days",
-      "days_overdue",
       "recent_activity_count",
-      "behavior_risk_score"
+      "task_frequency",
+      "project_historical_risk_rate"
     ],
     "metrics": {
-      "accuracy": 0.986833,
-      "macro_f1": 0.983886,
-      "roc_auc": 0.998803
+      "accuracy": 0.934754,
+      "macro_f1": 0.770492,
+      "roc_auc": 0.9425
     },
     "thresholds": {
       "medium": 0.45,
@@ -115,34 +114,34 @@
     },
     "report": {
       "0": {
-        "precision": 0.9550259517921683,
-        "recall": 1.0,
-        "f1-score": 0.9769956771332861,
-        "support": 35144.0
+        "precision": 0.9843527362921526,
+        "recall": 0.9457312590314103,
+        "f1-score": 0.9646555848140981,
+        "support": 118337.0
       },
       "1": {
-        "precision": 1.0,
-        "recall": 0.9817228050800663,
-        "f1-score": 0.9907771183370949,
-        "support": 90550.0
+        "precision": 0.4648333333333333,
+        "recall": 0.7581894794073671,
+        "f1-score": 0.5763289765976133,
+        "support": 7357.0
       },
-      "accuracy": 0.9868331026142855,
+      "accuracy": 0.9347542444348974,
       "macro avg": {
-        "precision": 0.9775129758960841,
-        "recall": 0.9908614025400331,
-        "f1-score": 0.9838863977351905,
+        "precision": 0.724593034812743,
+        "recall": 0.8519603692193887,
+        "f1-score": 0.7704922807058556,
         "support": 125694.0
       },
       "weighted avg": {
-        "precision": 0.9874252712920583,
-        "recall": 0.9868331026142855,
-        "f1-score": 0.9869238320253644,
+        "precision": 0.9539447275760005,
+        "recall": 0.9347542444348974,
+        "f1-score": 0.9419264262492606,
         "support": 125694.0
       }
     },
     "train_samples": 502772,
     "test_samples": 125694,
     "random_state": 42,
-    "updated_at": "2026-04-04T11:24:47.491009+00:00"
+    "updated_at": "2026-04-12T03:55:00.245906+00:00"
   }
 }

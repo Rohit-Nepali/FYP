@@ -42,8 +42,8 @@ Place Gryzzly CSVs under:
 The trainer now performs preprocessing + feature engineering before fitting:
 - missing value handling
 - date normalization
-- derived features including `task_delay_days`, `completion_rate_project`, `task_frequency`, `overdue_indicator`
-- model-aligned features: `is_completed`, `due_in_days`, `days_overdue`, `recent_activity_count`, `behavior_risk_score`
+- derived features including `task_age_days`, `task_frequency`, and leave-one-out `project_historical_risk_rate`
+- model-aligned features: `due_in_days`, `recent_activity_count`, `task_frequency`, `project_historical_risk_rate`
 
 Then run:
 

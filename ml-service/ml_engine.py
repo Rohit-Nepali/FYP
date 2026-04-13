@@ -19,6 +19,12 @@ vectorizer = None
 classifier = None
 risk_model = None
 risk_preprocessor = None
+RISK_FEATURE_COLUMNS = [
+    "due_in_days",
+    "recent_activity_count",
+    "task_frequency",
+    "project_historical_risk_rate",
+]
 
 def load_models() -> None:
     global vectorizer, classifier, risk_model, risk_preprocessor
@@ -39,6 +45,16 @@ def load_models() -> None:
             risk_model = joblib.load(RISK_MODEL_PATH)
             if RISK_PREPROCESSOR_PATH.exists():
                 risk_preprocessor = joblib.load(RISK_PREPROCESSOR_PATH)
+
+            # Validate saved preprocessing contract against runtime feature schema.
+            if risk_preprocessor is not None:
+                schema = getattr(risk_preprocessor, "feature_names_in_", None)
+                if schema is not None:
+                    if list(schema) != RISK_FEATURE_COLUMNS:
+                        raise RuntimeError(
+                            "Risk preprocessor feature schema mismatch. "
+                            f"Expected {RISK_FEATURE_COLUMNS}, got {list(schema)}"
+                        )
         elif not ML_RISK_FALLBACK_ENABLED:
             raise RuntimeError(
                 f"Missing risk model file at {RISK_MODEL_PATH} while fallback is disabled"
@@ -62,9 +78,6 @@ def _map_probability_to_risk(probability: float) -> str:
 def _extract_top_factors(payload: PredictTaskRiskRequest, probability: float) -> list[str]:
     factors: list[str] = []
 
-    if payload.days_overdue is not None and payload.days_overdue > 0:
-        factors.append("task_overdue")
-
     if payload.due_in_days is not None and payload.due_in_days <= 2:
         factors.append("deadline_very_close")
 
@@ -73,8 +86,14 @@ def _extract_top_factors(payload: PredictTaskRiskRequest, probability: float) ->
     elif payload.recent_activity_count < 3:
         factors.append("low_recent_activity")
 
-    if payload.behavior_risk_score > 0:
-        factors.append("behavior_signal_risk")
+    if payload.task_frequency is not None:
+        if payload.task_frequency <= 0:
+            factors.append("no_task_activity")
+        elif payload.task_frequency < 0.1:
+            factors.append("low_task_frequency")
+
+    if payload.project_historical_risk_rate is not None and payload.project_historical_risk_rate >= 0.5:
+        factors.append("project_high_historical_risk")
 
     if probability >= ML_RISK_THRESHOLD_HIGH:
         factors.append("model_high_probability")
@@ -86,21 +105,8 @@ def _extract_top_factors(payload: PredictTaskRiskRequest, probability: float) ->
 
 
 def _fallback_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskResponse:
-    if payload.is_completed:
-        return PredictTaskRiskResponse(
-            risk="LOW",
-            probability=0.05,
-            top_factors=["task_already_completed"],
-            generated_at=datetime.now(timezone.utc).isoformat(),
-        )
-
     factors: list[str] = []
     probability = 0.15
-
-    if payload.days_overdue is not None and payload.days_overdue > 0:
-        overdue_weight = min(payload.days_overdue * 0.08, 0.45)
-        probability += overdue_weight
-        factors.append("task_overdue")
 
     if payload.due_in_days is not None and payload.due_in_days <= 2:
         probability += 0.12
@@ -113,9 +119,17 @@ def _fallback_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskR
         probability += 0.1
         factors.append("low_recent_activity")
 
-    if payload.behavior_risk_score > 0:
-        probability += min(payload.behavior_risk_score, 1.0) * 0.25
-        factors.append("behavior_signal_risk")
+    if payload.task_frequency is not None:
+        if payload.task_frequency <= 0:
+            probability += 0.2
+            factors.append("no_task_activity")
+        elif payload.task_frequency < 0.1:
+            probability += 0.1
+            factors.append("low_task_frequency")
+
+    if payload.project_historical_risk_rate is not None and payload.project_historical_risk_rate > 0:
+        probability += min(payload.project_historical_risk_rate, 1.0) * 0.25
+        factors.append("project_historical_risk")
 
     probability = max(0.01, min(probability, 0.99))
     risk = _map_probability_to_risk(probability)
@@ -127,6 +141,7 @@ def _fallback_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskR
         risk=risk,
         probability=round(probability, 4),
         top_factors=factors,
+        source="fallback",
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -135,28 +150,25 @@ def _model_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRisk
     if risk_model is None:
         raise RuntimeError("Risk model is not loaded")
 
-    if payload.is_completed:
-        return PredictTaskRiskResponse(
-            risk="LOW",
-            probability=0.05,
-            top_factors=["task_already_completed"],
-            generated_at=datetime.now(timezone.utc).isoformat(),
-        )
-
     feature_frame = pd.DataFrame(
         [
             {
-                "is_completed": int(payload.is_completed),
                 "due_in_days": payload.due_in_days,
-                "days_overdue": payload.days_overdue,
                 "recent_activity_count": payload.recent_activity_count,
-                "behavior_risk_score": payload.behavior_risk_score,
+                "task_frequency": payload.task_frequency,
+                "project_historical_risk_rate": payload.project_historical_risk_rate,
             }
         ]
-    )
+    )[RISK_FEATURE_COLUMNS]
 
     model_input = feature_frame
-    if risk_preprocessor is not None:
+    model_has_internal_preprocessor = (
+        hasattr(risk_model, "named_steps")
+        and isinstance(getattr(risk_model, "named_steps", None), dict)
+        and "preprocessor" in risk_model.named_steps
+    )
+
+    if not model_has_internal_preprocessor and risk_preprocessor is not None:
         model_input = risk_preprocessor.transform(feature_frame)
 
     if hasattr(risk_model, "predict_proba"):
@@ -187,5 +199,6 @@ def _model_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRisk
         risk=risk,
         probability=round(probability, 4),
         top_factors=_extract_top_factors(payload, probability),
+        source="model",
         generated_at=datetime.now(timezone.utc).isoformat(),
     )

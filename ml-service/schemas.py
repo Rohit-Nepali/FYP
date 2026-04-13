@@ -17,14 +17,14 @@ class ClassifyResponse(BaseModel):
 
 class PredictTaskRiskRequest(BaseModel):
     task_id: str
-    is_completed: bool = False
     due_in_days: float | None = None
-    days_overdue: float | None = None
     recent_activity_count: int = 0
-    behavior_risk_score: float = 0.0
+    task_frequency: float | None = None
+    project_historical_risk_rate: float | None = None
 
 class PredictTaskRiskResponse(BaseModel):
     risk: str
     probability: float
     top_factors: list[str]
+    source: str
     generated_at: str

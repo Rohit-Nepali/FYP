@@ -1,3 +1,4 @@
+import logging
 import joblib
 import re
 import pandas as pd
@@ -15,6 +16,8 @@ from config import (
 )
 from schemas import ClassifyRequest, ClassifyResponse, PredictTaskRiskRequest, PredictTaskRiskResponse
 
+logger = logging.getLogger(__name__)
+
 vectorizer = None
 classifier = None
 risk_model = None
@@ -29,36 +32,64 @@ RISK_FEATURE_COLUMNS = [
 def load_models() -> None:
     global vectorizer, classifier, risk_model, risk_preprocessor
 
+    logger.info("Loading classifier model from %s", CLASSIFIER_PATH)
+    logger.info("Loading TF-IDF vectorizer from %s", TFIDF_PATH)
+
     if not CLASSIFIER_PATH.exists() or not TFIDF_PATH.exists():
         missing_paths = [
             str(path)
             for path in (CLASSIFIER_PATH, TFIDF_PATH)
             if not path.exists()
         ]
+        logger.error("Missing classifier artifacts: %s", ", ".join(missing_paths))
         raise RuntimeError(f"Missing model files: {', '.join(missing_paths)}")
 
     classifier = joblib.load(CLASSIFIER_PATH)
     vectorizer = joblib.load(TFIDF_PATH)
+    logger.info("Classifier artifacts loaded successfully")
 
     if ML_RISK_MODEL_ENABLED:
+        logger.info("Risk model loading is enabled")
         if RISK_MODEL_PATH.exists():
+            logger.info("Loading risk model from %s", RISK_MODEL_PATH)
             risk_model = joblib.load(RISK_MODEL_PATH)
             if RISK_PREPROCESSOR_PATH.exists():
+                logger.info("Loading risk preprocessor from %s", RISK_PREPROCESSOR_PATH)
                 risk_preprocessor = joblib.load(RISK_PREPROCESSOR_PATH)
+            else:
+                logger.warning("Risk preprocessor artifact not found at %s", RISK_PREPROCESSOR_PATH)
 
             # Validate saved preprocessing contract against runtime feature schema.
             if risk_preprocessor is not None:
                 schema = getattr(risk_preprocessor, "feature_names_in_", None)
                 if schema is not None:
                     if list(schema) != RISK_FEATURE_COLUMNS:
+                        logger.error(
+                            "Risk preprocessor feature schema mismatch: expected %s, got %s",
+                            RISK_FEATURE_COLUMNS,
+                            list(schema),
+                        )
                         raise RuntimeError(
                             "Risk preprocessor feature schema mismatch. "
                             f"Expected {RISK_FEATURE_COLUMNS}, got {list(schema)}"
                         )
+                logger.info("Risk preprocessor schema check passed")
+            logger.info("Risk model artifacts loaded successfully")
         elif not ML_RISK_FALLBACK_ENABLED:
+            logger.error(
+                "Risk model file missing at %s and fallback is disabled",
+                RISK_MODEL_PATH,
+            )
             raise RuntimeError(
                 f"Missing risk model file at {RISK_MODEL_PATH} while fallback is disabled"
             )
+        else:
+            logger.warning(
+                "Risk model file missing at %s; fallback prediction will be used",
+                RISK_MODEL_PATH,
+            )
+    elif ML_RISK_FALLBACK_ENABLED:
+        logger.warning("Risk model loading is disabled; fallback prediction will be used")
 
 
 def clean_text(text):
@@ -137,6 +168,12 @@ def _fallback_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskR
     if not factors:
         factors = ["baseline_task_risk"]
 
+    logger.info(
+        "Task risk prediction completed using fallback source: risk=%s probability=%s",
+        risk,
+        round(probability, 4),
+    )
+
     return PredictTaskRiskResponse(
         risk=risk,
         probability=round(probability, 4),
@@ -148,6 +185,7 @@ def _fallback_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskR
 
 def _model_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskResponse:
     if risk_model is None:
+        logger.error("Risk model prediction requested but no model is loaded")
         raise RuntimeError("Risk model is not loaded")
 
     feature_frame = pd.DataFrame(
@@ -194,6 +232,12 @@ def _model_predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRisk
 
     probability = max(0.01, min(probability, 0.99))
     risk = _map_probability_to_risk(probability)
+
+    logger.info(
+        "Task risk prediction completed using model source: risk=%s probability=%s",
+        risk,
+        round(probability, 4),
+    )
 
     return PredictTaskRiskResponse(
         risk=risk,

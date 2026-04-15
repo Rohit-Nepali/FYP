@@ -20,7 +20,7 @@ TFIDF_PATH = MODELS_DIR / "taskora_tfidf.pkl"
 RISK_MODEL_PATH = MODELS_DIR / "taskora_risk_model.pkl"
 RISK_PREPROCESSOR_PATH = MODELS_DIR / "taskora_risk_preprocessor.pkl"
 
-ML_RISK_MODEL_ENABLED = os.getenv("ML_RISK_MODEL_ENABLED", "false").lower() == "true"
+ML_RISK_MODEL_ENABLED = os.getenv("ML_RISK_MODEL_ENABLED", "true").lower() == "true"
 ML_RISK_FALLBACK_ENABLED = os.getenv("ML_RISK_FALLBACK_ENABLED", "true").lower() == "true"
 ML_RISK_THRESHOLD_MEDIUM = float(os.getenv("ML_RISK_THRESHOLD_MEDIUM", "0.45"))
 ML_RISK_THRESHOLD_HIGH = float(os.getenv("ML_RISK_THRESHOLD_HIGH", "0.75"))

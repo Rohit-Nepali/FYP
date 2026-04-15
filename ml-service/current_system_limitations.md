@@ -59,26 +59,21 @@ Scope note: this phase excludes notebook analysis and uses only deployed ml-serv
 Potential issue:
 - Removing all numbers can drop deadline/context signals (e.g., "2 days", "3pm").
 
-### Risk Model - Feature Contract Mismatch
-- Training features in training/train_risk_model.py default:
+### Risk Model - Feature Contract Status (Updated)
+- Training defaults and runtime inference are now aligned on the same canonical features:
 	- due_in_days
 	- recent_activity_count
 	- task_frequency
 	- project_historical_risk_rate
-- Runtime payload in ml_engine.py / schemas.py expects:
-	- is_completed
-	- due_in_days
-	- days_overdue
-	- recent_activity_count
-	- behavior_risk_score
+- Runtime startup now includes schema compatibility validation against saved preprocessor feature_names_in_.
 
-This is a major inconsistency risk:
-- Saved preprocessor/model may expect one feature schema while inference provides another.
-- Depending on the trained artifact version, this can cause misalignment, degraded prediction quality, or runtime transformation errors.
+Residual risk:
+- Compatibility validation depends on the preprocessor exposing feature_names_in_.
+- Artifact/version governance is still lightweight (no explicit feature-schema versioning strategy).
 
 ### README Drift
-- README describes older/additional risk features (including overdue_indicator/completion_rate_project wording), while training script currently finalizes a different schema.
-- Documentation is not fully synchronized with executable pipeline.
+- README is now mostly synchronized with the executable risk feature pipeline.
+- Residual documentation risk remains if future feature changes are made without updating both README and metadata together.
 
 ## 4) Validation and Overfitting Risk Assessment
 
@@ -105,8 +100,8 @@ This is a major inconsistency risk:
 
 ## 5) Missing Pipeline Components (Phase 1)
 
-- No formal feature contract/versioning between training and inference for risk model.
-- No automated training-to-serving compatibility check.
+- No formal feature contract/versioning policy between training and inference for risk model.
+- Startup compatibility check exists, but no explicit CI gate verifies artifact-schema compatibility across retraining/deployment boundaries.
 - No calibration diagnostics (PR curve tuning, cost-based threshold optimization).
 - No drift monitoring (data drift or performance drift).
 - No meaningful model quality tests in tests/ beyond shape/existence checks.
@@ -115,11 +110,12 @@ This is a major inconsistency risk:
 
 ### In risk fallback/inference logic
 - base probability: 0.15
-- overdue weight per day: 0.08, capped at 0.45
 - due soon adjustment (<=2 days): +0.12
 - no activity adjustment: +0.2
 - low activity adjustment (<3): +0.1
-- behavior risk scaling: *0.25
+- no task activity adjustment (task_frequency <= 0): +0.2
+- low task frequency adjustment (task_frequency < 0.1): +0.1
+- project historical risk scaling: *0.25 (capped at 1.0 input)
 - probability clamp: [0.01, 0.99]
 
 ### In risk target engineering
@@ -137,13 +133,14 @@ This is a major inconsistency risk:
 
 - There are real ML models in this project.
 - But the risk prediction path can operate as non-ML in default configuration, which is a credibility risk if presented as always ML-driven.
-- The highest technical risk right now is feature-schema drift between risk training pipeline and runtime inference payload.
+- The previously identified feature-schema drift issue has been addressed in runtime/training alignment.
+- The highest technical risk right now is insufficient evaluation rigor (single holdout split, no calibration workflow, minimal model-quality tests).
 - Current validation/testing depth is insufficient for strong academic or production claims.
 
 ## 8) Immediate Phase 1 Fix Priorities (Next Actions)
 
-1. Enforce a single canonical risk feature schema shared by training and inference.
-2. Add startup compatibility check: model expected feature names vs runtime payload columns.
-3. Make runtime source explicit in responses (e.g., source: model|fallback) to avoid fake-ML perception.
-4. Add cross-validation and class-imbalance-focused metrics reporting for both models.
-5. Align README and metadata with actual executable feature pipeline.
+1. Keep canonical schema enforcement as a CI-verified contract (not only runtime assertion).
+2. Add cross-validation and class-imbalance-focused metrics reporting for both models.
+3. Add threshold calibration workflow tied to product/business trade-offs.
+4. Expand tests from shape/existence checks to behavior and compatibility tests (model vs fallback paths, schema guard failures, metric sanity).
+5. Decide deployment policy explicitly: model-first in production, fallback as fail-safe only.

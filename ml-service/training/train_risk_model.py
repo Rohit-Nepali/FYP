@@ -501,8 +501,11 @@ def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> t
         parse_duration_to_seconds
     )
 
-    now_utc = pd.Timestamp.now(tz="UTC")
-    seven_days_ago = now_utc - pd.Timedelta(days=7)
+    # Anchor recency windows to the dataset timeline for reproducible training features.
+    global_max_date = declarations_df["decl_date"].max()
+    if pd.isna(global_max_date):
+        global_max_date = pd.Timestamp.now(tz="UTC")
+    seven_days_ago = global_max_date - pd.Timedelta(days=7)
 
     declarations_df["is_recent_7d"] = declarations_df["decl_date"].ge(seven_days_ago)
 
@@ -535,7 +538,7 @@ def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> t
         risk_df[col] = risk_df.get(col, 0).fillna(0)
 
     # Task Age
-    risk_df["task_age_days"] = (now_utc - risk_df["created_at"]).dt.total_seconds() / 86400.0
+    risk_df["task_age_days"] = (global_max_date - risk_df["created_at"]).dt.total_seconds() / 86400.0
     risk_df["task_age_days"] = risk_df["task_age_days"].replace([np.inf, -np.inf], np.nan).fillna(0)
 
     # Due in Days

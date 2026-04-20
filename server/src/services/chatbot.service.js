@@ -153,7 +153,7 @@ export const chatbotService = {
 
     const classification = await classifyMessage(message);
 
-    if (classification) {
+    if (classification && classification.confidence >= LOW_CONFIDENCE_THRESHOLD) {
       try {
         await prisma.userBehaviorSignal.create({
           data: {

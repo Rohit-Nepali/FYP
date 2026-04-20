@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import joblib
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, f1_score
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import FeatureUnion
 
 from common import (
+    BASE_DIR,
     CLASSIFIER_PATH,
     RAW_CLASSIFIER_DIR,
     TFIDF_PATH,
@@ -21,6 +24,53 @@ from common import (
     read_csv,
     update_metadata,
 )
+
+
+def build_stop_words() -> list[str]:
+    """Build a conservative stopword list while preserving negation semantics."""
+    base_stop_words = set(ENGLISH_STOP_WORDS)
+
+    # Keep negation tokens that are useful for productivity-state intent.
+    keep_tokens = {
+        "no",
+        "not",
+        "nor",
+        "never",
+        "cannot",
+        "cant",
+        "don't",
+        "dont",
+        "won't",
+        "wont",
+        "isn't",
+        "isnt",
+        "aren't",
+        "arent",
+    }
+    for token in keep_tokens:
+        base_stop_words.discard(token)
+
+    # Remove discourse fillers that are frequent but mostly non-informative.
+    base_stop_words.update(
+        {
+            "honestly",
+            "basically",
+            "frankly",
+            "seriously",
+            "literally",
+            "truly",
+            "genuinely",
+            "obviously",
+            "clearly",
+            "really",
+            "tbh",
+            "lol",
+            "smh",
+            "ugh",
+        }
+    )
+
+    return sorted(base_stop_words)
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,7 +92,24 @@ def parse_args() -> argparse.Namespace:
     # Hyperparameters for the train/test split and vectorizer
     parser.add_argument("--test-size", type=float, default=0.2, help="Test set size ratio.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed.")
-    parser.add_argument("--max-features", type=int, default=10000, help="TF-IDF max features.")
+    parser.add_argument("--max-features", type=int, default=20000, help="TF-IDF max features.")
+    parser.add_argument(
+        "--char-max-features",
+        type=int,
+        default=8000,
+        help="Character TF-IDF max features when char n-grams are enabled.",
+    )
+    parser.add_argument(
+        "--disable-char-ngrams",
+        action="store_true",
+        help="Disable character n-gram TF-IDF branch.",
+    )
+    parser.add_argument(
+        "--report-dir",
+        type=Path,
+        default=BASE_DIR / "reports" / "classifier",
+        help="Directory to save classifier evaluation reports.",
+    )
     return parser.parse_args()
 
 
@@ -75,11 +142,26 @@ def main() -> None:
         stratify=work_df[label_col],
     )
 
-    vectorizer = TfidfVectorizer(
+    word_vectorizer = TfidfVectorizer(
         max_features=args.max_features,
-        ngram_range=(1, 2),
-        min_df=2,
+        ngram_range=(1, 3),
+        min_df=1,
+        sublinear_tf=True,
+        stop_words=build_stop_words(),
     )
+
+    vectorizer_steps: list[tuple[str, TfidfVectorizer]] = [("word_tfidf", word_vectorizer)]
+    if not args.disable_char_ngrams:
+        char_vectorizer = TfidfVectorizer(
+            analyzer="char_wb",
+            ngram_range=(3, 5),
+            min_df=2,
+            max_features=args.char_max_features,
+            sublinear_tf=True,
+        )
+        vectorizer_steps.append(("char_tfidf", char_vectorizer))
+
+    vectorizer = FeatureUnion(vectorizer_steps)
 
     x_train_vec = vectorizer.fit_transform(x_train)
     x_test_vec = vectorizer.transform(x_test)
@@ -98,6 +180,37 @@ def main() -> None:
     macro_f1 = float(f1_score(y_test, y_pred, average="macro"))
     report = classification_report(y_test, y_pred, output_dict=True)
 
+    args.report_dir.mkdir(parents=True, exist_ok=True)
+    report_timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    report_path = args.report_dir / f"classifier_evaluation_{report_timestamp}.json"
+    latest_report_path = args.report_dir / "classifier_evaluation_latest.json"
+
+    evaluation_payload = {
+        "dataset": str(args.dataset),
+        "text_column": text_col,
+        "label_column": label_col,
+        "preprocessing": {
+            "word_stopwords": "custom_english_preserve_negations",
+            "char_ngrams_enabled": not args.disable_char_ngrams,
+            "char_ngram_range": [3, 5] if not args.disable_char_ngrams else None,
+            "word_ngram_range": [1, 3],
+        },
+        "metrics": {
+            "accuracy": round(accuracy, 6),
+            "macro_f1": round(macro_f1, 6),
+        },
+        "classification_report": report,
+        "train_samples": int(len(x_train)),
+        "test_samples": int(len(x_test)),
+        "random_state": args.random_state,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    with report_path.open("w", encoding="utf-8") as file_obj:
+        json.dump(evaluation_payload, file_obj, indent=2)
+    with latest_report_path.open("w", encoding="utf-8") as file_obj:
+        json.dump(evaluation_payload, file_obj, indent=2)
+
     joblib.dump(classifier, CLASSIFIER_PATH)
     joblib.dump(vectorizer, TFIDF_PATH)
 
@@ -112,10 +225,17 @@ def main() -> None:
                 "accuracy": round(accuracy, 6),
                 "macro_f1": round(macro_f1, 6),
             },
+            "preprocessing": {
+                "word_stopwords": "custom_english_preserve_negations",
+                "char_ngrams_enabled": not args.disable_char_ngrams,
+                "char_ngram_range": [3, 5] if not args.disable_char_ngrams else None,
+                "word_ngram_range": [1, 3],
+            },
             "report": report,
             "artifacts": {
                 "classifier": str(CLASSIFIER_PATH),
                 "tfidf": str(TFIDF_PATH),
+                "evaluation_report": str(latest_report_path),
             },
             "train_samples": int(len(x_train)),
             "test_samples": int(len(x_test)),
@@ -129,6 +249,8 @@ def main() -> None:
         "macro_f1": macro_f1,
         "classifier_path": str(CLASSIFIER_PATH),
         "tfidf_path": str(TFIDF_PATH),
+        "evaluation_report_path": str(report_path),
+        "latest_evaluation_report_path": str(latest_report_path),
     }
     print(json.dumps(output, indent=2))
 

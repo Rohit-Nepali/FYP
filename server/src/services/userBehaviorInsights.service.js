@@ -18,6 +18,9 @@ const WEEKDAY_ORDER = [
 ];
 
 const PROCRASTINATION_LABEL = "PROCRASTINATION";
+const SIGNAL_CONFIDENCE_THRESHOLD = Number.parseFloat(
+  process.env.ML_LOW_CONFIDENCE_THRESHOLD || "0.6"
+);
 
 const toDateKey = (date) => {
   const year = date.getUTCFullYear();
@@ -245,6 +248,7 @@ export const userBehaviorInsightsService = {
     const labelTrendByDate = Object.fromEntries(dateSeries.map((key) => [key, {}]));
 
     for (const signal of behaviorSignals) {
+      if (signal.confidence < SIGNAL_CONFIDENCE_THRESHOLD) continue;
       labelCounts[signal.label] = (labelCounts[signal.label] || 0) + 1;
       const key = toDateKey(signal.createdAt);
       if (!labelTrendByDate[key]) {

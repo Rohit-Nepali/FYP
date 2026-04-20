@@ -31,6 +31,17 @@ python training/train_classifier.py --dataset training/raw/classifier/productivi
 
 If your classifier CSV has different column names, change `--text-col` and `--label-col`.
 
+The classifier trainer now uses a safer TF-IDF pipeline by default:
+- custom stopword filtering that preserves negation cues (for example `no`, `not`, `cant`)
+- combined word n-grams (1-3) and character n-grams (3-5) for better robustness to slang and typos
+
+Optional flags:
+
+```bash
+python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_3.csv --text-col text --label-col label --char-max-features 10000
+python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_3.csv --text-col text --label-col label --disable-char-ngrams
+```
+
 ## Train risk model locally
 
 Place Gryzzly CSVs under:

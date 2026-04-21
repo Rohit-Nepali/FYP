@@ -14,8 +14,8 @@
       "WORK_OVERLOAD"
     ],
     "metrics": {
-      "accuracy": 0.992,
-      "macro_f1": 0.992008
+      "accuracy": 0.821429,
+      "macro_f1": 0.811106
     },
     "preprocessing": {
       "word_stopwords": "custom_english_preserve_negations",
@@ -32,65 +32,65 @@
     },
     "report": {
       "CONSISTENT_PRODUCTIVITY": {
-        "precision": 1.0,
-        "recall": 0.996,
-        "f1-score": 0.9979959919839679,
-        "support": 250.0
+        "precision": 0.6,
+        "recall": 0.5454545454545454,
+        "f1-score": 0.5714285714285714,
+        "support": 22.0
       },
       "DISTRACTION": {
-        "precision": 0.9959677419354839,
-        "recall": 0.988,
-        "f1-score": 0.9919678714859438,
-        "support": 250.0
+        "precision": 0.8666666666666667,
+        "recall": 0.7222222222222222,
+        "f1-score": 0.7878787878787878,
+        "support": 18.0
       },
       "FORGETFULNESS": {
-        "precision": 0.996,
-        "recall": 0.996,
-        "f1-score": 0.996,
-        "support": 250.0
+        "precision": 0.9166666666666666,
+        "recall": 0.88,
+        "f1-score": 0.8979591836734694,
+        "support": 25.0
       },
       "HIGH_MOTIVATION": {
-        "precision": 0.9959514170040485,
-        "recall": 0.984,
-        "f1-score": 0.9899396378269618,
-        "support": 250.0
+        "precision": 0.875,
+        "recall": 0.8235294117647058,
+        "f1-score": 0.8484848484848485,
+        "support": 34.0
       },
       "LOW_ENERGY": {
-        "precision": 0.9879518072289156,
-        "recall": 0.984,
-        "f1-score": 0.9859719438877755,
-        "support": 250.0
+        "precision": 0.7954545454545454,
+        "recall": 0.875,
+        "f1-score": 0.8333333333333334,
+        "support": 40.0
       },
       "POOR_PLANNING": {
-        "precision": 1.0,
-        "recall": 0.996,
-        "f1-score": 0.9979959919839679,
-        "support": 250.0
+        "precision": 0.9090909090909091,
+        "recall": 0.8695652173913043,
+        "f1-score": 0.8888888888888888,
+        "support": 23.0
       },
       "PROCRASTINATION": {
-        "precision": 0.984251968503937,
-        "recall": 1.0,
-        "f1-score": 0.9920634920634921,
-        "support": 250.0
+        "precision": 0.8461538461538461,
+        "recall": 0.8918918918918919,
+        "f1-score": 0.868421052631579,
+        "support": 37.0
       },
       "WORK_OVERLOAD": {
-        "precision": 0.9763779527559056,
-        "recall": 0.992,
-        "f1-score": 0.9841269841269841,
-        "support": 250.0
+        "precision": 0.75,
+        "recall": 0.84,
+        "f1-score": 0.7924528301886793,
+        "support": 25.0
       },
-      "accuracy": 0.992,
+      "accuracy": 0.8214285714285714,
       "macro avg": {
-        "precision": 0.9920626109285363,
-        "recall": 0.992,
-        "f1-score": 0.9920077391698867,
-        "support": 2000.0
+        "precision": 0.8198790792540793,
+        "recall": 0.8059579110905837,
+        "f1-score": 0.8111059370635197,
+        "support": 224.0
       },
       "weighted avg": {
-        "precision": 0.9920626109285363,
-        "recall": 0.992,
-        "f1-score": 0.9920077391698867,
-        "support": 2000.0
+        "precision": 0.8225519272394273,
+        "recall": 0.8214285714285714,
+        "f1-score": 0.8204079851492478,
+        "support": 224.0
       }
     },
     "gold_standard": null,
@@ -112,10 +112,16 @@
         "per_class_metrics": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\07_per_class_metrics.png"
       }
     },
-    "train_samples": 8000,
-    "test_samples": 2000,
+    "train_samples": 9776,
+    "test_samples": 224,
+    "split_source": "predefined column",
+    "leakage": {
+      "threshold": 0.92,
+      "count": 3,
+      "ratio": 0.013393
+    },
     "random_state": 42,
-    "updated_at": "2026-04-21T11:39:52.545969+00:00"
+    "updated_at": "2026-04-21T12:38:42.739482+00:00"
   },
   "risk_model": {
     "raw_risk_dir": "training\\raw\\risk",

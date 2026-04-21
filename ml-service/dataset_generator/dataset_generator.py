@@ -3,6 +3,8 @@ import csv
 import re
 from pathlib import Path
 
+from sklearn.model_selection import train_test_split
+
 # ══════════════════════════════════════════════════════════════════
 # CONFIGURATION — edit these as needed
 # ══════════════════════════════════════════════════════════════════
@@ -394,7 +396,6 @@ informal_bases = {
         "so much to do and no energy for it",
         "too much work and zero energy left",
         "overwhelmed and exhausted at the same time",
-        "too tired to handle everything on my plate",
     ],
     "FORGETFULNESS": [
         "blanked on it",
@@ -1116,6 +1117,58 @@ real_world_samples = [
     ("lets go mode", "HIGH_MOTIVATION"),
 ]
 
+# Hard negatives: cross-label boundary samples
+# These teach the model real distinctions at confusion boundaries.
+hard_negatives = [
+    # LOW_ENERGY vs PROCRASTINATION
+    # (tired but the root cause is energy, not avoidance)
+    ("too tired to even think about starting", "LOW_ENERGY"),
+    ("no energy left so nothing got done", "LOW_ENERGY"),
+    ("wanted to work but my body just gave out", "LOW_ENERGY"),
+    ("exhausted before the day even began", "LOW_ENERGY"),
+    ("running on empty and can't push through", "LOW_ENERGY"),
+    # (avoiding but the driver is avoidance, not fatigue)
+    ("could start but keep finding reasons not to", "PROCRASTINATION"),
+    ("I have the energy but just won't begin", "PROCRASTINATION"),
+    ("not tired, just not doing it", "PROCRASTINATION"),
+    ("keep delaying even though I feel fine", "PROCRASTINATION"),
+    ("choosing to scroll instead of starting", "PROCRASTINATION"),
+
+    # WORK_OVERLOAD vs POOR_PLANNING
+    # (too much volume, not a planning failure)
+    ("the amount of work itself is unreasonable", "WORK_OVERLOAD"),
+    ("even a perfect plan wouldn't fix this volume", "WORK_OVERLOAD"),
+    ("three people's work landed on my desk today", "WORK_OVERLOAD"),
+    ("requests kept coming in faster than I could finish", "WORK_OVERLOAD"),
+    # (volume is fine, execution was unplanned)
+    ("buried because I didn't sequence anything correctly", "POOR_PLANNING"),
+    ("the workload was manageable but I planned it badly", "POOR_PLANNING"),
+    ("missed the deadline because I never mapped out the steps", "POOR_PLANNING"),
+    ("ran out of time due to bad estimates not too many tasks", "POOR_PLANNING"),
+
+    # DISTRACTION vs PROCRASTINATION
+    # (external forces broke focus - not a choice)
+    ("notifications kept pulling me out of deep work", "DISTRACTION"),
+    ("the open office made concentration impossible today", "DISTRACTION"),
+    ("every time I got going someone interrupted me", "DISTRACTION"),
+    ("my environment is working against me right now", "DISTRACTION"),
+    # (internal avoidance - a choice not to start or continue)
+    ("I could have focused but opened social media instead", "PROCRASTINATION"),
+    ("nobody interrupted me I just kept putting it off", "PROCRASTINATION"),
+    ("I deliberately avoided the hard task all morning", "PROCRASTINATION"),
+    ("turned my phone off but still found ways to avoid it", "PROCRASTINATION"),
+
+    # FORGETFULNESS vs POOR_PLANNING
+    # (genuinely forgot - not a planning failure)
+    ("it was on my list but slipped my mind completely", "FORGETFULNESS"),
+    ("I remembered it too late despite having a plan", "FORGETFULNESS"),
+    ("the reminder fired but I blanked on it anyway", "FORGETFULNESS"),
+    # (never tracked it - a planning gap, not memory)
+    ("I never wrote it down so it never got done", "POOR_PLANNING"),
+    ("no system in place so tasks keep disappearing", "POOR_PLANNING"),
+    ("forgot because I had no tracking process at all", "POOR_PLANNING"),
+]
+
 short_samples = [
     ("swamped", "WORK_OVERLOAD"),
     ("buried rn", "WORK_OVERLOAD"),
@@ -1166,6 +1219,8 @@ short_samples = [
     ("lets go", "HIGH_MOTIVATION"),
 ]
 
+real_world_samples = real_world_samples + hard_negatives
+
 # ══════════════════════════════════════════════════════════════════
 # DATASET GENERATION
 # ══════════════════════════════════════════════════════════════════
@@ -1173,63 +1228,100 @@ random.seed(RANDOM_SEED)
 
 labels_list = list(expanded_labels.keys())
 seen_texts = set()
-dataset_by_label = {label: [] for label in labels_list}
 
 
-def try_add_sample(text, label):
+def build_base_pool(label):
+    base_pool = []
+    seen_base_keys = set()
+
+    def add_base(text):
+        key = canonical_key(text)
+        if not key or key in seen_base_keys:
+            return
+        seen_base_keys.add(key)
+        base_pool.append(text.strip())
+
+    for text in expanded_labels[label]:
+        add_base(text)
+
+    for text in informal_bases[label]:
+        add_base(text)
+
+    for text, sample_label in real_world_samples:
+        if sample_label == label:
+            add_base(text)
+
+    for text, sample_label in short_samples:
+        if sample_label == label:
+            add_base(text)
+
+    return base_pool
+
+
+def try_add_sample(text, label, split):
     key = canonical_key(text)
     if not key or key in seen_texts:
         return False
     seen_texts.add(key)
-    dataset_by_label[label].append([text.strip(), label])
+    dataset_rows.append([split, text.strip(), label])
     return True
 
 
-# Seed the dataset with real-world examples first, while still preserving final balance.
-for text, label in real_world_samples:
-    if label in dataset_by_label:
-        try_add_sample(text, label)
+dataset_rows = []
+train_counts = {label: 0 for label in labels_list}
+test_counts = {label: 0 for label in labels_list}
 
-for text, label in short_samples:
-    if label in dataset_by_label:
-        try_add_sample(text, label)
-
-print("Generating balanced, deduplicated dataset...\n")
+print("Generating split-aware, deduplicated dataset...\n")
 
 for label in labels_list:
-    formal_pool = expanded_labels[label]
-    informal_pool = informal_bases[label]
+    base_pool = build_base_pool(label)
+    if len(base_pool) < 2:
+        raise ValueError(f"Not enough base samples to split for label: {label}")
+
+    train_bases, test_bases = train_test_split(
+        base_pool,
+        test_size=0.15,
+        random_state=RANDOM_SEED,
+    )
+
+    # Keep test samples derived only from held-out bases.
+    for base in test_bases:
+        if try_add_sample(base, label, split="test"):
+            test_counts[label] += 1
+
+        # Add light lexical variants only from held-out bases.
+        for _ in range(3):
+            text = apply_synonym_swap(base)
+            text = apply_casing(text)
+            if try_add_sample(text, label, split="test"):
+                test_counts[label] += 1
+
+    train_target = max(TARGET_PER_LABEL - test_counts[label], 0)
     attempts = 0
     max_attempts = TARGET_PER_LABEL * MAX_ATTEMPT_MULT
 
-    while len(dataset_by_label[label]) < TARGET_PER_LABEL and attempts < max_attempts:
+    while train_counts[label] < train_target and attempts < max_attempts:
         attempts += 1
 
-        # 50/50 base selection between formal and informal sentence pools.
-        base_sentences = informal_pool if random.random() < 0.5 else formal_pool
-
-        # Pick base: single sentence (75%) or two combined (25%)
+        # Augment only from the training base pool so the holdout set stays disjoint.
         if random.random() < 0.25:
-            s1 = random.choice(base_sentences)
-            s2 = random.choice(base_sentences)
+            s1 = random.choice(train_bases)
+            s2 = random.choice(train_bases)
             base = s1 if s1 == s2 else f"{s1}. {s2}"
         else:
-            base = random.choice(base_sentences)
+            base = random.choice(train_bases)
 
-        text = augment_text(base, base_sentences, label=label)
+        text = augment_text(base, train_bases, label=label)
         text = apply_casing(text)
-        try_add_sample(text, label)
+        if try_add_sample(text, label, split="train"):
+            train_counts[label] += 1
 
-    count = len(dataset_by_label[label])
-    status = "OK" if count == TARGET_PER_LABEL else "PARTIAL"
-    print(f"  {status} {label:<30} {count:>5} samples  ({attempts} attempts)")
-
-dataset = []
-for label in labels_list:
-    dataset.extend(dataset_by_label[label])
-
-# Shuffle so labels are not grouped in the CSV.
-random.shuffle(dataset)
+    total_count = train_counts[label] + test_counts[label]
+    status = "OK" if total_count == TARGET_PER_LABEL else "PARTIAL"
+    print(
+        f"  {status} {label:<30} train={train_counts[label]:>4} "
+        f"test={test_counts[label]:>4} total={total_count:>5} ({attempts} attempts)"
+    )
 
 # ══════════════════════════════════════════════════════════════════
 # SAVE TO CSV
@@ -1238,14 +1330,18 @@ output_path = Path(__file__).resolve().parents[1] / "training" / "raw" / "classi
 output_path.parent.mkdir(parents=True, exist_ok=True)
 with output_path.open("w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f)
-    writer.writerow(["text", "label"])
-    writer.writerows(dataset)
+    writer.writerow(["split", "text", "label"])
+    writer.writerows(dataset_rows)
 # ══════════════════════════════════════════════════════════════════
 # FINAL REPORT
 # ══════════════════════════════════════════════════════════════════
-total = len(dataset)
+total = len(dataset_rows)
+train_total = sum(train_counts.values())
+test_total = sum(test_counts.values())
 print(f"\n{'═'*52}")
 print(f"  Total unique samples : {total}")
+print(f"  Train samples        : {train_total}")
+print(f"  Test samples         : {test_total}")
 print(f"  Labels               : {len(labels_list)}")
 print(f"  Avg per label        : {total // len(labels_list)}")
 print(f"  Duplicate rate       : 0% by canonical key")

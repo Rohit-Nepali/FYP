@@ -3,9 +3,9 @@ CLASSIFIER DATASET OVERVIEW
 ============================================================
 
 Total samples after preprocessing: 10000
-Train samples: 8000
-Test samples: 2000
-Train/Test split: 80.00% / 20.00%
+Train samples: 9776
+Test samples: 224
+Train/Test split: 97.76% / 2.24%
 
 CLASS DISTRIBUTION:
 ------------------------------------------------------------
@@ -20,11 +20,11 @@ CLASS DISTRIBUTION:
 
 TEXT STATISTICS:
 ------------------------------------------------------------
-  Mean tokens per text: 12.47
-  Median tokens per text: 11.00
+  Mean tokens per text: 12.15
+  Median tokens per text: 12.00
   Min tokens: 1
-  Max tokens: 44
-  Std dev: 6.47
+  Max tokens: 38
+  Std dev: 5.89
 
 PREPROCESSING APPLIED:
 ------------------------------------------------------------

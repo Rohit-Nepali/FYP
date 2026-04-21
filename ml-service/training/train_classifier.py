@@ -9,6 +9,7 @@ import joblib
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, f1_score
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion
 
@@ -93,7 +94,7 @@ def parse_args() -> argparse.Namespace:
     # Hyperparameters for the train/test split and vectorizer
     parser.add_argument("--test-size", type=float, default=0.2, help="Test set size ratio.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed.")
-    parser.add_argument("--max-features", type=int, default=20000, help="TF-IDF max features.")
+    parser.add_argument("--max-features", type=int, default=10000, help="TF-IDF max features.")
     parser.add_argument(
         "--char-max-features",
         type=int,
@@ -157,6 +158,27 @@ def evaluate_frame(frame, text_col: str, label_col: str, vectorizer, classifier)
     }
 
 
+def find_leakage(x_train: list[str], x_test: list[str], threshold: float = 0.92):
+    """Flag test samples that are too similar to any train sample."""
+    if not x_train or not x_test:
+        print(f"Leaky test samples (sim > {threshold}): 0 / {len(x_test)} (0.00%)")
+        return []
+
+    vec = TfidfVectorizer(ngram_range=(1, 2)).fit(x_train)
+    train_vecs = vec.transform(x_train)
+    test_vecs = vec.transform(x_test)
+
+    max_similarities = cosine_similarity(test_vecs, train_vecs).max(axis=1)
+    leaky = [(idx, float(score)) for idx, score in enumerate(max_similarities) if score > threshold]
+    leakage_pct = (len(leaky) / len(x_test)) * 100.0
+
+    print(
+        f"Leaky test samples (sim > {threshold}): "
+        f"{len(leaky)} / {len(x_test)} ({leakage_pct:.2f}%)"
+    )
+    return leaky
+
+
 def main() -> None:
     args = parse_args()
     ensure_models_dir()
@@ -164,9 +186,14 @@ def main() -> None:
     df = read_csv(args.dataset)
     text_col, label_col = infer_columns(df, args.text_col, args.label_col)
 
-    work_df = df[[text_col, label_col]].copy()
+    has_split_column = "split" in df.columns
+    selected_columns = [text_col, label_col] + (["split"] if has_split_column else [])
+
+    work_df = df[selected_columns].copy()
     work_df[text_col] = work_df[text_col].fillna("").map(clean_text)
     work_df[label_col] = work_df[label_col].astype(str).str.strip().str.upper()
+    if has_split_column:
+        work_df["split"] = work_df["split"].astype(str).str.strip().str.lower()
 
     work_df = work_df[work_df[text_col] != ""]
     work_df = work_df[work_df[label_col].isin(VALID_LABELS)]
@@ -178,18 +205,47 @@ def main() -> None:
     if (class_counts < 2).any():
         raise ValueError("Each class must have at least 2 samples for stratified split.")
 
-    x_train, x_test, y_train, y_test = train_test_split(
-        work_df[text_col],
-        work_df[label_col],
-        test_size=args.test_size,
-        random_state=args.random_state,
-        stratify=work_df[label_col],
-    )
+    split_source = "random split"
+    if has_split_column:
+        train_frame = work_df[work_df["split"] == "train"]
+        test_frame = work_df[work_df["split"] == "test"]
+        if not train_frame.empty and not test_frame.empty:
+            split_source = "predefined column"
+            x_train = train_frame[text_col]
+            y_train = train_frame[label_col]
+            x_test = test_frame[text_col]
+            y_test = test_frame[label_col]
+        else:
+            x_train, x_test, y_train, y_test = train_test_split(
+                work_df[text_col],
+                work_df[label_col],
+                test_size=args.test_size,
+                random_state=args.random_state,
+                stratify=work_df[label_col],
+            )
+    else:
+        x_train, x_test, y_train, y_test = train_test_split(
+            work_df[text_col],
+            work_df[label_col],
+            test_size=args.test_size,
+            random_state=args.random_state,
+            stratify=work_df[label_col],
+        )
+
+    print("\nSplit summary:")
+    print(f"  Train samples : {len(x_train)}")
+    print(f"  Test samples  : {len(x_test)}")
+    print(f"  Split source  : {split_source}")
+
+    leaky = find_leakage(x_train.tolist(), x_test.tolist(), threshold=0.92)
+    leakage_ratio = (len(leaky) / len(x_test)) if len(x_test) else 0.0
+    if leakage_ratio > 0.05:
+        print(f"WARNING: leakage ratio is high ({leakage_ratio * 100:.2f}% > 5.00%).")
 
     word_vectorizer = TfidfVectorizer(
         max_features=args.max_features,
         ngram_range=(1, 3),
-        min_df=1,
+        min_df=2,
         sublinear_tf=True,
         stop_words=build_stop_words(),
     )
@@ -211,10 +267,12 @@ def main() -> None:
     x_test_vec = vectorizer.transform(x_test)
 
     classifier = LogisticRegression(
+        C=0.3,
         max_iter=2000,
         random_state=args.random_state,
         class_weight="balanced",
-        multi_class="multinomial",
+        # multi_class="multinomial",
+        solver="lbfgs",
     )
     classifier.fit(x_train_vec, y_train)
 
@@ -273,6 +331,12 @@ def main() -> None:
         "classification_report": report,
         "train_samples": int(len(x_train)),
         "test_samples": int(len(x_test)),
+        "split_source": split_source,
+        "leakage": {
+            "threshold": 0.92,
+            "count": int(len(leaky)),
+            "ratio": round(leakage_ratio, 6),
+        },
         "random_state": args.random_state,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "eda_reports": {
@@ -350,6 +414,12 @@ def main() -> None:
             },
             "train_samples": int(len(x_train)),
             "test_samples": int(len(x_test)),
+            "split_source": split_source,
+            "leakage": {
+                "threshold": 0.92,
+                "count": int(len(leaky)),
+                "ratio": round(leakage_ratio, 6),
+            },
             "random_state": args.random_state,
         },
     )

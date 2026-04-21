@@ -1,22 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
     View,
     Text,
     TouchableOpacity,
-    ActivityIndicator,
     ScrollView,
     Image,
 } from "react-native";
 import { Calendar, DateData } from "react-native-calendars";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { Task } from "../services/taskService";
-import {
-    getCalendarConnectionStatus,
-    getCalendarEvents,
-    CalendarEvent,
-    CalendarConnectionStatus,
-} from "../services/calendarService";
 import { resolveFileUrl } from "@/src/utils/url";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -24,13 +16,11 @@ import { resolveFileUrl } from "@/src/utils/url";
 interface CalendarViewProps {
     tasks: Task[];
     onTaskPress: (task: Task) => void;
-    onRefresh?: () => void;
 }
 
 interface DayItem {
-    type: "task" | "event";
+    type: "task";
     task?: Task;
-    event?: CalendarEvent;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -41,11 +31,6 @@ const toDateKey = (dateString: string): string => {
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
-};
-
-const formatTime = (dateTimeString: string): string => {
-    const d = new Date(dateTimeString);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
 const isCompleted = (task: Task): boolean => {
@@ -162,72 +147,13 @@ const AgendaTaskCard: React.FC<{ task: Task; onPress: () => void }> = ({
     );
 };
 
-// ─── Google Event Card (for the agenda section) ──────────────────────────────
-
-const AgendaEventCard: React.FC<{ event: CalendarEvent }> = ({ event }) => {
-    return (
-        <View className="bg-gray-800/60 rounded-xl p-4 mb-2 flex-row items-center border border-blue-500/20">
-            <View
-                className="w-2.5 h-2.5 rounded-full mr-3"
-                style={{ backgroundColor: "#3B82F6" }}
-            />
-            <View className="flex-1">
-                <Text className="text-white font-semibold text-sm" numberOfLines={1}>
-                    {event.summary}
-                </Text>
-                <View className="flex-row items-center mt-1">
-                    <Ionicons name="logo-google" size={10} color="#3B82F6" />
-                    <Text className="text-blue-400 text-xs ml-1">Google Calendar</Text>
-                    {event.start?.dateTime && (
-                        <Text className="text-gray-500 text-xs ml-2">
-                            {formatTime(event.start.dateTime)}
-                        </Text>
-                    )}
-                </View>
-            </View>
-        </View>
-    );
-};
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 const CalendarView: React.FC<CalendarViewProps> = ({
     tasks,
     onTaskPress,
 }) => {
-    const router = useRouter();
     const [selectedDate, setSelectedDate] = useState<string>(toDateKey(new Date().toISOString()));
-    const [calendarStatus, setCalendarStatus] = useState<CalendarConnectionStatus>({ connected: false });
-    const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>([]);
-    const [loadingEvents, setLoadingEvents] = useState(false);
-
-    // Check calendar connection and fetch events
-    useEffect(() => {
-        const loadCalendarData = async () => {
-            try {
-                const status = await getCalendarConnectionStatus();
-                setCalendarStatus(status);
-
-                if (status.connected) {
-                    setLoadingEvents(true);
-                    // Fetch events for this month ± 1 month
-                    const now = new Date();
-                    const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                    const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-                    const events = await getCalendarEvents(
-                        startOfPrevMonth.toISOString(),
-                        endOfNextMonth.toISOString()
-                    );
-                    setGoogleEvents(events || []);
-                }
-            } catch (error) {
-                console.error("Error loading calendar data:", error);
-            } finally {
-                setLoadingEvents(false);
-            }
-        };
-        loadCalendarData();
-    }, []);
 
     // Build markedDates for the calendar
     const markedDates = useMemo(() => {
@@ -251,23 +177,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             }
         });
 
-        // Mark Google events with blue dots
-        googleEvents.forEach((event) => {
-            if (!event.start?.dateTime) return;
-            const key = toDateKey(event.start.dateTime);
-            if (!marks[key]) {
-                marks[key] = { dots: [], marked: true };
-            }
-            const hasBlue = marks[key].dots.some((d: any) => d.key === "event");
-            if (!hasBlue) {
-                marks[key].dots.push({
-                    key: "event",
-                    color: "#3B82F6",
-                    selectedDotColor: "#3B82F6",
-                });
-            }
-        });
-
         // Mark selected date
         if (marks[selectedDate]) {
             marks[selectedDate] = {
@@ -284,7 +193,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         }
 
         return marks;
-    }, [tasks, googleEvents, selectedDate]);
+    }, [tasks, selectedDate]);
 
     // Items for the selected date
     const selectedDayItems = useMemo<DayItem[]>(() => {
@@ -298,16 +207,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             }
         });
 
-        // Google events on the selected date
-        googleEvents.forEach((event) => {
-            if (!event.start?.dateTime) return;
-            if (toDateKey(event.start.dateTime) === selectedDate) {
-                items.push({ type: "event", event });
-            }
-        });
-
         return items;
-    }, [tasks, googleEvents, selectedDate]);
+    }, [tasks, selectedDate]);
 
     const handleDayPress = useCallback((day: DateData) => {
         setSelectedDate(day.dateString);
@@ -333,21 +234,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
     return (
         <View className="flex-1">
-            {/* Google Calendar Connection Banner */}
-            {!calendarStatus.connected && (
-                <TouchableOpacity
-                    onPress={() => router.push("/settings/CalendarSettings")}
-                    className="mx-1 mb-3 flex-row items-center bg-blue-600/10 border border-blue-500/30 rounded-xl px-4 py-3"
-                    activeOpacity={0.7}
-                >
-                    <Ionicons name="logo-google" size={16} color="#3B82F6" />
-                    <Text className="text-blue-400 text-sm font-medium ml-2 flex-1">
-                        Connect Google Calendar to see events
-                    </Text>
-                    <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
-                </TouchableOpacity>
-            )}
-
             {/* Calendar */}
             <View className="mx-1 bg-gray-800/50 rounded-2xl overflow-hidden mb-4">
                 <Calendar
@@ -368,12 +254,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                         <View className="w-2 h-2 rounded-full bg-purple-500 mr-1.5" />
                         <Text className="text-gray-400 text-xs">Tasks</Text>
                     </View>
-                    {calendarStatus.connected && (
-                        <View className="flex-row items-center">
-                            <View className="w-2 h-2 rounded-full bg-blue-500 mr-1.5" />
-                            <Text className="text-gray-400 text-xs">Google Calendar</Text>
-                        </View>
-                    )}
                 </View>
             </View>
 
@@ -388,13 +268,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     </Text>
                 </View>
 
-                {loadingEvents && (
-                    <View className="py-4 items-center">
-                        <ActivityIndicator size="small" color="#60A5FA" />
-                    </View>
-                )}
-
-                {!loadingEvents && selectedDayItems.length === 0 && (
+                {selectedDayItems.length === 0 && (
                     <View className="py-8 items-center bg-gray-800/30 rounded-xl">
                         <Ionicons name="calendar-outline" size={32} color="#4B5563" />
                         <Text className="text-gray-500 text-sm mt-2">
@@ -403,22 +277,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     </View>
                 )}
 
-                {!loadingEvents &&
-                    selectedDayItems.map((item, index) => {
+                {selectedDayItems.map((item, index) => {
                         if (item.type === "task" && item.task) {
                             return (
                                 <AgendaTaskCard
                                     key={`task-${item.task.id}`}
                                     task={item.task}
                                     onPress={() => onTaskPress(item.task!)}
-                                />
-                            );
-                        }
-                        if (item.type === "event" && item.event) {
-                            return (
-                                <AgendaEventCard
-                                    key={`event-${item.event.id}`}
-                                    event={item.event}
                                 />
                             );
                         }

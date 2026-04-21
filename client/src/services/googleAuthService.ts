@@ -9,8 +9,6 @@ const WEB_CLIENT_ID = '887155577122-4lrojdh2pm8fh6lmt7ri0jf22unf2q8u.apps.google
 const GOOGLE_SCOPES = [
   'email',
   'profile',
-  'https://www.googleapis.com/auth/calendar',
-  'https://www.googleapis.com/auth/calendar.events',
 ];
 
 /**

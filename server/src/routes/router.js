@@ -7,7 +7,6 @@ import priorityRouter from "./priority.router.js";
 import commentRouter from "./comment.router.js";
 import userRouter from "./user.router.js";
 import activityRouter from "./activity.router.js";
-import calendarRouter from "./calendar.router.js";
 import chatbotRouter from "./chatbot.router.js";
 import predictionRouter from "./prediction.router.js";
 import insightsRouter from "./insights.router.js";
@@ -27,7 +26,6 @@ router.use("/api/comments", commentRouter);
 router.use("/api/users", userRouter);
 router.use("/api", activityRouter);
 
-router.use("/api/calendar", calendarRouter);
 router.use("/api/chatbot", chatbotRouter);
 router.use("/api/predictions", predictionRouter);
 router.use("/api/insights", insightsRouter);

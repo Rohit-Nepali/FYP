@@ -32,14 +32,6 @@ export default function PrivacySecurityScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.push("/settings/CalendarSettings")}
-            className="flex-row justify-between items-center mb-3"
-          >
-            <Text className="text-gray-300">Google Calendar Integration</Text>
-            <Ionicons name="chevron-forward" size={20} color="#6B7280" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
             onPress={() => Alert.alert("Coming Soon", "Clear activity history coming soon")}
             className="flex-row justify-between items-center"
           >

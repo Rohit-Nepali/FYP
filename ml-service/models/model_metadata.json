@@ -14,11 +14,12 @@
       "WORK_OVERLOAD"
     ],
     "metrics": {
-      "accuracy": 0.99,
-      "macro_f1": 0.990004
+      "accuracy": 0.992,
+      "macro_f1": 0.992008
     },
     "preprocessing": {
       "word_stopwords": "custom_english_preserve_negations",
+      "lemmatization": "simplemma_en",
       "char_ngrams_enabled": true,
       "char_ngram_range": [
         3,
@@ -31,76 +32,90 @@
     },
     "report": {
       "CONSISTENT_PRODUCTIVITY": {
+        "precision": 1.0,
+        "recall": 0.996,
+        "f1-score": 0.9979959919839679,
+        "support": 250.0
+      },
+      "DISTRACTION": {
+        "precision": 0.9959677419354839,
+        "recall": 0.988,
+        "f1-score": 0.9919678714859438,
+        "support": 250.0
+      },
+      "FORGETFULNESS": {
         "precision": 0.996,
         "recall": 0.996,
         "f1-score": 0.996,
         "support": 250.0
       },
-      "DISTRACTION": {
-        "precision": 0.9919678714859438,
-        "recall": 0.988,
-        "f1-score": 0.9899799599198397,
-        "support": 250.0
-      },
-      "FORGETFULNESS": {
-        "precision": 0.992,
-        "recall": 0.992,
-        "f1-score": 0.992,
-        "support": 250.0
-      },
       "HIGH_MOTIVATION": {
-        "precision": 0.9959839357429718,
-        "recall": 0.992,
-        "f1-score": 0.9939879759519038,
+        "precision": 0.9959514170040485,
+        "recall": 0.984,
+        "f1-score": 0.9899396378269618,
         "support": 250.0
       },
       "LOW_ENERGY": {
-        "precision": 0.9919354838709677,
+        "precision": 0.9879518072289156,
         "recall": 0.984,
-        "f1-score": 0.9879518072289156,
+        "f1-score": 0.9859719438877755,
         "support": 250.0
       },
       "POOR_PLANNING": {
-        "precision": 0.988,
-        "recall": 0.988,
-        "f1-score": 0.988,
+        "precision": 1.0,
+        "recall": 0.996,
+        "f1-score": 0.9979959919839679,
         "support": 250.0
       },
       "PROCRASTINATION": {
-        "precision": 0.9880952380952381,
-        "recall": 0.996,
-        "f1-score": 0.9920318725099602,
+        "precision": 0.984251968503937,
+        "recall": 1.0,
+        "f1-score": 0.9920634920634921,
         "support": 250.0
       },
       "WORK_OVERLOAD": {
-        "precision": 0.9761904761904762,
-        "recall": 0.984,
-        "f1-score": 0.9800796812749004,
+        "precision": 0.9763779527559056,
+        "recall": 0.992,
+        "f1-score": 0.9841269841269841,
         "support": 250.0
       },
-      "accuracy": 0.99,
+      "accuracy": 0.992,
       "macro avg": {
-        "precision": 0.9900216256731997,
-        "recall": 0.99,
-        "f1-score": 0.9900039121106899,
+        "precision": 0.9920626109285363,
+        "recall": 0.992,
+        "f1-score": 0.9920077391698867,
         "support": 2000.0
       },
       "weighted avg": {
-        "precision": 0.9900216256731996,
-        "recall": 0.99,
-        "f1-score": 0.9900039121106899,
+        "precision": 0.9920626109285363,
+        "recall": 0.992,
+        "f1-score": 0.9920077391698867,
         "support": 2000.0
       }
     },
+    "gold_standard": null,
     "artifacts": {
       "classifier": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\models\\taskora_classifier.pkl",
       "tfidf": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\models\\taskora_tfidf.pkl",
       "evaluation_report": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\classifier_evaluation_latest.json"
     },
+    "eda_reports": {
+      "figures_directory": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures",
+      "report_files": {
+        "dataset_overview": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\00_dataset_overview.txt",
+        "class_distribution_overall": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\01_class_distribution_overall.png",
+        "class_distribution_train": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\02_class_distribution_train.png",
+        "class_distribution_test": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\03_class_distribution_test.png",
+        "text_length_distribution": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\04_text_length_distribution.png",
+        "confusion_matrix": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\05_confusion_matrix.png",
+        "top_features_per_class": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\06_top_features_per_class.png",
+        "per_class_metrics": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\07_per_class_metrics.png"
+      }
+    },
     "train_samples": 8000,
     "test_samples": 2000,
     "random_state": 42,
-    "updated_at": "2026-04-20T16:37:33.904666+00:00"
+    "updated_at": "2026-04-21T11:39:52.545969+00:00"
   },
   "risk_model": {
     "raw_risk_dir": "training\\raw\\risk",

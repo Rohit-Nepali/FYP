@@ -1,6 +1,5 @@
 import logging
 import joblib
-import re
 import pandas as pd
 
 from datetime import datetime, timezone
@@ -15,6 +14,7 @@ from config import (
     ML_RISK_FALLBACK_ENABLED,
 )
 from schemas import ClassifyRequest, ClassifyResponse, PredictTaskRiskRequest, PredictTaskRiskResponse
+from training.common import clean_text
 
 logger = logging.getLogger(__name__)
 
@@ -91,13 +91,6 @@ def load_models() -> None:
     elif ML_RISK_FALLBACK_ENABLED:
         logger.warning("Risk model loading is disabled; fallback prediction will be used")
 
-
-def clean_text(text):
-    text = text.lower()
-    text = re.sub(r"[^a-z0-9\s']", '', text)
-    text = re.sub(r'\d+', '', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
 
 def _map_probability_to_risk(probability: float) -> str:
     if probability >= ML_RISK_THRESHOLD_HIGH:

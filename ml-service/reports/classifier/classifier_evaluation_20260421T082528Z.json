@@ -16,77 +16,76 @@
     ]
   },
   "metrics": {
-    "accuracy": 0.992,
-    "macro_f1": 0.992008
+    "accuracy": 0.987,
+    "macro_f1": 0.987002
   },
-  "gold_standard": null,
   "classification_report": {
     "CONSISTENT_PRODUCTIVITY": {
-      "precision": 1.0,
+      "precision": 0.9880952380952381,
       "recall": 0.996,
-      "f1-score": 0.9979959919839679,
+      "f1-score": 0.9920318725099602,
       "support": 250.0
     },
     "DISTRACTION": {
-      "precision": 0.9959677419354839,
+      "precision": 0.9919678714859438,
       "recall": 0.988,
-      "f1-score": 0.9919678714859438,
+      "f1-score": 0.9899799599198397,
       "support": 250.0
     },
     "FORGETFULNESS": {
-      "precision": 0.996,
-      "recall": 0.996,
-      "f1-score": 0.996,
+      "precision": 0.9802371541501976,
+      "recall": 0.992,
+      "f1-score": 0.9860834990059643,
       "support": 250.0
     },
     "HIGH_MOTIVATION": {
-      "precision": 0.9959514170040485,
-      "recall": 0.984,
-      "f1-score": 0.9899396378269618,
+      "precision": 0.9919678714859438,
+      "recall": 0.988,
+      "f1-score": 0.9899799599198397,
       "support": 250.0
     },
     "LOW_ENERGY": {
+      "precision": 0.9919354838709677,
+      "recall": 0.984,
+      "f1-score": 0.9879518072289156,
+      "support": 250.0
+    },
+    "POOR_PLANNING": {
+      "precision": 0.9879032258064516,
+      "recall": 0.98,
+      "f1-score": 0.9839357429718876,
+      "support": 250.0
+    },
+    "PROCRASTINATION": {
       "precision": 0.9879518072289156,
       "recall": 0.984,
       "f1-score": 0.9859719438877755,
       "support": 250.0
     },
-    "POOR_PLANNING": {
-      "precision": 1.0,
-      "recall": 0.996,
-      "f1-score": 0.9979959919839679,
-      "support": 250.0
-    },
-    "PROCRASTINATION": {
-      "precision": 0.984251968503937,
-      "recall": 1.0,
-      "f1-score": 0.9920634920634921,
-      "support": 250.0
-    },
     "WORK_OVERLOAD": {
-      "precision": 0.9763779527559056,
-      "recall": 0.992,
-      "f1-score": 0.9841269841269841,
+      "precision": 0.9761904761904762,
+      "recall": 0.984,
+      "f1-score": 0.9800796812749004,
       "support": 250.0
     },
-    "accuracy": 0.992,
+    "accuracy": 0.987,
     "macro avg": {
-      "precision": 0.9920626109285363,
-      "recall": 0.992,
-      "f1-score": 0.9920077391698867,
+      "precision": 0.9870311410392668,
+      "recall": 0.987,
+      "f1-score": 0.9870018083398854,
       "support": 2000.0
     },
     "weighted avg": {
-      "precision": 0.9920626109285363,
-      "recall": 0.992,
-      "f1-score": 0.9920077391698867,
+      "precision": 0.9870311410392668,
+      "recall": 0.987,
+      "f1-score": 0.9870018083398853,
       "support": 2000.0
     }
   },
   "train_samples": 8000,
   "test_samples": 2000,
   "random_state": 42,
-  "generated_at": "2026-04-21T11:39:51.970837+00:00",
+  "generated_at": "2026-04-21T08:25:28.714223+00:00",
   "eda_reports": {
     "figures_directory": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures",
     "report_files": {

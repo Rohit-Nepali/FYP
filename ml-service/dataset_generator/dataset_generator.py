@@ -688,7 +688,66 @@ synonyms = {
     "today":       ["right now", "at the moment", "this week", "lately", "these days"],
     "completely":  ["totally", "entirely", "absolutely", "utterly", "fully"],
     "really":      ["truly", "genuinely", "very", "seriously", "actually"],
+    "complete":    ["finish", "deliver", "execute", "accomplish", "wrap", "close"],
+    "started":     ["began", "kicked off", "got going", "initiated", "launched"],
+    "stop":        ["halted", "paused", "ceased", "quit", "abandoned"],
+    "forgot":      ["blanked", "spaced", "overlooked", "missed", "slipped"],
+    "hard":        ["difficult", "challenging", "tough", "complex", "tricky"],
+    "easy":        ["simple", "straightforward", "quick", "painless", "effortless"],
+    "fried":       ["cooked", "gassed", "burnt out", "spent", "wiped"],
+    "drained":     ["hollow", "depleted", "exhausted", "empty", "wiped out"],
+    "motivated":   ["driven", "inspired", "pumped", "fired up", "energized"],
+    "lazy":        ["sluggish", "unmotivated", "lethargic", "inactive", "apathetic"],
+    "scroll":      ["browse", "tab", "doom-scroll", "waste time", "distract"],
+    "distracted":  ["pulled", "sidetracked", "derailed", "interrupted", "bothered"],
+    "chaos":       ["mess", "disorder", "confusion", "pandemonium", "mayhem"],
+    "stress":      ["pressure", "strain", "anxiety", "tension", "burden"],
+    "busy":        ["swamped", "overwhelmed", "buried", "slammed", "packed"],
+    "brain":       ["mind", "head", "thinking", "cognitive"],
+    "moment":      ["minute", "second", "instant", "point in time"],
+    "feel":        ["sense", "experience", "get", "have"],
+    "keep":        ["maintain", "hold", "retain", "preserve"],
+    "let":         ["allow", "permit", "enable", "make possible"],
+    "make":        ["create", "produce", "generate", "build"],
+    "get":         ["obtain", "acquire", "reach", "achieve"],
+    "put":         ["place", "set", "position", "lay"],
+    "take":        ["grab", "seize", "accept", "undertake"],
+    "go":          ["proceed", "advance", "move", "travel"],
 }
+
+label_noise = {
+    "WORK_OVERLOAD": ["stress", "boss", "deadline", "urgent", "demands", "crunch", "pressure", "workload", "hectic"],
+    "FORGETFULNESS": ["blank", "slip", "forgot", "vanish", "memory", "miss", "slipped", "escaped", "brain fog"],
+    "LOW_ENERGY": ["tired", "drained", "foggy", "zombie", "sleep", "crash", "exhausted", "depleted", "burnt out"],
+    "PROCRASTINATION": ["later", "lazy", "scroll", "distract", "tomorrow", "delay", "avoidance", "dodge", "postpone"],
+    "POOR_PLANNING": ["wing", "unprepared", "chaos", "guess", "assumption", "scope", "blind", "improvised"],
+    "DISTRACTION": ["ping", "notification", "interrupt", "chat", "tab", "context-switch", "derailed", "pulled"],
+    "CONSISTENT_PRODUCTIVITY": ["flow", "smooth", "momentum", "efficiency", "clean", "steady", "seamless"],
+    "HIGH_MOTIVATION": ["pumped", "driven", "goal", "unstoppable", "determined", "fired", "ambition"],
+}
+
+entities = {
+    "person": ["manager", "client", "boss", "teammate", "colleague", "lead", "PM"],
+    "platform": ["Jira", "Slack", "email", "the portal", "Teams", "Trello"],
+    "subject": ["frontend", "the API", "the report", "the database", "the feature"],
+}
+
+context_templates = [
+    "for the {person} presentation",
+    "on the {platform} review",
+    "related to the {subject} deadline",
+    "because of the {person} feedback",
+    "given the {subject} complexity",
+    "since we switched {platform}",
+    "for the {person} {subject} review",
+    "before the {person} meeting",
+    "due to {subject} changes",
+    "on the {platform} discussion",
+    "for the upcoming {subject} milestone",
+    "because my {person} asked for it",
+    "after the {subject} failed",
+    "since the {platform} went down",
+]
 
 prefixes = [
     "Honestly,", "Ugh,", "So,", "I think", "Basically,",
@@ -783,7 +842,7 @@ def inject_mid_filler(text):
     return text
 
 
-def augment_text(base_text, all_sentences):
+def augment_text(base_text, all_sentences, label=None):
     """
     Stack multiple independent augmentation strategies.
     Each strategy fires independently — more combinations = more unique outputs.
@@ -793,39 +852,56 @@ def augment_text(base_text, all_sentences):
     # Strategy 1: Synonym swap — always applied
     text = apply_synonym_swap(text)
 
-    # Strategy 1 : noise - real human slang
-    text = apply_noise(text)
+    # Strategy 2: Label-aware typing and slang noise
+    text = apply_noise(text, label=label)
 
     # Strategy 2: Mid-sentence filler injection (25% chance)
     if random.random() < 0.25:
         text = inject_mid_filler(text)
 
-    # Strategy 3: Human-sounding prefix (45% chance)
-    if random.random() < 0.45:
+    # Strategy 3: Human-sounding prefix (15% chance)
+    if random.random() < 0.15:
         text = f"{random.choice(prefixes)} {text}"
 
-    # Strategy 4: Task context injector at end (35% chance)
+    # Strategy 4: Dynamic context injection (35% chance)
     if random.random() < 0.35:
-        text = f"{text} {random.choice(context_injectors)}"
+        template = random.choice(context_templates)
+        context = template.format(
+            person=random.choice(entities["person"]),
+            platform=random.choice(entities["platform"]),
+            subject=random.choice(entities["subject"]),
+        )
+        text = f"{text} {context}"
 
-    # Strategy 5: Natural suffix (30% chance)
-    if random.random() < 0.30:
+    # Strategy 5: Natural suffix (15% chance)
+    if random.random() < 0.15:
         text = f"{text} {random.choice(suffixes)}"
 
-    # Strategy 6: Combine with second sentence from same label (25% chance)
-    if random.random() < 0.25:
-        second = random.choice(all_sentences)
-        if second.strip().lower() != base_text.strip().lower():
-            text = f"{text}. {second}"
+    # Strategy 6: Shuffle clause order for informal labels
+    if label in {"PROCRASTINATION", "LOW_ENERGY", "DISTRACTION"}:
+        text = shuffle_clause_order(text)
+
+    # Strategy 7: Sentence fusion for conflicting samples
+    if label:
+        text = sentence_fusion(text, all_sentences, label)
 
     return text
 
-def apply_noise(text):
+def apply_noise(text, label=None):
     """
     Randomly applies real-world typing noise to a sentence.
     Simulates how actual users type informally.
     Fires on 55% of samples to better mimic real user input.
     """
+    if label in label_noise and random.random() < 0.20:
+        keyword = random.choice(label_noise[label])
+        if keyword not in text.lower():
+            words = text.split()
+            if words:
+                insert_pos = random.randint(0, len(words))
+                words.insert(insert_pos, keyword)
+                text = " ".join(words)
+
     if random.random() > 0.55:
         return text  # 45% of sentences stay clean
 
@@ -897,6 +973,36 @@ def apply_noise(text):
         return re.sub(r"[^\w\s]", "", text)
 
     return text
+
+
+def shuffle_clause_order(text):
+    """Swap clause order for some informal sentences to add syntactic variety."""
+    if random.random() > 0.30:
+        return text
+
+    lower = text.lower()
+    for connector in ["because", "since"]:
+        marker = f" {connector} "
+        if marker in lower:
+            left, right = lower.split(marker, 1)
+            if left.strip() and right.strip():
+                return f"{right.strip().capitalize()} {connector} {left.strip()}."
+    return text
+
+
+def sentence_fusion(base_text, all_sentences, label):
+    """Occasionally mix two sentences to simulate conflicting human explanations."""
+    if random.random() > 0.30:
+        return base_text
+    if len(all_sentences) < 2:
+        return base_text
+
+    second = random.choice(all_sentences)
+    if second.strip().lower() == base_text.strip().lower():
+        return base_text
+
+    connector = random.choice(["but", "though", "yet", "however"])
+    return f"{base_text} {connector} {second}"
 
 def apply_casing(text):
     """
@@ -1110,7 +1216,7 @@ for label in labels_list:
         else:
             base = random.choice(base_sentences)
 
-        text = augment_text(base, base_sentences)
+        text = augment_text(base, base_sentences, label=label)
         text = apply_casing(text)
         try_add_sample(text, label)
 

@@ -86,7 +86,7 @@
   "train_samples": 8000,
   "test_samples": 2000,
   "random_state": 42,
-  "generated_at": "2026-04-21T11:39:51.970837+00:00",
+  "generated_at": "2026-04-21T11:35:32.479016+00:00",
   "eda_reports": {
     "figures_directory": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures",
     "report_files": {

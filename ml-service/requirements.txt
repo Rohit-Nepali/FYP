@@ -7,5 +7,7 @@ numpy
 pandas
 scipy
 matplotlib
+seaborn
 pytest
 httpx
+simplemma

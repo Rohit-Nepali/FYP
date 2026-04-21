@@ -24,6 +24,7 @@ from common import (
     read_csv,
     update_metadata,
 )
+from classifier_eda import generate_all_eda_reports
 
 
 def build_stop_words() -> list[str]:
@@ -82,7 +83,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dataset",
         type=Path,
-        default=RAW_CLASSIFIER_DIR / "productivity_dataset_2.csv",
+        default=RAW_CLASSIFIER_DIR / "productivity_dataset_4.csv",
         help="Path to classifier dataset CSV.",
     )
     # Allows specifying exactly which columns contain the text and the target labels
@@ -110,7 +111,50 @@ def parse_args() -> argparse.Namespace:
         default=BASE_DIR / "reports" / "classifier",
         help="Directory to save classifier evaluation reports.",
     )
+    parser.add_argument(
+        "--gold-dataset",
+        type=Path,
+        default=None,
+        help="Optional gold-standard CSV for out-of-distribution evaluation.",
+    )
+    parser.add_argument(
+        "--gold-text-col",
+        type=str,
+        default=None,
+        help="Text column name for gold dataset.",
+    )
+    parser.add_argument(
+        "--gold-label-col",
+        type=str,
+        default=None,
+        help="Label column name for gold dataset.",
+    )
     return parser.parse_args()
+
+
+def evaluate_frame(frame, text_col: str, label_col: str, vectorizer, classifier):
+    work_frame = frame[[text_col, label_col]].copy()
+    work_frame[text_col] = work_frame[text_col].fillna("").map(clean_text)
+    work_frame[label_col] = work_frame[label_col].astype(str).str.strip().str.upper()
+    work_frame = work_frame[work_frame[text_col] != ""]
+    work_frame = work_frame[work_frame[label_col].isin(VALID_LABELS)]
+
+    if work_frame.empty:
+        return None
+
+    x_eval = work_frame[text_col]
+    y_eval = work_frame[label_col]
+    y_pred = classifier.predict(vectorizer.transform(x_eval))
+    accuracy = float(accuracy_score(y_eval, y_pred))
+    macro_f1 = float(f1_score(y_eval, y_pred, average="macro"))
+    report = classification_report(y_eval, y_pred, output_dict=True)
+
+    return {
+        "accuracy": accuracy,
+        "macro_f1": macro_f1,
+        "report": report,
+        "samples": int(len(work_frame)),
+    }
 
 
 def main() -> None:
@@ -180,7 +224,32 @@ def main() -> None:
     macro_f1 = float(f1_score(y_test, y_pred, average="macro"))
     report = classification_report(y_test, y_pred, output_dict=True)
 
+    gold_evaluation = None
+    if args.gold_dataset is not None:
+        gold_df = read_csv(args.gold_dataset)
+        gold_text_col, gold_label_col = infer_columns(gold_df, args.gold_text_col, args.gold_label_col)
+        gold_evaluation = evaluate_frame(gold_df, gold_text_col, gold_label_col, vectorizer, classifier)
+
     args.report_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate EDA visualizations and save to figures subdirectory
+    print("\nGenerating EDA visualizations...")
+    eda_reports = generate_all_eda_reports(
+        work_df=work_df,
+        x_train=x_train,
+        x_test=x_test,
+        y_train=y_train,
+        y_test=y_test,
+        y_pred=y_pred,
+        vectorizer=vectorizer,
+        classifier=classifier,
+        report_dict=report,
+        text_col=text_col,
+        label_col=label_col,
+        output_dir=args.report_dir,
+    )
+    print(f"EDA visualizations saved to: {args.report_dir / 'figures'}")
+    
     report_timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     report_path = args.report_dir / f"classifier_evaluation_{report_timestamp}.json"
     latest_report_path = args.report_dir / "classifier_evaluation_latest.json"
@@ -191,6 +260,7 @@ def main() -> None:
         "label_column": label_col,
         "preprocessing": {
             "word_stopwords": "custom_english_preserve_negations",
+            "lemmatization": "simplemma_en",
             "char_ngrams_enabled": not args.disable_char_ngrams,
             "char_ngram_range": [3, 5] if not args.disable_char_ngrams else None,
             "word_ngram_range": [1, 3],
@@ -199,12 +269,38 @@ def main() -> None:
             "accuracy": round(accuracy, 6),
             "macro_f1": round(macro_f1, 6),
         },
+        "gold_standard": None,
         "classification_report": report,
         "train_samples": int(len(x_train)),
         "test_samples": int(len(x_test)),
         "random_state": args.random_state,
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "eda_reports": {
+            "figures_directory": str(args.report_dir / "figures"),
+            "report_files": {
+                "dataset_overview": str(eda_reports.get("dataset_overview")),
+                "class_distribution_overall": str(eda_reports.get("class_distribution_overall")),
+                "class_distribution_train": str(eda_reports.get("class_distribution_train")),
+                "class_distribution_test": str(eda_reports.get("class_distribution_test")),
+                "text_length_distribution": str(eda_reports.get("text_length_distribution")),
+                "confusion_matrix": str(eda_reports.get("confusion_matrix")),
+                "top_features_per_class": str(eda_reports.get("top_features")),
+                "per_class_metrics": str(eda_reports.get("per_class_metrics")),
+            },
+        },
     }
+
+    if gold_evaluation is not None:
+        evaluation_payload["gold_standard"] = {
+            "dataset": str(args.gold_dataset),
+            "metrics": {
+                "accuracy": round(gold_evaluation["accuracy"], 6),
+                "macro_f1": round(gold_evaluation["macro_f1"], 6),
+            },
+            "samples": gold_evaluation["samples"],
+            "classification_report": gold_evaluation["report"],
+            "gap_vs_synthetic_accuracy": round(accuracy - gold_evaluation["accuracy"], 6),
+        }
 
     with report_path.open("w", encoding="utf-8") as file_obj:
         json.dump(evaluation_payload, file_obj, indent=2)
@@ -227,15 +323,30 @@ def main() -> None:
             },
             "preprocessing": {
                 "word_stopwords": "custom_english_preserve_negations",
+                "lemmatization": "simplemma_en",
                 "char_ngrams_enabled": not args.disable_char_ngrams,
                 "char_ngram_range": [3, 5] if not args.disable_char_ngrams else None,
                 "word_ngram_range": [1, 3],
             },
             "report": report,
+            "gold_standard": evaluation_payload["gold_standard"],
             "artifacts": {
                 "classifier": str(CLASSIFIER_PATH),
                 "tfidf": str(TFIDF_PATH),
                 "evaluation_report": str(latest_report_path),
+            },
+            "eda_reports": {
+                "figures_directory": str(args.report_dir / "figures"),
+                "report_files": {
+                    "dataset_overview": str(eda_reports.get("dataset_overview")),
+                    "class_distribution_overall": str(eda_reports.get("class_distribution_overall")),
+                    "class_distribution_train": str(eda_reports.get("class_distribution_train")),
+                    "class_distribution_test": str(eda_reports.get("class_distribution_test")),
+                    "text_length_distribution": str(eda_reports.get("text_length_distribution")),
+                    "confusion_matrix": str(eda_reports.get("confusion_matrix")),
+                    "top_features_per_class": str(eda_reports.get("top_features")),
+                    "per_class_metrics": str(eda_reports.get("per_class_metrics")),
+                },
             },
             "train_samples": int(len(x_train)),
             "test_samples": int(len(x_test)),
@@ -251,6 +362,17 @@ def main() -> None:
         "tfidf_path": str(TFIDF_PATH),
         "evaluation_report_path": str(report_path),
         "latest_evaluation_report_path": str(latest_report_path),
+        "eda_reports_directory": str(args.report_dir / "figures"),
+        "eda_report_files": {
+            "dataset_overview": str(eda_reports.get("dataset_overview")),
+            "class_distribution_overall": str(eda_reports.get("class_distribution_overall")),
+            "class_distribution_train": str(eda_reports.get("class_distribution_train")),
+            "class_distribution_test": str(eda_reports.get("class_distribution_test")),
+            "text_length_distribution": str(eda_reports.get("text_length_distribution")),
+            "confusion_matrix": str(eda_reports.get("confusion_matrix")),
+            "top_features_per_class": str(eda_reports.get("top_features")),
+            "per_class_metrics": str(eda_reports.get("per_class_metrics")),
+        },
     }
     print(json.dumps(output, indent=2))
 

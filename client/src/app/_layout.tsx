@@ -38,10 +38,11 @@ function AppLayout() {
   const { isAuthenticated, isAuthChecking } = useAuth();
   const router = useRouter();
   const { bottom } = useSafeAreaInsets();
+  const isInvitePath = pathname.startsWith("/invite/");
 
   // Pages that should NOT show bottom navigation
   const noNavPages = ["/login", "/signup", "/verify-email", "/splash"];
-  const showBottomNav = isAuthenticated && !noNavPages.includes(pathname);
+  const showBottomNav = isAuthenticated && !noNavPages.includes(pathname) && !isInvitePath;
 
   const navHeight = 50;
   const bottomInset = showBottomNav ? bottom + navHeight : bottom;
@@ -50,14 +51,14 @@ function AppLayout() {
   useEffect(() => {
     if (isAuthChecking) return;
 
-    const isPublicPath = ["/login", "/signup", "/splash", "/verify-email", "/forgot-password", "/verify-reset-token", "/reset-password"].includes(pathname);
+    const isPublicPath = ["/login", "/signup", "/splash", "/verify-email", "/forgot-password", "/verify-reset-token", "/reset-password"].includes(pathname) || isInvitePath;
 
     if (!isAuthenticated && !isPublicPath) {
       router.replace("/login");
-    } else if (isAuthenticated && isPublicPath && pathname !== "/splash") {
+    } else if (isAuthenticated && isPublicPath && pathname !== "/splash" && !isInvitePath) {
       router.replace("/"); // or your home route
     }
-  }, [isAuthenticated, isAuthChecking, pathname]);
+  }, [isAuthenticated, isAuthChecking, pathname, isInvitePath]);
 
   // Show loading during auth check
   if (isAuthChecking) {
@@ -84,6 +85,7 @@ function AppLayout() {
         <Stack.Screen name="(auth)/login" />
         <Stack.Screen name="(auth)/signup" />
         <Stack.Screen name="(auth)/verify-email" />
+        <Stack.Screen name="invite/[token]" />
         <Stack.Screen name="chatbot" />
         <Stack.Screen name="insights" />
         <Stack.Screen name="notifications" />

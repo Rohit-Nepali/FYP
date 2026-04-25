@@ -67,6 +67,22 @@ export const projectService = {
         return projects;
     },
 
+    getInviteByTokenPublic: async (token) => {
+        return prisma.projectInvite.findUnique({
+            where: { token },
+            select: {
+                token: true,
+                expiresAt: true,
+                email: true,
+                project: {
+                    select: {
+                        title: true,
+                    },
+                },
+            },
+        });
+    },
+
     getById: async (projectId, userId) => {
         const project = await prisma.project.findFirst({
             where: {

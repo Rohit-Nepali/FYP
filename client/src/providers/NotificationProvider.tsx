@@ -9,12 +9,13 @@ import {
 } from "../services/notificationService";
 import { useAuth } from "../contexts/AuthContext";
 import messaging from '@react-native-firebase/messaging';
-import { Alert } from 'react-native';
 import { axiosInstance } from "../services/authService";
 import { updateDigestPreferences } from "../services/userService";
+import useAlert from "../hooks/useAlert";
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, user } = useAuth();
+  const { showAlert, AlertComponent } = useAlert();
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -48,11 +49,13 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       // Listen for foreground notifications
       const receivedSub = addNotificationReceivedListener(notification => {
         console.log("🔔 Notification received:", notification);
-        // Show alert for foreground notifications
-        Alert.alert(
-          notification.request.content.title || 'Notification',
-          notification.request.content.body || 'You have a new notification'
-        );
+        // Show in-app custom alert for foreground notifications
+        showAlert({
+          title: notification.request.content.title || 'Notification',
+          message: notification.request.content.body || 'You have a new notification',
+          type: 'info',
+          confirmText: 'OK',
+        });
       });
 
       // Listen for notification tap (when app was in background)
@@ -98,5 +101,10 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
     }
   };
 
-  return children;
+  return (
+    <>
+      {children}
+      {AlertComponent}
+    </>
+  );
 };

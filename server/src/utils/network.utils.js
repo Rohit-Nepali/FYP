@@ -38,7 +38,10 @@ export const getLanIPv4Address = () => {
 };
 
 export const getFrontendBaseUrl = () => {
-  const configuredFrontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/+$/, "");
+  // Prefer the invite-specific base URL when configured.
+  const configuredFrontendUrl =
+    process.env.INVITE_WEB_BASE_URL?.trim().replace(/\/+$/, "") ||
+    process.env.FRONTEND_URL?.trim().replace(/\/+$/, "");
 
   if (configuredFrontendUrl) {
     return configuredFrontendUrl;

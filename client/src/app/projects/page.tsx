@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,20 +6,15 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Modal,
-  TextInput,
-  Alert,
-  KeyboardAvoidingView,
   Platform,
-  Keyboard,
-  TouchableWithoutFeedback,
-  StatusBar,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import ProjectCard from "../../components/UI/ProjectCard";
 import { Button } from "@/src/components/UI/Buttons";
+import BottomSheet from "@gorhom/bottom-sheet";
+import CreateProjectBottomSheet from "../../components/UI/modals/CreateProjectBottomSheet";
 import {
   getAllProjects,
   Project,
@@ -52,7 +47,7 @@ export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [modalVisible, setModalVisible] = useState(false);
+  const createProjectSheetRef = useRef<BottomSheet>(null);
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [saving, setSaving] = useState(false);
@@ -82,9 +77,19 @@ export default function Projects() {
     }
   };
 
+  const closeCreateProjectSheet = useCallback(() => {
+    createProjectSheetRef.current?.close();
+  }, []);
+
+  const resetCreateProjectForm = useCallback(() => {
+    setProjectTitle("");
+    setProjectDescription("");
+    closeCreateProjectSheet();
+  }, [closeCreateProjectSheet]);
+
   const handleCreateProject = async () => {
     if (!projectTitle.trim()) {
-      Alert.alert("Validation", "Please enter a project title");
+      showError("Please enter a project title", "Validation Error");
       return;
     }
 
@@ -94,31 +99,21 @@ export default function Projects() {
         title: projectTitle.trim(),
         description: projectDescription.trim() || undefined,
       });
-      Alert.alert("Success", "Project created successfully");
-      resetModal();
-      loadProjects();
+      resetCreateProjectForm();
+      await loadProjects();
+      showSuccess("Project created successfully.", "Success");
     } catch (err) {
       console.error("Failed to create project", err);
-      Alert.alert(
-        "Error",
-        err instanceof Error ? err.message : "Failed to create project"
+      showError(
+        err instanceof Error ? err.message : "Failed to create project",
+        "Project Creation Failed"
       );
     } finally {
       setSaving(false);
     }
   };
 
-  const resetModal = () => {
-    setModalVisible(false);
-    setProjectTitle("");
-    setProjectDescription("");
-  };
-
   const insets = useSafeAreaInsets();
-  const keyboardVerticalOffset =
-    Platform.OS === "ios"
-      ? insets.bottom + 8
-      : (StatusBar.currentHeight ?? 0) + 8;
 
   // ---------- Derived data: status, filter, sort ----------
 
@@ -504,7 +499,7 @@ export default function Projects() {
       {/* New Project Button - Bottom Right */}
       {/* Floating Action Button - Bottom Right */}
       <TouchableOpacity
-        onPress={() => setModalVisible(true)}
+        onPress={() => createProjectSheetRef.current?.expand()}
         className="absolute right-5 flex-row items-center bg-blue-600 rounded-full px-4 py-3.5 shadow-lg"
         style={{
           bottom: Platform.OS === "ios" ? Math.max(insets.bottom + 16, 24) : 24,
@@ -659,86 +654,17 @@ export default function Projects() {
 
       {AlertComponent}
 
-      {/* Create Project Modal (unchanged) */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={resetModal}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={keyboardVerticalOffset}
-          style={{ flex: 1, justifyContent: "flex-end" }}
-        >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "transparent" }}>
-              <ScrollView
-                contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
-                <LinearGradient
-                  colors={["#1F2937", "#111827"]}
-                  className="rounded-t-xl p-6 max-h-[70%] overflow-hidden"
-                >
-                  <View className="flex-row items-center justify-between mb-4">
-                    <Text className="text-2xl font-bold text-white">
-                      New Project
-                    </Text>
-                    <TouchableOpacity onPress={resetModal}>
-                      <Ionicons name="close-circle" size={28} color="#9CA3AF" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View className="mb-4">
-                    <TextInput
-                      className="bg-gray-600 rounded-xl px-4 py-3 text-gray-200 "
-                      placeholder="Enter project title"
-                      placeholderTextColor="#6B7280"
-                      value={projectTitle}
-                      onChangeText={setProjectTitle}
-                      editable={!saving}
-                    />
-                  </View>
-
-                  <View className="mb-6">
-                    <TextInput
-                      className="bg-gray-800 rounded-xl px-4 py-3 text-gray-200 border border-gray-700 min-h-[100px]"
-                      placeholder="Enter project description (optional)"
-                      placeholderTextColor="#6B7280"
-                      value={projectDescription}
-                      onChangeText={setProjectDescription}
-                      multiline
-                      textAlignVertical="top"
-                      editable={!saving}
-                    />
-                  </View>
-
-                  <Button
-                    title="Create Project"
-                    onPress={handleCreateProject}
-                    variant="primary"
-                    size="large"
-                    loading={saving}
-                    disabled={saving}
-                    className="w-full mb-4"
-                  />
-
-                  <Button
-                    title="Cancel"
-                    onPress={resetModal}
-                    variant="secondary"
-                    size="large"
-                    disabled={saving}
-                    className="w-full"
-                  />
-                </LinearGradient>
-              </ScrollView>
-            </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* Project Creation Bottom Sheet */}
+      <CreateProjectBottomSheet
+        sheetRef={createProjectSheetRef}
+        projectTitle={projectTitle}
+        projectDescription={projectDescription}
+        creating={saving}
+        onChangeProjectTitle={setProjectTitle}
+        onChangeProjectDescription={setProjectDescription}
+        onCreateProject={handleCreateProject}
+        onClose={resetCreateProjectForm}
+      />
     </SafeAreaView>
   );
 }

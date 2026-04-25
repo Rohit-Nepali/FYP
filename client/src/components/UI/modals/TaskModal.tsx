@@ -125,7 +125,7 @@ export default function TaskModal({
   const [creatingPriority, setCreatingPriority] = useState(false);
   const wasVisibleRef = useRef(false);
 
-  const { showError, showSuccess, showValidationError, hideAlert, AlertComponent } = useAlert();
+  const { showAlert, showError, showSuccess, showValidationError, hideAlert, AlertComponent } = useAlert();
 
   useEffect(() => {
     const justOpened = visible && !wasVisibleRef.current;
@@ -189,7 +189,13 @@ export default function TaskModal({
         dueDate: dueDate ? dueDate.toISOString() : undefined,
       });
       if (attachments.length > 0 && task?.id) await uploadAttachments(task.id, attachments);
-      onClose();
+      showAlert({
+        title: "Success",
+        message: "Task created successfully.",
+        type: "success",
+        confirmText: "OK",
+        onConfirm: onClose,
+      });
     } catch (err) {
       showError(err instanceof Error ? err.message : String(err));
     } finally { setSaving(false); }

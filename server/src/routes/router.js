@@ -10,12 +10,15 @@ import activityRouter from "./activity.router.js";
 import chatbotRouter from "./chatbot.router.js";
 import predictionRouter from "./prediction.router.js";
 import insightsRouter from "./insights.router.js";
+import { getProjectInviteLandingController } from "../controllers/project.controller.js";
 
 const router = Router();
 
 router.get("/api/", (req, res) => {
   res.send("Hello World!!! Welcome");
 });
+
+router.get("/invite/:token", getProjectInviteLandingController);
 
 router.use("/api/auth", authRouter);
 router.use("/api/tasks", taskRouter);

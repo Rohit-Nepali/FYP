@@ -38,8 +38,8 @@ The classifier trainer now uses a safer TF-IDF pipeline by default:
 Optional flags:
 
 ```bash
-python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_3.csv --text-col text --label-col label --char-max-features 10000
-python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_3.csv --text-col text --label-col label --disable-char-ngrams
+python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_4.csv --text-col text --label-col label --char-max-features 10000
+python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_4.csv --text-col text --label-col label --disable-char-ngrams
 ```
 
 ## Train risk model locally

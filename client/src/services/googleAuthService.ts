@@ -5,7 +5,7 @@ import { storeTokens } from './apiClient';
 
 // Your WEB CLIENT ID
 const API_BASE_URL = config.API_BASE_URL;
-const WEB_CLIENT_ID = '887155577122-4lrojdh2pm8fh6lmt7ri0jf22unf2q8u.apps.googleusercontent.com';
+const WEB_CLIENT_ID = '495522754350-8gd7jc5jur72iu1rbikp123pahleqtpu.apps.googleusercontent.com';
 const GOOGLE_SCOPES = [
   'email',
   'profile',

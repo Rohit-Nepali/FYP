@@ -36,6 +36,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
   setUserFromGoogle: (user: User) => void;
+  clearAuthState: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -113,6 +114,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(user);
   };
 
+  const clearAuthState = () => {
+    setUser(null);
+  };
+
   const value: AuthContextType = {
     user,
     isAuthChecking,
@@ -122,6 +127,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     refreshToken,
     setUserFromGoogle,
+    clearAuthState,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

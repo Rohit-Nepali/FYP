@@ -119,6 +119,21 @@ export const userService = {
         return updatedUser;
     },
 
+    deleteAccount: async (userId) => {
+        const existingUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true },
+        });
+
+        if (!existingUser) {
+            throw new ApiError("User not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        await prisma.user.delete({
+            where: { id: userId },
+        });
+    },
+
     updateAvatar: async (userId, file) => {
         const existingUser = await prisma.user.findUnique({
             where: { id: userId },

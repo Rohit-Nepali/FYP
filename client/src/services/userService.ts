@@ -84,6 +84,12 @@ export async function updateProfile(
   });
 }
 
+export async function deleteAccount(): Promise<void> {
+  await makeRequest<void>(`/users/profile`, {
+    method: "DELETE",
+  });
+}
+
 export async function uploadAvatar(file: {
   uri: string;
   name: string;

@@ -214,6 +214,22 @@ export const updateProfileController = async (req, res, next) => {
     }
 };
 
+export const deleteAccountController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+
+        await userService.deleteAccount(userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.DELETED
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const uploadAvatarController = async (req, res, next) => {
     try {
         const userId = req.user.id;

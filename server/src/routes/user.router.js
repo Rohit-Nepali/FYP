@@ -3,6 +3,7 @@ import { authenticateToken } from "../middleware/auth.middleware.js";
 import {
 	addPushTokenController,
 	archiveNotificationController,
+	deleteAccountController,
 	deleteNotificationController,
 	getNotificationsController,
 	getUnreadNotificationCountController,
@@ -35,6 +36,7 @@ userRouter.delete("/notifications/:notificationId", deleteNotificationController
 
 // Profile routes
 userRouter.put("/profile", updateProfileController);
+userRouter.delete("/profile", deleteAccountController);
 userRouter.post("/profile/avatar", uploadAvatar.single("file"), uploadAvatarController);
 userRouter.patch("/preferences/digest", updateDigestPreferencesController);
 

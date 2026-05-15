@@ -26,7 +26,7 @@ pip install -r requirements.txt
 ## Train classifier locally
 
 ```bash
-python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_2.csv --text-col text --label-col label
+python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_4.csv --text-col text --label-col label
 ```
 
 If your classifier CSV has different column names, change `--text-col` and `--label-col`.

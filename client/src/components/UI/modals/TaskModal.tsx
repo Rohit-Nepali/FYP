@@ -20,6 +20,7 @@ import { Platform } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import { Task, uploadAttachments } from "@/src/services/taskService";
 import useAlert from "@/src/hooks/useAlert";
+import useToast from "@/src/hooks/useToast";
 import { resolveFileUrl } from "@/src/utils/url";
 import { LinearGradient } from "expo-linear-gradient";
 import { AddChip, RowDivider, RowIcon, SelectionChip } from "@/src/components/common";
@@ -46,6 +47,7 @@ interface Props {
     statusId?: string;
     priorityId?: string;
     dueDate?: string;
+    assigneeId?: string;
   }) => Promise<Task>;
   initialValues?: InitialValues;
   statuses: Status[];
@@ -126,6 +128,7 @@ export default function TaskModal({
   const wasVisibleRef = useRef(false);
 
   const { showAlert, showError, showSuccess, showValidationError, hideAlert, AlertComponent } = useAlert();
+  const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
 
   useEffect(() => {
     const justOpened = visible && !wasVisibleRef.current;
@@ -187,15 +190,10 @@ export default function TaskModal({
         ...(statusId ? { statusId } : {}),
         ...(priorityId ? { priorityId } : {}),
         dueDate: dueDate ? dueDate.toISOString() : undefined,
+        ...(assigneeId ? { assigneeId } : {}),
       });
       if (attachments.length > 0 && task?.id) await uploadAttachments(task.id, attachments);
-      showAlert({
-        title: "Success",
-        message: "Task created successfully.",
-        type: "success",
-        confirmText: "OK",
-        onConfirm: onClose,
-      });
+      onClose();
     } catch (err) {
       showError(err instanceof Error ? err.message : String(err));
     } finally { setSaving(false); }
@@ -549,6 +547,7 @@ export default function TaskModal({
       </Modal>
 
       {AlertComponent}
+      {ToastComponent}
     </Modal>
   );
 }

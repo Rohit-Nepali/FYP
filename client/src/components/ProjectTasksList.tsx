@@ -15,6 +15,7 @@ import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
 import { createTask } from "@/src/services/taskService";
 import useAlert from "@/src/hooks/useAlert";
+import useToast from "@/src/hooks/useToast";
 import TaskDetailModal from "./UI/modals/TaskDetailModal";
 import { resolveFileUrl } from "@/src/utils/url";
 
@@ -53,6 +54,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
 
   // Use custom alert hook
   const { showError, showSuccess, AlertComponent } = useAlert();
+  const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
 
   useEffect(() => {
     if (projectId) {
@@ -300,12 +302,12 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
           try {
             setSavingTask(true);
             const newTask = await createTask({ ...payload, projectId });
-            showSuccess("Task created successfully");
+            showSuccessToast("Task created successfully");
             resetModal();
             loadProjectDetail(projectId);
             return newTask;
           } catch (err) {
-            showError(err instanceof Error ? err.message : "Failed to create task");
+            showErrorToast(err instanceof Error ? err.message : "Failed to create task");
             throw err;
           } finally {
             setSavingTask(false);
@@ -337,6 +339,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
 
       {/* Custom Alert */}
       {AlertComponent}
+      {ToastComponent}
     </View>
   );
 }

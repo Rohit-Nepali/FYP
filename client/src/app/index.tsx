@@ -26,6 +26,7 @@ import { getAllPriorities, Priority } from "@/src/services/priorityService";
 import { getUnreadNotificationCount } from "@/src/services/userService";
 import { useFocusEffect } from "@react-navigation/native";
 import useAlert from "../hooks/useAlert";
+import useToast from "../hooks/useToast";
 import BottomSheet from "@gorhom/bottom-sheet";
 import CreateProjectBottomSheet from "../components/UI/modals/CreateProjectBottomSheet";
 
@@ -472,6 +473,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const { showError, showSuccess, AlertComponent } = useAlert();
+  const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
 
   const [refreshing, setRefreshing] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -577,7 +579,7 @@ export default function HomeScreen() {
 
   const handleCreateProject = async () => {
     if (!projectTitle.trim()) {
-      showError("Project title is required", "Validation Error");
+      showErrorToast("Project title is required");
       return;
     }
     try {
@@ -590,11 +592,10 @@ export default function HomeScreen() {
       setProjectDescription("");
       closeCreateProjectSheet();
       await loadProjects();
-      showSuccess("Project created successfully.", "Success");
+      showSuccessToast("Project created successfully");
     } catch (error) {
-      showError(
-        error instanceof Error ? error.message : "Failed to create project",
-        "Project Creation Failed"
+      showErrorToast(
+        error instanceof Error ? error.message : "Failed to create project"
       );
     } finally {
       setCreating(false);
@@ -961,6 +962,7 @@ export default function HomeScreen() {
       />
 
       {AlertComponent}
+      {ToastComponent}
     </SafeAreaView>
   );
 }

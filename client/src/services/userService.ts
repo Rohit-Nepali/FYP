@@ -183,3 +183,9 @@ export async function updateDigestPreferences(payload: {
     data: payload,
   });
 }
+
+export async function clearBehavioralSignals(): Promise<{ deletedCount: number }>{
+  return makeRequest(`/users/privacy/behavioral-signals`, {
+    method: "DELETE",
+  });
+}

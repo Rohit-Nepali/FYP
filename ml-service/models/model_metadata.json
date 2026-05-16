@@ -124,8 +124,8 @@
     "updated_at": "2026-05-12T04:24:08.087033+00:00"
   },
   "risk_model": {
-    "raw_risk_dir": "training\\raw\\risk",
-    "dataset": "data\\processed\\risk_training.csv",
+    "raw_risk_dir": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\training\\raw\\risk",
+    "dataset": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\data\\processed\\risk_training.csv",
     "target_column": "risk_target",
     "feature_columns": [
       "due_in_days",
@@ -176,6 +176,6 @@
     "train_samples": 502772,
     "test_samples": 125694,
     "random_state": 42,
-    "updated_at": "2026-05-12T04:22:31.323641+00:00"
+    "updated_at": "2026-05-16T07:16:11.523007+00:00"
   }
 }

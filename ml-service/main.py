@@ -6,6 +6,10 @@ from schemas import ClassifyRequest, ClassifyResponse, PredictTaskRiskRequest, P
 from config import (VALID_LABELS, ML_RISK_MODEL_ENABLED, ML_RISK_FALLBACK_ENABLED)
 import ml_engine
 from ml_engine import load_models, clean_text, _model_predict_task_risk, _fallback_predict_task_risk
+import os
+from dotenv import load_dotenv
+import subprocess
+from fastapi import status
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -15,6 +19,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"Failed to load models: {str(e)}")
     yield
 
+load_dotenv()
 
 app = FastAPI(title="Taskora ML Service", lifespan=lifespan)
 
@@ -77,3 +82,51 @@ def predict_task_risk(payload: PredictTaskRiskRequest) -> PredictTaskRiskRespons
                 )
 
     return _fallback_predict_task_risk(payload)
+
+
+@app.post("/retrain-risk-model")
+def retrain_risk_model() -> dict:
+    """Trigger an end-to-end retrain of the risk model.
+
+    This runs the training script found at `training/train_risk_model.py`, captures
+    stdout/stderr and reloads the models into memory on success. For safety this
+    endpoint is gatekept by the `ML_ALLOW_RETRAIN` env var which must be set to
+    the string "true" to allow retraining.
+    """
+    allow = os.environ.get("ML_ALLOW_RETRAIN", "false").lower() == "true"
+    if not allow:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Retrain disabled")
+
+    script_path = os.path.join(os.path.dirname(__file__), "training", "train_risk_model.py")
+    if not os.path.exists(script_path):
+        raise HTTPException(status_code=500, detail="Training script not found")
+
+    try:
+        proc = subprocess.run(
+            ["python", script_path],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=os.path.dirname(__file__),
+        )
+
+        result = {
+            "returncode": proc.returncode,
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+        }
+
+        if proc.returncode != 0:
+            raise HTTPException(status_code=500, detail={"message": "Training failed", "result": result})
+
+        # Reload models after successful training
+        try:
+            load_models()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail={"message": "Failed to reload models", "error": str(e), "train_result": result})
+
+        return {"status": "ok", "train_result": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

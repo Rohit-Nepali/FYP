@@ -4,7 +4,10 @@
     "slug": "Taskora",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/images/taskora_favicon.png",
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
     "scheme": "Taskora",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -15,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/taskora-high-resolution-logo-transparent.png"
+        "foregroundImage": "./assets/images/taskora_favicon.png"
       },
       "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
@@ -31,10 +34,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/taskora-high-resolution-logo-transparent.png",
+          "image": "./assets/images/taskora_favicon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#000000",
           "dark": {
             "backgroundColor": "#000000"
           }

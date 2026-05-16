@@ -106,7 +106,7 @@ export default function AccountSettingsScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => Alert.alert("Coming Soon", "Two-factor authentication coming soon")}
             className="flex-row items-center justify-between px-4 py-3.5"
           >
@@ -120,7 +120,7 @@ export default function AccountSettingsScreen() {
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#6B7280" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </ScrollView>
     </SafeAreaView>

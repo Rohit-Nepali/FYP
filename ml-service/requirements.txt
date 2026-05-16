@@ -11,3 +11,4 @@ seaborn
 pytest
 httpx
 simplemma
+python-dotenv

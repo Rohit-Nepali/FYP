@@ -269,4 +269,15 @@ export const userService = {
             },
         });
     }
+
+    ,
+    clearBehavioralSignals: async (userId) => {
+        // Soft-delete: set deletedAt timestamp for all user's behavior signals
+        const result = await prisma.userBehaviorSignal.updateMany({
+            where: { userId, deletedAt: null },
+            data: { deletedAt: new Date() },
+        });
+
+        return { count: result.count };
+    }
 };

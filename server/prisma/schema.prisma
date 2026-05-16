@@ -178,6 +178,7 @@ model UserBehaviorSignal {
   taskId     String?
   label      String
   confidence Float
+  deletedAt  DateTime?
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -186,6 +187,7 @@ model UserBehaviorSignal {
   @@index([userId])
   @@index([taskId])
   @@index([createdAt])
+  @@index([deletedAt])
   @@index([label])
 }
 

@@ -273,3 +273,20 @@ export const updateDigestPreferencesController = async (req, res, next) => {
         next(error);
     }
 };
+
+export const clearBehavioralSignalsController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+
+        const result = await userService.clearBehavioralSignals(userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            result.count ? "Cleared" : "No records",
+            { deletedCount: result.count }
+        );
+    } catch (error) {
+        next(error);
+    }
+};

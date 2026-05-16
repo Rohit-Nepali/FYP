@@ -11,7 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../../contexts/AuthContext";
-import { signInWithGoogle } from "../../services/googleAuthService";
+import { signUpWithGoogle } from "../../services/googleAuthService";
 import { theme } from "../../config/theme";
 import { FormInput } from "@/src/components/common/FormInput";
 import { PrimaryButton } from "@/src/components/UI/Buttons";
@@ -368,7 +368,7 @@ export default function SignupScreen() {
                 onPress={async () => {
                   setIsGoogleLoading(true);
                   try {
-                    const result = await signInWithGoogle({ forceAccountSelection: true });
+                    const result = await signUpWithGoogle({ forceAccountSelection: true });
                     setUserFromGoogle({
                       id: result.user.id,
                       email: result.user.email,

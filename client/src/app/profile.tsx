@@ -169,18 +169,18 @@ export default function ProfileScreen() {
             />
           ),
         },
-        {
-          title: "Appearance",
-          icon: "moon-outline",
-          rightComponent: (
-            <Switch
-              value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
-              trackColor={{ false: "#374151", true: "#8b5cf6" }}
-              thumbColor={darkModeEnabled ? "#ffffff" : "#9ca3af"}
-            />
-          ),
-        },
+        // {
+        //   title: "Appearance",
+        //   icon: "moon-outline",
+        //   rightComponent: (
+        //     <Switch
+        //       value={darkModeEnabled}
+        //       onValueChange={setDarkModeEnabled}
+        //       trackColor={{ false: "#374151", true: "#8b5cf6" }}
+        //       thumbColor={darkModeEnabled ? "#ffffff" : "#9ca3af"}
+        //     />
+        //   ),
+        // },
       ],
     },
     {

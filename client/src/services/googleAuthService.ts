@@ -42,6 +42,126 @@ interface GoogleSignInOptions {
   forceAccountSelection?: boolean;
 }
 
+interface GoogleAuthContext {
+  user: GoogleUser;
+  googleId: string;
+  accessToken: string;
+  refreshToken?: string;
+  serverAuthCode?: string;
+}
+
+const getApiErrorMessage = (error: unknown, fallbackMessage: string): string => {
+  if (axios.isAxiosError(error)) {
+    return (
+      error.response?.data?.error?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      fallbackMessage
+    );
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallbackMessage;
+};
+
+const createGoogleAuthError = (error: unknown, fallbackMessage: string): Error => {
+  const authError = new Error(getApiErrorMessage(error, fallbackMessage)) as Error & {
+    statusCode?: number;
+  };
+
+  if (axios.isAxiosError(error)) {
+    authError.statusCode = error.response?.status;
+  }
+
+  return authError;
+};
+
+const getGoogleAuthContext = async (
+  options: GoogleSignInOptions = {}
+): Promise<GoogleAuthContext> => {
+  console.log('🔵 Checking Play Services...');
+  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+  if (options.forceAccountSelection && GoogleSignin.hasPreviousSignIn()) {
+    console.log('🔵 Clearing previous Google session to show account chooser...');
+    await GoogleSignin.signOut();
+  }
+
+  console.log('🔵 Starting Google Sign-In...');
+  const userInfo = await GoogleSignin.signIn();
+  console.log('User : ', userInfo);
+
+  if (userInfo.type !== 'success') {
+    throw new Error('Google Sign-In was cancelled');
+  }
+
+  const googleUser = userInfo.data?.user;
+  const serverAuthCode = userInfo.data?.serverAuthCode;
+
+  if (!googleUser) {
+    throw new Error('Google Sign-In failed: No user data returned');
+  }
+
+  console.log('✅ Google Sign-In successful:', googleUser.email);
+
+  const tokens = await GoogleSignin.getTokens();
+  console.log('✅ Got tokens');
+
+  return {
+    user: {
+      id: googleUser.id,
+      email: googleUser.email,
+      name: googleUser.name || googleUser.email.split('@')[0],
+      picture: googleUser.photo || undefined,
+    },
+    googleId: googleUser.id,
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    serverAuthCode,
+  };
+};
+
+const authenticateGoogleUser = async (
+  endpoint: '/auth/google-signin' | '/auth/google-signup',
+  payload: {
+    googleId: string;
+    email: string;
+    name?: string;
+    profileImage?: string;
+    accessToken: string;
+    serverAuthCode?: string;
+  },
+  fallbackMessage: string
+): Promise<GoogleAuthResult> => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}${endpoint}`, payload);
+
+    if (!response.data.success) {
+      throw new Error(response.data?.error?.message || fallbackMessage);
+    }
+
+    const { user: backendUser, accessToken, refreshToken } = response.data.data;
+    await storeTokens(accessToken, refreshToken);
+
+    return {
+      user: {
+        id: backendUser.id,
+        email: backendUser.email,
+        name: backendUser.name,
+        picture: backendUser.profileImage,
+      },
+      googleId: payload.googleId,
+      accessToken,
+      refreshToken,
+    };
+  } catch (error) {
+    throw createGoogleAuthError(error, fallbackMessage);
+  }
+};
+
 /**
  * Sign in with Google
  * NOTE: This intentionally uses raw axios (not apiClient) because these are
@@ -51,110 +171,51 @@ export const signInWithGoogle = async (
   options: GoogleSignInOptions = {}
 ): Promise<GoogleAuthResult> => {
   try {
-    console.log('🔵 Checking Play Services...');
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-
-    if (options.forceAccountSelection && GoogleSignin.hasPreviousSignIn()) {
-      console.log('🔵 Clearing previous Google session to show account chooser...');
-      await GoogleSignin.signOut();
-    }
-
-    console.log('🔵 Starting Google Sign-In...');
-    const userInfo = await GoogleSignin.signIn();
-    console.log("User : ", userInfo);
-
-    if (userInfo.type !== 'success') {
-      throw new Error('Google Sign-In was cancelled');
-    }
-
-    const googleUser = userInfo.data?.user;
-    const serverAuthCode = userInfo.data?.serverAuthCode;
-
-    if (!googleUser) {
-      throw new Error('Google Sign-In failed: No user data returned');
-    }
-
-    console.log('✅ Google Sign-In successful:', googleUser.email);
-
-    // Get access token
-    const tokens = await GoogleSignin.getTokens();
-    console.log('✅ Got tokens');
-
-    const user: GoogleUser = {
-      id: googleUser.id,
-      email: googleUser.email,
-      name: googleUser.name || googleUser.email.split('@')[0],
-      picture: googleUser.photo || undefined,
-    };
+    const googleAuth = await getGoogleAuthContext(options);
 
     // Authenticate with backend
     console.log('🔵 Authenticating with backend...');
 
     try {
-      // Try sign-in
-      const signInResponse = await axios.post(`${API_BASE_URL}/auth/google-signin`, {
-        googleId: user.id,
-        email: user.email,
-        accessToken: tokens.accessToken,
-        serverAuthCode,
-      });
+      const signInResult = await authenticateGoogleUser(
+        '/auth/google-signin',
+        {
+          googleId: googleAuth.googleId,
+          email: googleAuth.user.email,
+          accessToken: googleAuth.accessToken,
+          serverAuthCode: googleAuth.serverAuthCode,
+        },
+        'Failed to authenticate with Google'
+      );
 
-      if (signInResponse.data.success) {
-        const { user: backendUser, accessToken, refreshToken } = signInResponse.data.data;
-        await storeTokens(accessToken, refreshToken);
+      console.log('✅ Backend authentication successful');
 
-        console.log('✅ Backend authentication successful');
+      return signInResult;
+    } catch (signInError) {
+      const statusCode = (signInError as { statusCode?: number }).statusCode;
 
-        return {
-          user: {
-            id: backendUser.id,
-            email: backendUser.email,
-            name: backendUser.name,
-            picture: backendUser.profileImage,
-          },
-          googleId: user.id,
-          accessToken,
-          refreshToken,
-        };
-      }
-    } catch (signInError: any) {
-      // If user doesn't exist, sign up
-      if (signInError.response?.status === 404 || signInError.response?.status === 409) {
+      if (statusCode === 404 || statusCode === 409) {
         console.log('🔵 User not found, creating account...');
 
-        const signUpResponse = await axios.post(`${API_BASE_URL}/auth/google-signup`, {
-          googleId: user.id,
-          email: user.email,
-          name: user.name,
-          profileImage: user.picture,
-          accessToken: tokens.accessToken,
-          serverAuthCode,
-        });
+        const signUpResult = await authenticateGoogleUser(
+          '/auth/google-signup',
+          {
+            googleId: googleAuth.googleId,
+            email: googleAuth.user.email,
+            name: googleAuth.user.name,
+            profileImage: googleAuth.user.picture,
+            accessToken: googleAuth.accessToken,
+            serverAuthCode: googleAuth.serverAuthCode,
+          },
+          'Failed to sign up with Google'
+        );
 
-        if (signUpResponse.data.success) {
-          const { user: backendUser, accessToken, refreshToken } = signUpResponse.data.data;
-          await storeTokens(accessToken, refreshToken);
-
-          console.log('✅ Account created successfully');
-
-          return {
-            user: {
-              id: backendUser.id,
-              email: backendUser.email,
-              name: backendUser.name,
-              picture: backendUser.profileImage,
-            },
-            googleId: user.id,
-            accessToken,
-            refreshToken,
-          };
-        }
+        console.log('✅ Account created successfully');
+        return signUpResult;
       }
 
-      throw signInError;
+      throw createGoogleAuthError(signInError, 'Failed to authenticate with Google');
     }
-
-    throw new Error('Failed to authenticate');
 
   } catch (error: any) {
     console.error('❌ Google Sign-In Error:', error);
@@ -168,6 +229,43 @@ export const signInWithGoogle = async (
     }
 
     throw new Error(error.message || 'Sign-in failed');
+  }
+};
+
+/**
+ * Sign up with Google
+ */
+export const signUpWithGoogle = async (
+  options: GoogleSignInOptions = {}
+): Promise<GoogleAuthResult> => {
+  try {
+    const googleAuth = await getGoogleAuthContext(options);
+
+    console.log('🔵 Creating Google account...');
+    return await authenticateGoogleUser(
+      '/auth/google-signup',
+      {
+        googleId: googleAuth.googleId,
+        email: googleAuth.user.email,
+        name: googleAuth.user.name,
+        profileImage: googleAuth.user.picture,
+        accessToken: googleAuth.accessToken,
+        serverAuthCode: googleAuth.serverAuthCode,
+      },
+      'Failed to sign up with Google'
+    );
+  } catch (error: any) {
+    console.error('❌ Google Sign-Up Error:', error);
+
+    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      throw new Error('Sign-up cancelled');
+    } else if (error.code === statusCodes.IN_PROGRESS) {
+      throw new Error('Sign-up in progress');
+    } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      throw new Error('Play Services not available');
+    }
+
+    throw new Error(error.message || 'Sign-up failed');
   }
 };
 

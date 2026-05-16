@@ -4,49 +4,9 @@ import { HTTP_STATUS } from "../utils/response.utils.js";
 
 const ML_API_BASE_URL = (process.env.ML_API_URL || "http://localhost:8000").replace(/\/+$/, "");
 
-const HIGH_RISK_LABELS = new Set([
-  "LOW_ENERGY",
-  "WORK_OVERLOAD",
-  "DISTRACTION",
-  "PROCRASTINATION",
-  "POOR_PLANNING",
-  "FORGETFULNESS",
-]);
-
-const computeBehaviorRiskScore = (signals) => {
-  if (!signals || signals.length === 0) {
-    return 0;
-  }
-
-  let weightedRisk = 0;
-  let totalWeight = 0;
-
-  for (const signal of signals) {
-    const confidence = Number(signal.confidence || 0);
-    if (confidence <= 0) {
-      continue;
-    }
-
-    const isHighRisk = HIGH_RISK_LABELS.has(signal.label);
-    const riskContribution = isHighRisk ? 1 : 0;
-
-    weightedRisk += riskContribution * confidence;
-    totalWeight += confidence;
-  }
-
-  if (totalWeight <= 0) {
-    return 0;
-  }
-
-  return Number((weightedRisk / totalWeight).toFixed(4));
-};
-
-const computeDueMetrics = (dueDate, isCompleted) => {
+const computeDueInDays = (dueDate, isCompleted) => {
   if (!dueDate || isCompleted) {
-    return {
-      dueInDays: null,
-      daysOverdue: 0,
-    };
+    return null;
   }
 
   const now = new Date();
@@ -54,17 +14,83 @@ const computeDueMetrics = (dueDate, isCompleted) => {
   const diffMs = due.getTime() - now.getTime();
   const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
-  if (diffDays >= 0) {
-    return {
-      dueInDays: Number(diffDays.toFixed(2)),
-      daysOverdue: 0,
-    };
+  return Number(Math.max(diffDays, 0).toFixed(2));
+};
+
+const computeTaskFrequency = ({ totalActivityCount, taskCreatedAt }) => {
+  if (!taskCreatedAt) {
+    return 0;
   }
 
-  return {
-    dueInDays: Number(diffDays.toFixed(2)),
-    daysOverdue: Number(Math.abs(diffDays).toFixed(2)),
-  };
+  const now = new Date();
+  const createdAt = new Date(taskCreatedAt);
+  const taskAgeDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+  const safeTaskAge = Math.max(taskAgeDays, 1);
+
+  return Number((Number(totalActivityCount || 0) / safeTaskAge).toFixed(4));
+};
+
+const computeProjectHistoricalRiskRate = async ({ userId, projectId, taskId }) => {
+  if (!projectId) {
+    return null;
+  }
+
+  const projectTasks = await prisma.task.findMany({
+    where: {
+      projectId,
+      id: {
+        not: taskId,
+      },
+    },
+    select: {
+      id: true,
+    },
+    take: 200,
+  });
+
+  if (projectTasks.length === 0) {
+    return null;
+  }
+
+  const snapshots = await prisma.taskRiskSnapshot.findMany({
+    where: {
+      userId,
+      taskId: {
+        in: projectTasks.map((task) => task.id),
+      },
+    },
+    select: {
+      taskId: true,
+      probability: true,
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 500,
+  });
+
+  if (snapshots.length === 0) {
+    return null;
+  }
+
+  const latestByTaskId = new Map();
+  for (const snapshot of snapshots) {
+    if (!latestByTaskId.has(snapshot.taskId)) {
+      latestByTaskId.set(snapshot.taskId, snapshot);
+    }
+  }
+
+  const latestSnapshots = Array.from(latestByTaskId.values());
+  if (latestSnapshots.length === 0) {
+    return null;
+  }
+
+  const highRiskCount = latestSnapshots.filter(
+    (snapshot) => Number(snapshot.probability || 0) >= 0.75
+  ).length;
+
+  return Number((highRiskCount / latestSnapshots.length).toFixed(4));
 };
 
 export const taskRiskPredictionService = {
@@ -107,13 +133,10 @@ export const taskRiskPredictionService = {
     }
 
     const now = new Date();
-    const fourteenDaysAgo = new Date(now);
-    fourteenDaysAgo.setDate(now.getDate() - 14);
-
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(now.getDate() - 7);
 
-    const [recentActivityCount, behaviorSignals] = await Promise.all([
+    const [recentActivityCount, totalActivityCount, projectHistoricalRiskRate] = await Promise.all([
       prisma.activity.count({
         where: {
           taskId,
@@ -122,39 +145,30 @@ export const taskRiskPredictionService = {
           },
         },
       }),
-      prisma.userBehaviorSignal.findMany({
+      prisma.activity.count({
         where: {
-          userId,
-          createdAt: {
-            gte: fourteenDaysAgo,
-          },
-          OR: [
-            { taskId: null },
-            { taskId },
-          ],
+          taskId,
         },
-        select: {
-          label: true,
-          confidence: true,
-          createdAt: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 50,
+      }),
+      computeProjectHistoricalRiskRate({
+        userId,
+        projectId: task.project?.id || null,
+        taskId,
       }),
     ]);
 
-    const behaviorRiskScore = computeBehaviorRiskScore(behaviorSignals);
-    const { dueInDays, daysOverdue } = computeDueMetrics(task.dueDate, task.isCompleted);
+    const dueInDays = computeDueInDays(task.dueDate, task.isCompleted);
+    const taskFrequency = computeTaskFrequency({
+      totalActivityCount,
+      taskCreatedAt: task.createdAt,
+    });
 
     const mlPayload = {
       task_id: task.id,
-      is_completed: task.isCompleted,
       due_in_days: dueInDays,
-      days_overdue: daysOverdue,
       recent_activity_count: recentActivityCount,
-      behavior_risk_score: behaviorRiskScore,
+      task_frequency: taskFrequency,
+      project_historical_risk_rate: projectHistoricalRiskRate,
     };
 
     const response = await fetch(`${ML_API_BASE_URL}/predict-task-risk`, {
@@ -182,9 +196,9 @@ export const taskRiskPredictionService = {
       },
       features: {
         dueInDays,
-        daysOverdue,
         recentActivityCount,
-        behaviorRiskScore,
+        taskFrequency,
+        projectHistoricalRiskRate,
       },
       prediction,
     };

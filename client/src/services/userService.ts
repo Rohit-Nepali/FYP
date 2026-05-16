@@ -84,6 +84,12 @@ export async function updateProfile(
   });
 }
 
+export async function deleteAccount(): Promise<void> {
+  await makeRequest<void>(`/users/profile`, {
+    method: "DELETE",
+  });
+}
+
 export async function uploadAvatar(file: {
   uri: string;
   name: string;
@@ -175,5 +181,11 @@ export async function updateDigestPreferences(payload: {
   return makeRequest(`/users/preferences/digest`, {
     method: "PATCH",
     data: payload,
+  });
+}
+
+export async function clearBehavioralSignals(): Promise<{ deletedCount: number }>{
+  return makeRequest(`/users/privacy/behavioral-signals`, {
+    method: "DELETE",
   });
 }

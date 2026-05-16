@@ -4,6 +4,7 @@ import { ERROR_MESSAGES, HTTP_STATUS } from "../utils/response.utils.js";
 import crypto from "crypto";
 import { emailService } from "./email.service.js";
 import { createInAppNotification, sendPushNotification } from "./notification.service.js";
+import { getFrontendBaseUrl } from "../utils/network.utils.js";
 
 export const projectService = {
     create: async (projectData, ownerId) => {
@@ -64,6 +65,22 @@ export const projectService = {
         });
 
         return projects;
+    },
+
+    getInviteByTokenPublic: async (token) => {
+        return prisma.projectInvite.findUnique({
+            where: { token },
+            select: {
+                token: true,
+                expiresAt: true,
+                email: true,
+                project: {
+                    select: {
+                        title: true,
+                    },
+                },
+            },
+        });
     },
 
     getById: async (projectId, userId) => {
@@ -320,7 +337,7 @@ export const projectService = {
         });
 
         // Construct invite link (adjust the base URL as needed for your frontend)
-        const inviteLink = `${process.env.FRONTEND_URL || 'http://localhost:8081'}/invite/${token}`;
+        const inviteLink = `${getFrontendBaseUrl()}/invite/${token}`;
         const invitedBy = invite.invitedBy.name || 'A team member';
 
         if (existingUser) {

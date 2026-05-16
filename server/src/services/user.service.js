@@ -119,6 +119,21 @@ export const userService = {
         return updatedUser;
     },
 
+    deleteAccount: async (userId) => {
+        const existingUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true },
+        });
+
+        if (!existingUser) {
+            throw new ApiError("User not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        await prisma.user.delete({
+            where: { id: userId },
+        });
+    },
+
     updateAvatar: async (userId, file) => {
         const existingUser = await prisma.user.findUnique({
             where: { id: userId },
@@ -253,5 +268,16 @@ export const userService = {
                 digestHourLocal: true,
             },
         });
+    }
+
+    ,
+    clearBehavioralSignals: async (userId) => {
+        // Soft-delete: set deletedAt timestamp for all user's behavior signals
+        const result = await prisma.userBehaviorSignal.updateMany({
+            where: { userId, deletedAt: null },
+            data: { deletedAt: new Date() },
+        });
+
+        return { count: result.count };
     }
 };

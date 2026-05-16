@@ -8,7 +8,7 @@ import {
   Image,
   TouchableOpacity,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "../../config/theme";
 import { FormInput } from "@/src/components/common/FormInput";
@@ -21,6 +21,11 @@ import { useAuth } from "../../contexts/AuthContext";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { inviteToken } = useLocalSearchParams<{ inviteToken?: string | string[] }>();
+  const normalizedInviteToken = useMemo(
+    () => (Array.isArray(inviteToken) ? inviteToken[0] : inviteToken),
+    [inviteToken]
+  );
   const { login, isAuthChecking, setUserFromGoogle } = useAuth();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
@@ -89,7 +94,14 @@ export default function LoginScreen() {
 
     try {
       await login(email, password);
-      router.replace("/");
+      if (normalizedInviteToken) {
+        router.replace({
+          pathname: "/invite/[token]",
+          params: { token: normalizedInviteToken },
+        });
+      } else {
+        router.replace("/");
+      }
     } catch (error) {
       const errorType = handleAuthError(error);
       const errorInfo = getAuthErrorMessage(errorType);
@@ -123,6 +135,7 @@ export default function LoginScreen() {
     password,
     validateForm,
     login,
+    normalizedInviteToken,
     router,
     setErrors,
     setIsSubmitting,

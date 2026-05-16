@@ -1,0 +1,35 @@
+============================================================
+CLASSIFIER DATASET OVERVIEW
+============================================================
+
+Total samples after preprocessing: 10000
+Train samples: 9776
+Test samples: 224
+Train/Test split: 97.76% / 2.24%
+
+CLASS DISTRIBUTION:
+------------------------------------------------------------
+  CONSISTENT_PRODUCTIVITY          1250 ( 12.5%)
+  DISTRACTION                      1250 ( 12.5%)
+  FORGETFULNESS                    1250 ( 12.5%)
+  HIGH_MOTIVATION                  1250 ( 12.5%)
+  LOW_ENERGY                       1250 ( 12.5%)
+  POOR_PLANNING                    1250 ( 12.5%)
+  PROCRASTINATION                  1250 ( 12.5%)
+  WORK_OVERLOAD                    1250 ( 12.5%)
+
+TEXT STATISTICS:
+------------------------------------------------------------
+  Mean tokens per text: 12.15
+  Median tokens per text: 12.00
+  Min tokens: 1
+  Max tokens: 38
+  Std dev: 5.89
+
+PREPROCESSING APPLIED:
+------------------------------------------------------------
+  - Lowercasing
+  - Special character removal
+  - Digit removal
+  - Whitespace normalization
+  - Lemmatization (simplemma, English)

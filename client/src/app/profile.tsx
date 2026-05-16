@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
+  AppState,
   View,
   Text,
   TouchableOpacity,
@@ -8,21 +9,132 @@ import {
   Switch,
   Modal,
   Image,
+  Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
-import { theme } from "../config/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "@/src/components/UI/Buttons";
 import { resolveFileUrl } from "@/src/utils/url";
+import { axiosInstance } from "@/src/services/authService";
+import {
+  getFcmToken,
+  hasNotificationPermission,
+  requestFirebasePermission,
+} from "@/src/services/notificationService";
+import { updateDigestPreferences } from "@/src/services/userService";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [isNotificationToggleBusy, setIsNotificationToggleBusy] = useState(false);
   const [darkModeEnabled, setDarkModeEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncNotificationState = async () => {
+      try {
+        const enabled = await hasNotificationPermission();
+        if (isMounted) {
+          setNotificationsEnabled(enabled);
+        }
+      } catch (error) {
+        console.error("Failed to check notification permission state:", error);
+      }
+    };
+
+    syncNotificationState();
+
+    const appStateSubscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        syncNotificationState();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      appStateSubscription.remove();
+    };
+  }, []);
+
+  const handleNotificationToggle = async (nextValue: boolean) => {
+    if (isNotificationToggleBusy) {
+      return;
+    }
+
+    setIsNotificationToggleBusy(true);
+
+    try {
+      if (nextValue) {
+        const granted = await requestFirebasePermission();
+
+        if (!granted) {
+          setNotificationsEnabled(false);
+          Alert.alert(
+            "Permission required",
+            "Enable notifications in system settings to receive background alerts.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Open Settings",
+                onPress: () => {
+                  Linking.openSettings().catch(() => {
+                    Alert.alert("Unable to open settings", "Please open device settings manually.");
+                  });
+                },
+              },
+            ]
+          );
+          return;
+        }
+
+        const token = await getFcmToken();
+        if (token) {
+          await axiosInstance.post("/users/push-token", { pushToken: token });
+        }
+
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+        await updateDigestPreferences({
+          timezone,
+          dailyDigestEnabled: true,
+          digestHourLocal: 19,
+        });
+
+        setNotificationsEnabled(true);
+        return;
+      }
+
+      await updateDigestPreferences({ dailyDigestEnabled: false });
+      setNotificationsEnabled(false);
+
+      Alert.alert(
+        "Notifications turned off",
+        "Daily digest notifications are disabled. To fully block push alerts, disable notifications for Taskora in device settings.",
+        [
+          { text: "Not now", style: "cancel" },
+          {
+            text: "Open Settings",
+            onPress: () => {
+              Linking.openSettings().catch(() => {
+                Alert.alert("Unable to open settings", "Please open device settings manually.");
+              });
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Failed to update notifications:", error);
+      Alert.alert("Update failed", "Could not update notification settings right now.");
+      const enabled = await hasNotificationPermission().catch(() => false);
+      setNotificationsEnabled(enabled);
+    } finally {
+      setIsNotificationToggleBusy(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -50,24 +162,25 @@ export default function ProfileScreen() {
           rightComponent: (
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={handleNotificationToggle}
+              disabled={isNotificationToggleBusy}
               trackColor={{ false: "#374151", true: "#8b5cf6" }}
               thumbColor={notificationsEnabled ? "#ffffff" : "#9ca3af"}
             />
           ),
         },
-        {
-          title: "Appearance",
-          icon: "moon-outline",
-          rightComponent: (
-            <Switch
-              value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
-              trackColor={{ false: "#374151", true: "#8b5cf6" }}
-              thumbColor={darkModeEnabled ? "#ffffff" : "#9ca3af"}
-            />
-          ),
-        },
+        // {
+        //   title: "Appearance",
+        //   icon: "moon-outline",
+        //   rightComponent: (
+        //     <Switch
+        //       value={darkModeEnabled}
+        //       onValueChange={setDarkModeEnabled}
+        //       trackColor={{ false: "#374151", true: "#8b5cf6" }}
+        //       thumbColor={darkModeEnabled ? "#ffffff" : "#9ca3af"}
+        //     />
+        //   ),
+        // },
       ],
     },
     {

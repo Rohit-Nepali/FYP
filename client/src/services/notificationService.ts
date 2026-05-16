@@ -26,6 +26,27 @@ export async function requestFirebasePermission(): Promise<boolean> {
 }
 
 /**
+ * Check if notification permissions are currently enabled.
+ */
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    const androidGranted = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+    );
+
+    if (!androidGranted) {
+      return false;
+    }
+  }
+
+  const authStatus = await messaging().hasPermission();
+  return (
+    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+    authStatus === messaging.AuthorizationStatus.PROVISIONAL
+  );
+}
+
+/**
  * Get the FCM token for this device
  */
 export async function getFcmToken(): Promise<string | null> {

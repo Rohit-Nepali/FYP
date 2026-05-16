@@ -7,6 +7,11 @@ from pathlib import Path
 
 import pandas as pd
 
+try:
+    from simplemma import lemmatize as simplemma_lemmatize
+except ImportError:  # pragma: no cover - handled by runtime fallback
+    simplemma_lemmatize = None
+
 VALID_LABELS = {
     "HIGH_MOTIVATION",
     "CONSISTENT_PRODUCTIVITY",
@@ -41,7 +46,16 @@ def clean_text(text: str) -> str:
     text = re.sub(r"[^a-z0-9\s']", "", text)
     text = re.sub(r"\d+", "", text)
     text = re.sub(r"\s+", " ", text).strip()
-    return text
+
+    if not text:
+        return ""
+
+    if simplemma_lemmatize is None:
+        return text
+
+    tokens = text.split(" ")
+    lemmatized_tokens = [simplemma_lemmatize(token, lang="en") for token in tokens]
+    return " ".join(lemmatized_tokens)
 
 
 def ensure_models_dir() -> None:

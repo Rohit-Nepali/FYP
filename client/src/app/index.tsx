@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Text,
@@ -7,10 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
-  Modal,
-  TextInput,
-  Alert,
   Dimensions,
+  Platform,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,6 +25,10 @@ import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
 import { getUnreadNotificationCount } from "@/src/services/userService";
 import { useFocusEffect } from "@react-navigation/native";
+import useAlert from "../hooks/useAlert";
+import useToast from "../hooks/useToast";
+import BottomSheet from "@gorhom/bottom-sheet";
+import CreateProjectBottomSheet from "../components/UI/modals/CreateProjectBottomSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -335,20 +337,18 @@ function TaskCard({
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.7}
-        className={`rounded-2xl p-4 mb-3 border ${
-          isOverdue
-            ? "bg-red-500/5 border-red-500/20"
-            : "bg-gray-800/70 border-gray-700/40"
-        }`}
+        className={`rounded-2xl p-4 mb-3 border ${isOverdue
+          ? "bg-red-500/5 border-red-500/20"
+          : "bg-gray-800/70 border-gray-700/40"
+          }`}
       >
         <View className="flex-row items-start">
           {/* Checkbox */}
           <View
-            className={`w-6 h-6 rounded-full items-center justify-center border-2 ${
-              isCompleted
-                ? "bg-emerald-500/20 border-emerald-500"
-                : "border-gray-500"
-            }`}
+            className={`w-6 h-6 rounded-full items-center justify-center border-2 ${isCompleted
+              ? "bg-emerald-500/20 border-emerald-500"
+              : "border-gray-500"
+              }`}
           >
             {isCompleted && (
               <Ionicons name="checkmark" size={14} color="#34D399" />
@@ -358,9 +358,8 @@ function TaskCard({
           {/* Content */}
           <View className="flex-1 ml-3">
             <Text
-              className={`font-semibold text-base ${
-                isCompleted ? "text-gray-500 line-through" : "text-white"
-              }`}
+              className={`font-semibold text-base ${isCompleted ? "text-gray-500 line-through" : "text-white"
+                }`}
               numberOfLines={2}
             >
               {task.title}
@@ -389,18 +388,17 @@ function TaskCard({
                       isOverdue
                         ? "#F87171"
                         : isDueToday
-                        ? "#FBBF24"
-                        : "#6B7280"
+                          ? "#FBBF24"
+                          : "#6B7280"
                     }
                   />
                   <Text
-                    className={`text-xs ml-1 font-medium ${
-                      isOverdue
-                        ? "text-red-400"
-                        : isDueToday
+                    className={`text-xs ml-1 font-medium ${isOverdue
+                      ? "text-red-400"
+                      : isDueToday
                         ? "text-amber-400"
                         : "text-gray-400"
-                    }`}
+                      }`}
                   >
                     {formatDueDate(task.dueDate)}
                   </Text>
@@ -474,6 +472,8 @@ function EmptyState({
 export default function HomeScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { showError, showSuccess, AlertComponent } = useAlert();
+  const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
 
   const [refreshing, setRefreshing] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -484,8 +484,8 @@ export default function HomeScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Project creation modal state
-  const [createModalVisible, setCreateModalVisible] = useState(false);
+  // Project creation bottom sheet state
+  const createProjectSheetRef = useRef<BottomSheet>(null);
   const [projectTitle, setProjectTitle] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [creating, setCreating] = useState(false);
@@ -548,6 +548,14 @@ export default function HomeScreen() {
     }
   }, []);
 
+  const openCreateProjectSheet = useCallback(() => {
+    createProjectSheetRef.current?.expand();
+  }, []);
+
+  const closeCreateProjectSheet = useCallback(() => {
+    createProjectSheetRef.current?.close();
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     loadProjects();
@@ -571,7 +579,7 @@ export default function HomeScreen() {
 
   const handleCreateProject = async () => {
     if (!projectTitle.trim()) {
-      Alert.alert("Error", "Project title is required");
+      showErrorToast("Project title is required");
       return;
     }
     try {
@@ -582,11 +590,11 @@ export default function HomeScreen() {
       });
       setProjectTitle("");
       setProjectDescription("");
-      setCreateModalVisible(false);
+      closeCreateProjectSheet();
       await loadProjects();
+      showSuccessToast("Project created successfully");
     } catch (error) {
-      Alert.alert(
-        "Error",
+      showErrorToast(
         error instanceof Error ? error.message : "Failed to create project"
       );
     } finally {
@@ -683,6 +691,7 @@ export default function HomeScreen() {
               value={stats.completed}
               color="#34D399"
               index={1}
+              onPress={() => router.push("/tasks")}
             />
             <StatCard
               icon="warning-outline"
@@ -690,6 +699,7 @@ export default function HomeScreen() {
               value={stats.overdue}
               color="#F87171"
               index={2}
+              onPress={() => router.push("/tasks")}
             />
           </View>
         </View>
@@ -718,7 +728,7 @@ export default function HomeScreen() {
               icon="folder-outline"
               label="New Project"
               color="#A78BFA"
-              onPress={() => setCreateModalVisible(true)}
+              onPress={openCreateProjectSheet}
               index={1}
             />
             <QuickAction
@@ -775,7 +785,7 @@ export default function HomeScreen() {
               title="No projects yet"
               subtitle="Create your first project to organize your tasks."
               actionLabel="Create Project"
-              onAction={() => setCreateModalVisible(true)}
+              onAction={openCreateProjectSheet}
             />
           ) : (
             <View>
@@ -793,7 +803,7 @@ export default function HomeScreen() {
                 className="mt-2 gap-2"
               >
                 <TouchableOpacity
-                  onPress={() => setCreateModalVisible(true)}
+                  onPress={openCreateProjectSheet}
                   activeOpacity={0.7}
                   className="flex-row items-center justify-center py-3.5 rounded-2xl bg-blue-600/90"
                 >
@@ -916,89 +926,17 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* ─── Project Creation Modal ──────────────────────────────── */}
-      <Modal
-        visible={createModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setCreateModalVisible(false)}
-      >
-        <View className="flex-1 justify-end bg-black/60">
-          <Animated.View entering={FadeInUp.duration(300)}>
-            <View className="bg-gray-900 rounded-t-3xl border-t border-gray-700/50">
-              {/* Drag handle */}
-              <View className="w-10 h-1 bg-gray-600 rounded-full self-center mt-3 mb-2" />
-
-              <View className="px-6 pt-2 pb-8">
-                <Text className="text-white text-xl font-bold mb-1">
-                  Create New Project
-                </Text>
-                <Text className="text-gray-400 text-sm mb-6">
-                  Organize your tasks into a new project.
-                </Text>
-
-                <Text className="text-gray-300 text-sm font-medium mb-2">
-                  Project Title <Text className="text-red-400">*</Text>
-                </Text>
-                <TextInput
-                  value={projectTitle}
-                  onChangeText={setProjectTitle}
-                  placeholder="Enter project title"
-                  placeholderTextColor="#4B5563"
-                  className="bg-gray-800 text-white rounded-xl px-4 py-3.5 mb-4 border border-gray-700/50"
-                />
-
-                <Text className="text-gray-300 text-sm font-medium mb-2">
-                  Description{" "}
-                  <Text className="text-gray-500 font-normal">(Optional)</Text>
-                </Text>
-                <TextInput
-                  value={projectDescription}
-                  onChangeText={setProjectDescription}
-                  placeholder="Add a brief description"
-                  placeholderTextColor="#4B5563"
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                  className="bg-gray-800 text-white rounded-xl px-4 py-3.5 mb-6 border border-gray-700/50 min-h-[80px]"
-                />
-
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={() => setCreateModalVisible(false)}
-                    className="flex-1 py-3.5 rounded-xl bg-gray-800 border border-gray-700/50 items-center"
-                    activeOpacity={0.7}
-                  >
-                    <Text className="text-gray-300 font-semibold">Cancel</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleCreateProject}
-                    disabled={creating || !projectTitle.trim()}
-                    className={`flex-1 py-3.5 rounded-xl items-center flex-row justify-center ${
-                      creating || !projectTitle.trim()
-                        ? "bg-blue-600/50"
-                        : "bg-blue-600"
-                    }`}
-                    activeOpacity={0.7}
-                  >
-                    {creating ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="add-outline" size={18} color="#fff" />
-                        <Text className="text-white font-semibold ml-1">
-                          Create
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
+      {/* ─── Project Creation Bottom Sheet ───────────────────────── */}
+      <CreateProjectBottomSheet
+        sheetRef={createProjectSheetRef}
+        projectTitle={projectTitle}
+        projectDescription={projectDescription}
+        creating={creating}
+        onChangeProjectTitle={setProjectTitle}
+        onChangeProjectDescription={setProjectDescription}
+        onCreateProject={handleCreateProject}
+        onClose={closeCreateProjectSheet}
+      />
 
       {/* ─── Task Creation Modal ─────────────────────────────────── */}
       <TaskModal
@@ -1022,6 +960,9 @@ export default function HomeScreen() {
         setPriorities={setPriorities}
         projectId={selectedProjectId}
       />
+
+      {AlertComponent}
+      {ToastComponent}
     </SafeAreaView>
   );
 }

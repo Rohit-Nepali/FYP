@@ -4,38 +4,40 @@
     "slug": "Taskora",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/taskora_favicon.png",
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
     "scheme": "Taskora",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.Taskora"
+      "bundleIdentifier": "com.taskora.app"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/taskora_favicon.png"
       },
+      "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.Taskora"
+      "package": "com.taskora.app"
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/taskora_favicon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/taskora_favicon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#000000",
           "dark": {
             "backgroundColor": "#000000"
           }
@@ -53,8 +55,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "23c516e6-1f02-4257-9721-44a3ca611756"
+        "projectId": "1cba73a2-ecad-4874-93e2-e4a8db2c8ad4"
       }
-    }
+    },
+    "owner": "rohitnepali"
   }
 }

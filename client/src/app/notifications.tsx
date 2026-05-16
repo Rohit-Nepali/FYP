@@ -22,6 +22,7 @@ import {
   unarchiveNotification,
 } from "../services/userService";
 import { acceptProjectInvite, declineProjectInvite } from "../services/projectService";
+import useToast from "../hooks/useToast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -265,6 +266,7 @@ function SwipeActions({
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { success: showSuccessToast, ToastComponent } = useToast();
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -398,6 +400,7 @@ export default function NotificationsScreen() {
     // Optimistic remove from active list
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     setArchivedCount((prev) => prev + 1);
+    showSuccessToast("Notification archived");
 
     archiveNotification(id).catch(() => {
       // Rollback: re-fetch silently if archive fails
@@ -406,12 +409,13 @@ export default function NotificationsScreen() {
         loadArchivedCount(),
       ]).catch(() => {});
     });
-  }, [activeFilter, loadArchivedCount, loadNotifications]);
+  }, [activeFilter, loadArchivedCount, loadNotifications, showSuccessToast]);
 
   const handleRestore = useCallback((id: string) => {
     // Optimistic remove from archived view
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     setArchivedCount((prev) => Math.max(0, prev - 1));
+    showSuccessToast("Notification restored");
 
     unarchiveNotification(id).catch(() => {
       // Rollback: re-fetch silently if restore fails
@@ -420,7 +424,7 @@ export default function NotificationsScreen() {
         loadArchivedCount(),
       ]).catch(() => {});
     });
-  }, [activeFilter, loadArchivedCount, loadNotifications]);
+  }, [activeFilter, loadArchivedCount, loadNotifications, showSuccessToast]);
 
   const handleDelete = useCallback((id: string) => {
     // Optimistic remove
@@ -428,6 +432,7 @@ export default function NotificationsScreen() {
     if (activeFilter === "archived") {
       setArchivedCount((prev) => Math.max(0, prev - 1));
     }
+    showSuccessToast("Notification deleted");
 
     deleteNotification(id).catch(() => {
       // Rollback: re-fetch silently if delete fails
@@ -436,7 +441,7 @@ export default function NotificationsScreen() {
         loadArchivedCount(),
       ]).catch(() => {});
     });
-  }, [activeFilter, loadArchivedCount, loadNotifications]);
+  }, [activeFilter, loadArchivedCount, loadNotifications, showSuccessToast]);
 
   const isActionableInvite = useCallback((item: InAppNotification) => {
     return (
@@ -457,10 +462,11 @@ export default function NotificationsScreen() {
       await markNotificationAsRead(item.id).catch(() => {});
       await deleteNotification(item.id).catch(() => {});
       setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+      showSuccessToast("Invite accepted");
     } finally {
       setResolvingInviteId(null);
     }
-  }, []);
+  }, [showSuccessToast]);
 
   const handleDeclineInvite = useCallback(async (item: InAppNotification) => {
     const inviteToken = item.data?.inviteToken;
@@ -472,10 +478,11 @@ export default function NotificationsScreen() {
       await markNotificationAsRead(item.id).catch(() => {});
       await deleteNotification(item.id).catch(() => {});
       setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+      showSuccessToast("Invite declined");
     } finally {
       setResolvingInviteId(null);
     }
-  }, []);
+  }, [showSuccessToast]);
 
   // ─── Derived state ──────────────────────────────────────────────────────────
 
@@ -725,6 +732,8 @@ export default function NotificationsScreen() {
           }
         />
       )}
+
+      {ToastComponent}
     </SafeAreaView>
   );
 }

@@ -32,6 +32,7 @@ import { Attachment } from "@/src/services/attachmentService";
 import { getTaskPermissions } from "@/src/utils/permissions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useAlert from "@/src/hooks/useAlert";
+import useToast from "@/src/hooks/useToast";
 import AttachmentPreviewModal from "./AttachmentPreviewModal";
 import {
   TaskAttachmentsTab,
@@ -83,6 +84,7 @@ export default function TaskDetailModal({
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   const { showError, AlertComponent } = useAlert();
+  const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
 
   const insets = useSafeAreaInsets();
   const keyboardVerticalOffset =
@@ -169,9 +171,10 @@ export default function TaskDetailModal({
       const newStatus = statuses.find((status) => status.id === statusId);
       if (newStatus) {
         setTask({ ...task, statusId, status: newStatus as any });
+        showSuccessToast(`Status updated to ${newStatus.name}`);
       }
     } catch {
-      showError("Failed to update status");
+      showErrorToast("Failed to update status");
     } finally {
       setUpdatingStatus(false);
     }
@@ -191,9 +194,10 @@ export default function TaskDetailModal({
       );
       if (newPriority) {
         setTask({ ...task, priorityId, priority: newPriority as any });
+        showSuccessToast(`Priority set to ${newPriority.name}`);
       }
     } catch {
-      showError("Failed to update priority");
+      showErrorToast("Failed to update priority");
     } finally {
       setUpdatingPriority(false);
     }
@@ -212,8 +216,9 @@ export default function TaskDetailModal({
       const nextCompleted = !Boolean(task.isCompleted);
       await updateTask(task.id, { isCompleted: nextCompleted });
       setTask({ ...task, isCompleted: nextCompleted });
+      showSuccessToast(nextCompleted ? "Task marked as complete" : "Task marked as incomplete");
     } catch {
-      showError("Failed to update completion status");
+      showErrorToast("Failed to update completion status");
     } finally {
       setUpdatingCompletion(false);
     }
@@ -267,9 +272,19 @@ export default function TaskDetailModal({
       setShowAssigneePicker(false);
 
       await updateTask(task.id, { assigneeId: memberId });
+      
+      // Show appropriate toast message
+      if (!memberId) {
+        showSuccessToast("Task unassigned");
+      } else if (memberId === user?.id) {
+        showSuccessToast(`Assigned yourself to ${task.title}`);
+      } else if (member) {
+        showSuccessToast(`Assigned ${member.name} to ${task.title}`);
+      }
+      
       loadTaskData();
     } catch {
-      showError("Failed to update assignee");
+      showErrorToast("Failed to update assignee");
       loadTaskData();
     }
   };
@@ -521,6 +536,7 @@ export default function TaskDetailModal({
       />
 
       {AlertComponent}
+      {ToastComponent}
     </>
   );
 }

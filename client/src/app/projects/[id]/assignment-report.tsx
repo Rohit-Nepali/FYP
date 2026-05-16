@@ -6,12 +6,14 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
-  Dimensions,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import Animated, { Easing, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useAuth } from "@/src/contexts/AuthContext";
 import {
@@ -258,16 +260,42 @@ function DueDateCell({ dateString, isCompleted }: { dateString?: string | null; 
       )}
       <Text
         className={`text-sm ${isOverdue
-            ? "text-red-400 font-semibold"
-            : isToday
-              ? "text-amber-400 font-medium"
-              : "text-gray-300"
+          ? "text-red-400 font-semibold"
+          : isToday
+            ? "text-amber-400 font-medium"
+            : "text-gray-300"
           }`}
       >
         {label}
       </Text>
     </View>
   );
+}
+
+function escapeCsvValue(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function formatDateForCsv(dateString?: string | null): string {
+  if (!dateString) return "";
+
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function sanitizeFileName(value: string): string {
+  return value
+    .trim()
+    .replace(/[^a-z0-9-_]+/gi, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .toLowerCase();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -370,6 +398,8 @@ export default function ProjectAssignmentReportScreen() {
     };
   }, [report]);
 
+  const reportTitle = report?.project.title ?? "assignment-report";
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -378,6 +408,121 @@ export default function ProjectAssignmentReportScreen() {
     setSortKey(key);
     setSortDirection("asc");
   };
+
+  const handleExportCsv = useCallback(async () => {
+    const header = [
+      "Task",
+      "Assignee",
+      "Status",
+      "Priority",
+      "Due Date",
+      "Completed",
+      "Creator",
+    ];
+
+    const csvRows = [
+      header.map(escapeCsvValue).join(","),
+      ...sortedRows.map((row) =>
+        [
+          row.title,
+          row.assignee?.name || "Unassigned",
+          row.status?.name || "",
+          row.priority?.name || "",
+          formatDateForCsv(row.dueDate),
+          row.isCompleted ? "Yes" : "No",
+          row.creator?.name || "",
+        ]
+          .map((value) => escapeCsvValue(value))
+          .join(",")
+      ),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const fileBaseName = sanitizeFileName(
+      `${reportTitle}-assignment-report-${new Date().toISOString().slice(0, 10)}`
+    );
+    const fileName = `${fileBaseName || "assignment-report"}.csv`;
+
+    try {
+      if (Platform.OS === "web") {
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const downloadUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = downloadUrl;
+        anchor.download = fileName;
+        anchor.style.display = "none";
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(downloadUrl);
+        return;
+      }
+
+      const shareCsvFromCache = async () => {
+        const baseDirectory = FileSystem.cacheDirectory || FileSystem.documentDirectory;
+        if (!baseDirectory) {
+          throw new Error("No writable directory available for export.");
+        }
+
+        const tempUri = `${baseDirectory}${fileName}`;
+        await FileSystem.writeAsStringAsync(tempUri, csvContent, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+
+        const isShareAvailable = await Sharing.isAvailableAsync();
+        if (!isShareAvailable) {
+          Alert.alert("Export complete", `CSV saved to: ${tempUri}`);
+          return;
+        }
+
+        await Sharing.shareAsync(tempUri, {
+          mimeType: "text/csv",
+          dialogTitle: "Export assignment report",
+          UTI: "public.comma-separated-values-text",
+        });
+      };
+
+      if (Platform.OS === "android") {
+        const storageAccessFramework = FileSystem.StorageAccessFramework;
+
+        if (
+          !storageAccessFramework?.requestDirectoryPermissionsAsync ||
+          !storageAccessFramework?.createFileAsync
+        ) {
+          await shareCsvFromCache();
+          return;
+        }
+
+        const permissions = await storageAccessFramework.requestDirectoryPermissionsAsync();
+
+        if (permissions.granted && permissions.directoryUri) {
+          // Creates the file in the user's chosen directory (e.g., Downloads)
+          const targetUri = await storageAccessFramework.createFileAsync(
+            permissions.directoryUri,
+            fileName,
+            "text/csv"
+          );
+
+          await FileSystem.writeAsStringAsync(targetUri, csvContent, {
+            encoding: FileSystem.EncodingType.UTF8,
+          });
+          Alert.alert("Export complete", "CSV saved successfully!");
+        } else {
+          await shareCsvFromCache();
+        }
+        return;
+      }
+
+      await shareCsvFromCache();
+
+    } catch (error) {
+      Alert.alert(
+        "Export failed",
+        error instanceof Error ? error.message : "Unable to export CSV."
+      );
+      console.log("error exporting csv file : ", error);
+    }
+  }, [reportTitle, sortedRows]);
 
   // ─── Loading State ─────────────────────────────────────────────
   if (loading) {
@@ -446,12 +591,12 @@ export default function ProjectAssignmentReportScreen() {
         >
           <View
             className={`bg-gray-800/70 rounded-2xl border mb-3 overflow-hidden ${row.isCompleted
-                ? "border-gray-700/30"
-                : !row.isCompleted &&
-                  row.dueDate &&
-                  new Date(row.dueDate) < new Date()
-                  ? "border-red-500/30"
-                  : "border-gray-700/50"
+              ? "border-gray-700/30"
+              : !row.isCompleted &&
+                row.dueDate &&
+                new Date(row.dueDate) < new Date()
+                ? "border-red-500/30"
+                : "border-gray-700/50"
               }`}
           >
             {/* Overdue accent bar */}
@@ -466,8 +611,8 @@ export default function ProjectAssignmentReportScreen() {
               <View className="flex-row items-start justify-between mb-3">
                 <Text
                   className={`text-base font-semibold flex-1 mr-3 ${row.isCompleted
-                      ? "text-gray-400 line-through"
-                      : "text-white"
+                    ? "text-gray-400 line-through"
+                    : "text-white"
                     }`}
                   numberOfLines={2}
                 >
@@ -558,8 +703,8 @@ export default function ProjectAssignmentReportScreen() {
               >
                 <Text
                   className={`text-sm font-medium ${row.isCompleted
-                      ? "text-gray-500 line-through"
-                      : "text-white"
+                    ? "text-gray-500 line-through"
+                    : "text-white"
                     }`}
                   numberOfLines={2}
                 >
@@ -651,29 +796,42 @@ export default function ProjectAssignmentReportScreen() {
                 <Ionicons name="arrow-back" size={22} color="#fff" />
               </TouchableOpacity>
 
-              <View className="flex-row bg-gray-800/60 rounded-xl p-1">
+              <View className="flex-row items-center gap-2">
                 <TouchableOpacity
-                  onPress={() => setViewMode("cards")}
-                  className={`px-3 py-1.5 rounded-lg ${viewMode === "cards" ? "bg-blue-500/30" : ""
-                    }`}
+                  onPress={handleExportCsv}
+                  className="flex-row items-center bg-emerald-500/15 border border-emerald-500/25 rounded-xl px-3 py-2"
+                  activeOpacity={0.8}
                 >
-                  <Ionicons
-                    name="grid-outline"
-                    size={18}
-                    color={viewMode === "cards" ? "#60A5FA" : "#9CA3AF"}
-                  />
+                  <Ionicons name="download-outline" size={16} color="#34D399" />
+                  <Text className="text-emerald-400 text-sm font-semibold ml-2">
+                    CSV
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setViewMode("table")}
-                  className={`px-3 py-1.5 rounded-lg ${viewMode === "table" ? "bg-blue-500/30" : ""
-                    }`}
-                >
-                  <Ionicons
-                    name="list-outline"
-                    size={18}
-                    color={viewMode === "table" ? "#60A5FA" : "#9CA3AF"}
-                  />
-                </TouchableOpacity>
+
+                <View className="flex-row bg-gray-800/60 rounded-xl p-1">
+                  <TouchableOpacity
+                    onPress={() => setViewMode("cards")}
+                    className={`px-3 py-1.5 rounded-lg ${viewMode === "cards" ? "bg-blue-500/30" : ""
+                      }`}
+                  >
+                    <Ionicons
+                      name="grid-outline"
+                      size={18}
+                      color={viewMode === "cards" ? "#60A5FA" : "#9CA3AF"}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setViewMode("table")}
+                    className={`px-3 py-1.5 rounded-lg ${viewMode === "table" ? "bg-blue-500/30" : ""
+                      }`}
+                  >
+                    <Ionicons
+                      name="list-outline"
+                      size={18}
+                      color={viewMode === "table" ? "#60A5FA" : "#9CA3AF"}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
@@ -751,8 +909,8 @@ export default function ProjectAssignmentReportScreen() {
                 key={item.key}
                 onPress={() => handleSort(item.key)}
                 className={`flex-row items-center px-3 py-2 rounded-xl border ${sortKey === item.key
-                    ? "bg-blue-500/15 border-blue-500/30"
-                    : "bg-gray-800/40 border-gray-700/40"
+                  ? "bg-blue-500/15 border-blue-500/30"
+                  : "bg-gray-800/40 border-gray-700/40"
                   }`}
               >
                 <Text

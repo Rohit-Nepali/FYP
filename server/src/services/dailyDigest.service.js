@@ -32,6 +32,8 @@ export const dailyDigestService = {
   runForEligibleUsers: async () => {
     const now = new Date();
 
+    const skipInactiveDays = Number(process.env.SCHEDULE_SKIP_INACTIVE_DAYS || 30);
+
     const users = await prisma.user.findMany({
       where: {
         dailyDigestEnabled: true,
@@ -41,6 +43,11 @@ export const dailyDigestService = {
         pushToken: true,
         timezone: true,
         digestHourLocal: true,
+        activities: {
+          select: { createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
     });
 
@@ -48,6 +55,20 @@ export const dailyDigestService = {
     let skipped = 0;
 
     for (const user of users) {
+      // Skip users with no recent activity beyond configured threshold
+      const lastActivity = user.activities && user.activities.length > 0 ? user.activities[0].createdAt : null;
+      if (lastActivity) {
+        const daysSinceLastActivity = Math.floor((now.getTime() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSinceLastActivity > skipInactiveDays) {
+          skipped += 1;
+          continue;
+        }
+      } else {
+        // If user has never had activity, treat as inactive and skip
+        skipped += 1;
+        continue;
+      }
+
       const timezone = getSafeTimezone(user.timezone);
       const digestHourLocal = Number.isInteger(user.digestHourLocal) ? user.digestHourLocal : 19;
 

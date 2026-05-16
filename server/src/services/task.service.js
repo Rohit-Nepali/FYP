@@ -106,23 +106,10 @@ export const taskService = {
     const { statusId, priorityId, page = 1, limit = 10 } = filters;
     const skip = (page - 1) * limit;
 
-    // Get tasks created by user or tasks in projects where user is a member
-    const projects = await prisma.project.findMany({
-      where: {
-        OR: [
-          { ownerId: userId },
-          { members: { some: { userId } } },
-        ],
-      },
-      select: { id: true },
-    });
-
-    const projectIds = projects.map((p) => p.id);
-
     const where = {
       OR: [
         { creatorId: userId },
-        ...(projectIds.length > 0 ? [{ projectId: { in: projectIds } }] : []),
+        { assigneeId: userId },
       ],
       ...(statusId && { statusId }),
       ...(priorityId && { priorityId }),

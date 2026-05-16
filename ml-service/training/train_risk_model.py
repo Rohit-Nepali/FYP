@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+"""Train Taskora's risk model from raw Gryzzly CSV exports.
+
+Workflow summary:
+1. Build a task-level dataset by merging raw task, computed task, and declaration data.
+2. Engineer interpretable risk features and a bootstrap target label.
+3. Train a preprocessing + LogisticRegression pipeline.
+4. Save artifacts, metrics, and visualization outputs.
+"""
+
 import argparse
 import json
 import re
@@ -30,16 +39,51 @@ from common import (
     update_metadata,
 )
 
+# ──────────────────────────────────────────────────────────────
+# CONFIGURATION
+# ──────────────────────────────────────────────────────────────
+
+# Default features used for training
 DEFAULT_FEATURES = [
-    "is_completed",
     "due_in_days",
-    "days_overdue",
     "recent_activity_count",
-    "behavior_risk_score",
+    'task_frequency',
+    "project_historical_risk_rate"
 ]
 
+# Labels considered as HIGH risk (for normalization)
 HIGH_RISK_LABELS = {"HIGH", "HIGH_RISK", "1", "TRUE", "YES"}
 
+# Human-readable descriptions for the raw source tables used by the risk model.
+RAW_TABLE_SCHEMAS: dict[str, dict[str, str]] = {
+    "tasks.csv": {
+        "id": "Unique task identifier used to join all task-level records.",
+        "created_at": "Task creation timestamp in the source system.",
+        "is_container": "Boolean-like flag indicating whether the task is a container or grouping item.",
+        "parent_id": "Identifier of the parent task, if this task belongs to a hierarchy.",
+        "project_id": "Project identifier used to aggregate task behavior at the project level.",
+    },
+    "tasks_computed.csv": {
+        "id": "Unique task identifier matching tasks.csv.id.",
+        "created_at": "Computed or normalized task creation timestamp when available.",
+        "is_container": "Computed boolean-like flag for container tasks.",
+        "parent_id": "Parent task identifier from computed task data.",
+        "project_id": "Project identifier copied or inferred in the computed task view.",
+        "planned_duration": "Planned task duration in the raw source format.",
+        "elapsed_duration": "Elapsed task duration in the raw source format.",
+    },
+    "declarations.csv": {
+        "id": "Unique declaration/activity record identifier.",
+        "created_at": "Timestamp when the declaration record was created.",
+        "date": "Business date associated with the declaration event.",
+        "duration": "Duration of the declaration event in the raw source format.",
+        "source": "Origin of the declaration record or event source channel.",
+        "user_id": "Identifier of the user who created the declaration.",
+        "task_id": "Task identifier used to connect declarations back to tasks.",
+    },
+}
+
+# Columns used for visualization before preprocessing
 DEFAULT_PREPROCESSING_VIEW_COLUMNS = [
     "planned_duration_seconds",
     "elapsed_duration_seconds",
@@ -49,13 +93,26 @@ DEFAULT_PREPROCESSING_VIEW_COLUMNS = [
 ]
 
 
+# ──────────────────────────────────────────────────────────────
+# UTILITY FUNCTIONS (DATA CLEANING + VISUALIZATION)
+# ──────────────────────────────────────────────────────────────
 def _numeric_series(series: pd.Series) -> pd.Series:
+    """Return a plot-friendly numeric series while preserving datetime series.
+
+    Datetime columns are kept as-is for plotting routines that can interpret dates.
+    All other data is coerced to numeric values (invalid items become NaN).
+    """
     if pd.api.types.is_datetime64_any_dtype(series):
         return series
     return pd.to_numeric(series, errors="coerce")
 
 
+# ──────────────────────────────────────────────────────────────
+# VISUALIZATION FUNCTIONS (EDA)
+# ──────────────────────────────────────────────────────────────
+
 def _plot_histograms(df: pd.DataFrame, columns: list[str], output_path: Path, title: str) -> None:
+    """Create and save histograms for selected columns in a dataframe."""
     available_cols = [col for col in columns if col in df.columns]
     if not available_cols:
         return
@@ -89,6 +146,7 @@ def _plot_histograms(df: pd.DataFrame, columns: list[str], output_path: Path, ti
 
 
 def _plot_missingness(before_df: pd.DataFrame, after_df: pd.DataFrame, columns: list[str], output_path: Path) -> None:
+    """Compare missing-value percentages before and after preprocessing."""
     available_cols = [col for col in columns if col in before_df.columns or col in after_df.columns]
     if not available_cols:
         return
@@ -122,6 +180,7 @@ def _plot_missingness(before_df: pd.DataFrame, after_df: pd.DataFrame, columns: 
 
 
 def _plot_correlation_heatmap(df: pd.DataFrame, columns: list[str], output_path: Path, title: str) -> None:
+    """Create and save a correlation heatmap for selected numeric columns."""
     available_cols = [col for col in columns if col in df.columns]
     if len(available_cols) < 2:
         return
@@ -152,6 +211,7 @@ def _plot_correlation_heatmap(df: pd.DataFrame, columns: list[str], output_path:
 
 
 def _plot_class_balance(target: pd.Series | np.ndarray, output_path: Path, title: str) -> None:
+    """Create and save a bar chart showing class distribution for the target."""
     target_series = pd.Series(target)
     counts = target_series.value_counts().sort_index()
     if counts.empty:
@@ -183,6 +243,7 @@ def _save_risk_visualizations(
     feature_cols: list[str],
     before_cols: list[str],
 ) -> None:
+    """Save all before/after preprocessing visual diagnostics for risk modeling."""
     before_dir = out_dir / "before_preprocessing"
     after_dir = out_dir / "after_preprocessing"
 
@@ -221,14 +282,51 @@ def _save_risk_visualizations(
     _plot_class_balance(target, out_dir / "target_class_balance.png", "Risk target class balance")
 
 
+def _print_raw_table_schema(table_name: str, df: pd.DataFrame, descriptions: dict[str, str]) -> None:
+    """Print a readable schema summary for one raw source table."""
+    print(f"\n{table_name}")
+    print("-" * len(table_name))
+    print(f"Rows: {len(df):,}")
+    print("Columns:")
+
+    name_width = max([len("column")] + [len(str(column)) for column in df.columns])
+    type_width = max([len("dtype")] + [len(str(df[column].dtype)) for column in df.columns])
+
+    header = f"  {'column'.ljust(name_width)}  {'dtype'.ljust(type_width)}  description"
+    print(header)
+    print(f"  {'-' * name_width}  {'-' * type_width}  {'-' * 80}")
+
+    for column in df.columns:
+        column_dtype = str(df[column].dtype)
+        description = descriptions.get(column, "No description provided for this source column.")
+        print(f"  {column.ljust(name_width)}  {column_dtype.ljust(type_width)}  {description}")
+
+
+def _print_raw_table_overview(tables: dict[str, pd.DataFrame]) -> None:
+    """Print the raw source table schemas before any merging or feature engineering."""
+    print("\nRAW SOURCE TABLE OVERVIEW")
+    print("=========================")
+    for table_name, df in tables.items():
+        _print_raw_table_schema(table_name, df, RAW_TABLE_SCHEMAS.get(table_name, {}))
+
+
+# ──────────────────────────────────────────────────────────────
+# FEATURE ENGINEERING HELPERS
+# ──────────────────────────────────────────────────────────────
 def parse_duration_to_seconds(value: object) -> float:
+    """
+    Convert duration values into seconds.
+    Handles:
+    - numeric (seconds or nanoseconds)
+    - strings like '1h20m30s'
+    """
     if value is None or (isinstance(value, float) and np.isnan(value)):
         return 0.0
 
     if isinstance(value, (int, float, np.integer, np.floating)):
         numeric_value = float(value)
         if numeric_value > 1_000_000:
-            # Gryzzly declaration durations are typically nanoseconds.
+            # Gryzzly declaration durations are nanoseconds so divide by 1 billion.
             return numeric_value / 1_000_000_000.0
         return numeric_value
 
@@ -254,6 +352,7 @@ def parse_duration_to_seconds(value: object) -> float:
 
 
 def normalize_bool(series: pd.Series) -> pd.Series:
+    """Convert boolean-like strings into 0/1."""
     return (
         series.astype(str)
         .str.strip()
@@ -263,8 +362,69 @@ def normalize_bool(series: pd.Series) -> pd.Series:
         .astype(int)
     )
 
+import pandas as pd
+import numpy as np
 
+# ... [Keep your initial merging logic for tasks and tasks_computed] ...
+
+def calculate_ground_truth(task_base: pd.DataFrame, decl_agg: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculates the true historical outcome of a task to serve as the ML label.
+    """
+    # Merge base task data with the final aggregated declaration data
+    df = task_base.merge(decl_agg, on="task_id", how="left")
+    
+    # 1. Fill missing values safely
+    df["planned_duration_seconds"] = df["planned_duration_seconds"].fillna(0)
+    df["elapsed_duration_seconds"] = df["elapsed_duration_seconds"].fillna(0)
+    df["declaration_total_seconds"] = df.get("declaration_total_seconds", 0).fillna(0)
+    
+    # Proxy for completion: if they logged at least 95% of the planned time, 
+    # or if we have an explicit completion flag.
+    df["is_historically_completed"] = (
+        (df["planned_duration_seconds"] > 0) & 
+        (df["elapsed_duration_seconds"] >= (df["planned_duration_seconds"] * 0.95))
+    ).astype(int)
+
+    # 2. Condition A: Budget Overrun (Took 20% longer than planned)
+    overrun_mask = (
+        (df["planned_duration_seconds"] > 0) & 
+        (df["elapsed_duration_seconds"] > (df["planned_duration_seconds"] * 1.20))
+    )
+
+    # 3. Condition B: Abandoned (Unfinished, but no activity in the last 30 days of the dataset's recorded time)
+    # We find the "current" date of the dataset by looking at the very last declaration ever made across ALL tasks.
+    global_max_date = df["last_declaration_date"].max()
+    
+    # Days since the last time someone touched THIS specific task
+    df["days_since_last_activity"] = (global_max_date - df["last_declaration_date"]).dt.total_seconds() / 86400.0
+    
+    abandoned_mask = (
+        (df["is_historically_completed"] == 0) & 
+        (df["days_since_last_activity"] > 30) &
+        (df["planned_duration_seconds"] > 0) # Only count planned tasks that were abandoned
+    )
+
+    # 4. Create the final Ground Truth Target
+    df["actual_risk_target"] = (overrun_mask | abandoned_mask).astype(int)
+    
+    return df
+    
+# ──────────────────────────────────────────────────────────────
+# DATASET BUILDING (CORE LOGIC)
+# ──────────────────────────────────────────────────────────────
 def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Build final dataset from raw CSV files:
+    - Merge tasks + computed data + activity logs
+    - Engineer features
+    - Generate risk labels
+
+    Returns:
+    - final_df: model-ready rows used for train/test split
+    - preprocessed_snapshot: richer intermediate table for visual diagnostics
+    """
+
     tasks_path = raw_risk_dir / "tasks.csv"
     tasks_computed_path = raw_risk_dir / "tasks_computed.csv"
     declarations_path = raw_risk_dir / "declarations.csv"
@@ -273,6 +433,16 @@ def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> t
     tasks_computed_df = read_csv(tasks_computed_path)
     declarations_df = read_csv(declarations_path)
 
+    # Print the raw table structure first so it is easy to inspect the inputs used downstream.
+    _print_raw_table_overview(
+        {
+            "tasks.csv": tasks_df,
+            "tasks_computed.csv": tasks_computed_df,
+            "declarations.csv": declarations_df,
+        }
+    )
+
+    # Standardize IDs and timestamps so joins and temporal features are consistent.
     tasks_df = tasks_df.rename(columns={"id": "task_id", "created_at": "task_created_at"})
     tasks_computed_df = tasks_computed_df.rename(columns={"id": "task_id"})
 
@@ -281,6 +451,7 @@ def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> t
             columns={"created_at": "task_computed_created_at"}
         )
 
+    # Build one task-level base table from computed metrics + canonical task metadata.
     task_base = tasks_computed_df.merge(
         tasks_df[[col for col in tasks_df.columns if col in {"task_id", "task_created_at", "project_id"}]],
         on="task_id",
@@ -330,11 +501,17 @@ def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> t
         parse_duration_to_seconds
     )
 
-    now_utc = pd.Timestamp.now(tz="UTC")
-    seven_days_ago = now_utc - pd.Timedelta(days=7)
+    # Anchor recency windows to the dataset timeline for reproducible training features.
+    global_max_date = declarations_df["decl_date"].max()
+    if pd.isna(global_max_date):
+        global_max_date = pd.Timestamp.now(tz="UTC")
+    seven_days_ago = global_max_date - pd.Timedelta(days=7)
 
     declarations_df["is_recent_7d"] = declarations_df["decl_date"].ge(seven_days_ago)
 
+    # ---------------------------------------------------------
+    # 1. Aggregate ALL declarations to calculate the FINAL Ground Truth
+    # ---------------------------------------------------------
     decl_agg = declarations_df.groupby("task_id", dropna=False).agg(
         declaration_count=("id", "count"),
         declaration_total_seconds=("decl_duration_seconds", "sum"),
@@ -344,97 +521,83 @@ def build_risk_training_dataset(raw_risk_dir: Path, processed_output: Path) -> t
         last_declaration_date=("decl_date", "max"),
     )
 
-    risk_df = task_base.merge(decl_agg, on="task_id", how="left")
-
+    # 2. Calculate the ACTUAL historical outcome (The Label)
+    risk_df = calculate_ground_truth(task_base, decl_agg)
+    
     preprocessed_snapshot = risk_df.copy()
 
+    # ---------------------------------------------------------
+    # 3. Calculate ML Features (Leading Indicators)
+    # ---------------------------------------------------------
     for col in [
         "declaration_count",
         "declaration_total_seconds",
         "declaration_active_days",
         "recent_activity_count",
     ]:
-        risk_df[col] = risk_df[col].fillna(0)
+        risk_df[col] = risk_df.get(col, 0).fillna(0)
 
-    risk_df["is_completed"] = (
-        (risk_df["elapsed_duration_seconds"] > 0)
-        | (risk_df["declaration_total_seconds"] > 0)
-    ).astype(int)
-
-    risk_df["task_age_days"] = (
-        (now_utc - risk_df["created_at"]).dt.total_seconds() / 86400.0
-    )
+    # Task Age
+    risk_df["task_age_days"] = (global_max_date - risk_df["created_at"]).dt.total_seconds() / 86400.0
     risk_df["task_age_days"] = risk_df["task_age_days"].replace([np.inf, -np.inf], np.nan).fillna(0)
 
-    risk_df["completion_date"] = risk_df["last_declaration_date"].fillna(now_utc)
-    risk_df["task_delay_days"] = (
-        (risk_df["completion_date"] - risk_df["created_at"]).dt.total_seconds() / 86400.0
-    )
-    risk_df["task_delay_days"] = risk_df["task_delay_days"].replace([np.inf, -np.inf], np.nan).fillna(0)
-    risk_df["task_delay_days"] = risk_df["task_delay_days"].clip(lower=0)
-
+    # Due in Days
     planned_days = risk_df["planned_duration_seconds"] / 86400.0
     elapsed_days = risk_df["elapsed_duration_seconds"] / 86400.0
-
     risk_df["due_in_days"] = (planned_days - elapsed_days).clip(lower=0)
-    risk_df["days_overdue"] = (risk_df["task_delay_days"] - planned_days).clip(lower=0)
-
+    
+    # Task Frequency (Pace of work)
     risk_df["task_frequency"] = risk_df["declaration_count"] / np.maximum(risk_df["task_age_days"], 1.0)
-    risk_df["duration_ratio"] = np.where(
-        risk_df["planned_duration_seconds"] > 0,
-        risk_df["elapsed_duration_seconds"] / risk_df["planned_duration_seconds"],
-        0.0,
+    
+    # Project-level historical risk rate (Leave-One-Out to prevent leakage)
+    # ---------------------------------------------------------
+    # FIXED: Leave-One-Out Project Risk (No Target Leakage)
+    # ---------------------------------------------------------
+    risk_df["project_id"] = risk_df["project_id"].fillna("UNKNOWN_PROJECT")
+    
+    # 1. Get the total risk sum and total task count per project
+    project_stats = risk_df.groupby("project_id")["actual_risk_target"].agg(
+        total_risk="sum", 
+        total_tasks="count"
+    )
+    risk_df = risk_df.join(project_stats, on="project_id")
+
+    # 2. Subtract THIS task's outcome from the totals before calculating the average.
+    # We clip the denominator at 1 to prevent division-by-zero for single-task projects.
+    risk_df["project_historical_risk_rate"] = (
+        (risk_df["total_risk"] - risk_df["actual_risk_target"]) / 
+        (risk_df["total_tasks"] - 1).clip(lower=1)
     )
 
-    risk_df["overdue_indicator"] = (
-        (risk_df["duration_ratio"] > 1.2)
-        | ((risk_df["is_completed"] == 0) & (risk_df["task_age_days"] > 7.0))
-    ).astype(int)
+    # 3. Clean up the temporary columns
+    risk_df = risk_df.drop(columns=["total_risk", "total_tasks"])
 
-    risk_df["project_id"] = risk_df["project_id"].fillna("UNKNOWN_PROJECT")
-    risk_df["completion_rate_project"] = risk_df.groupby("project_id")["is_completed"].transform("mean")
-
-    completion_component = 1.0 - risk_df["completion_rate_project"]
-    activity_component = np.where(risk_df["task_frequency"] > 0, 1.0 / (1.0 + risk_df["task_frequency"]), 1.0)
-    overdue_component = risk_df["overdue_indicator"].astype(float)
-
-    risk_df["behavior_risk_score"] = (
-        (0.4 * completion_component) + (0.3 * activity_component) + (0.3 * overdue_component)
-    ).clip(lower=0.0, upper=1.0)
-
-    risk_df["risk_target"] = (
-        (risk_df["overdue_indicator"] == 1)
-        | (risk_df["behavior_risk_score"] >= 0.65)
-        | ((risk_df["is_completed"] == 0) & (risk_df["task_age_days"] >= 14))
-    ).astype(int)
-
-    if risk_df["risk_target"].nunique() < 2:
-        # Ensure trainability if heuristics create a single class on small subsets.
-        threshold = risk_df["behavior_risk_score"].quantile(0.7)
-        risk_df["risk_target"] = (risk_df["behavior_risk_score"] >= threshold).astype(int)
-
+    # ---------------------------------------------------------
+    # 4. Finalize Dataset (NO Heuristics Allowed Here!)
+    # ---------------------------------------------------------
+    # dropping behavior_risk_score and overdue_indicator.
+    # and rename actual_risk_target to risk_target so the rest of the script works.
     final_columns = [
         "task_id",
         "project_id",
-        "is_completed",
         "due_in_days",
-        "days_overdue",
         "recent_activity_count",
-        "behavior_risk_score",
-        "task_delay_days",
-        "completion_rate_project",
         "task_frequency",
-        "overdue_indicator",
-        "risk_target",
+        "project_historical_risk_rate", # New powerful feature!
+        "actual_risk_target",
     ]
 
     final_df = risk_df[final_columns].copy()
+    final_df = final_df.rename(columns={"actual_risk_target": "risk_target"})
+
     processed_output.parent.mkdir(parents=True, exist_ok=True)
     final_df.to_csv(processed_output, index=False)
+    
     return final_df, preprocessed_snapshot
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line options for dataset paths, feature selection, and training."""
     parser = argparse.ArgumentParser(description="Train Taskora risk prediction model locally.")
     parser.add_argument(
         "--raw-risk-dir",
@@ -474,6 +637,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def normalize_target(raw_target) -> np.ndarray:
+    """Normalize mixed label formats into binary numpy labels (0 low, 1 high)."""
     values = []
     for value in raw_target:
         if isinstance(value, (bool, np.bool_)):
@@ -491,10 +655,12 @@ def normalize_target(raw_target) -> np.ndarray:
 
 
 def main() -> None:
+    """Execute end-to-end risk model training and print JSON metrics."""
     args = parse_args()
     ensure_models_dir()
 
     df, before_snapshot = build_risk_training_dataset(args.raw_risk_dir, args.dataset)
+    print(df.columns)
 
     feature_cols = [col.strip() for col in args.feature_cols.split(",") if col.strip()]
 
@@ -515,7 +681,7 @@ def main() -> None:
     if len(np.unique(y)) < 2:
         raise ValueError("Target must include at least two classes.")
 
-    # Persist visual EDA snapshots for both pre-cleaned and post-preprocessed data.
+    # Save visualization artifacts to help inspect distribution shifts and preprocessing effects.
     scaled_input = x.copy()
     preprocessing_only = Pipeline(
         steps=[
@@ -550,6 +716,7 @@ def main() -> None:
         before_cols=DEFAULT_PREPROCESSING_VIEW_COLUMNS,
     )
 
+    # Stratified holdout split to preserve class ratio in both train and test sets.
     x_train, x_test, y_train, y_test = train_test_split(
         x,
         y,
@@ -573,6 +740,7 @@ def main() -> None:
         ]
     )
 
+    # Single pipeline ensures identical preprocessing during both training and inference.
     model = Pipeline(
         steps=[
             ("preprocessor", preprocessor),

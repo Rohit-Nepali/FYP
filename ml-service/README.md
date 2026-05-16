@@ -26,10 +26,21 @@ pip install -r requirements.txt
 ## Train classifier locally
 
 ```bash
-python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_2.csv --text-col text --label-col label
+python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_4.csv --text-col text --label-col label
 ```
 
 If your classifier CSV has different column names, change `--text-col` and `--label-col`.
+
+The classifier trainer now uses a safer TF-IDF pipeline by default:
+- custom stopword filtering that preserves negation cues (for example `no`, `not`, `cant`)
+- combined word n-grams (1-3) and character n-grams (3-5) for better robustness to slang and typos
+
+Optional flags:
+
+```bash
+python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_4.csv --text-col text --label-col label --char-max-features 10000
+python training/train_classifier.py --dataset training/raw/classifier/productivity_dataset_4.csv --text-col text --label-col label --disable-char-ngrams
+```
 
 ## Train risk model locally
 
@@ -42,8 +53,8 @@ Place Gryzzly CSVs under:
 The trainer now performs preprocessing + feature engineering before fitting:
 - missing value handling
 - date normalization
-- derived features including `task_delay_days`, `completion_rate_project`, `task_frequency`, `overdue_indicator`
-- model-aligned features: `is_completed`, `due_in_days`, `days_overdue`, `recent_activity_count`, `behavior_risk_score`
+- derived features including `task_age_days`, `task_frequency`, and leave-one-out `project_historical_risk_rate`
+- model-aligned features: `due_in_days`, `recent_activity_count`, `task_frequency`, `project_historical_risk_rate`
 
 Then run:
 

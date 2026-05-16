@@ -547,20 +547,24 @@ export const authService = {
 
     // If user exists, check if they signed up with Google
     if (user) {
-      if (!user.googleId) {
-        // User exists but didn't sign up with Google - link the account
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            googleId,
-            profileImage: profileImage || user.profileImage,
-            googleRefreshToken: refreshToken,
-            emailVerified: true,
-            emailVerifiedAt: new Date(),
-          },
-        });
+      if (user.googleId) {
+        throw new ApiError(
+          "User with this Google account already exists. Please sign in instead.",
+          HTTP_STATUS.CONFLICT
+        );
       }
-      // If user already has googleId, just return them (they can sign in)
+
+      // User exists but didn't sign up with Google - link the account
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId,
+          profileImage: profileImage || user.profileImage,
+          googleRefreshToken: refreshToken,
+          emailVerified: true,
+          emailVerifiedAt: new Date(),
+        },
+      });
     } else {
       // Create new user with Google
       user = await prisma.user.create({

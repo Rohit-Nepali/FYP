@@ -11,6 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../../contexts/AuthContext";
+import { signUpWithGoogle } from "../../services/googleAuthService";
 import { theme } from "../../config/theme";
 import { FormInput } from "@/src/components/common/FormInput";
 import { PrimaryButton } from "@/src/components/UI/Buttons";
@@ -25,7 +26,8 @@ import { validateField, signupValidationRules } from "../../utils/validation";
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { register, isAuthChecking } = useAuth();
+  const { register, isAuthChecking, setUserFromGoogle } = useAuth();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState("");
@@ -362,16 +364,32 @@ export default function SignupScreen() {
 
               {/* Google Button */}
               <PrimaryButton
-                title="Continue with Google"
-                onPress={() => {
-                  showAlert(
-                    "Coming Soon",
-                    "Google signup will be available soon!",
-                    "info"
-                  );
+                title={isGoogleLoading ? "Signing in with Google..." : "Continue with Google"}
+                onPress={async () => {
+                  setIsGoogleLoading(true);
+                  try {
+                    const result = await signUpWithGoogle({ forceAccountSelection: true });
+                    setUserFromGoogle({
+                      id: result.user.id,
+                      email: result.user.email,
+                      name: result.user.name,
+                      role: 'user',
+                      profileImage: result.user.picture,
+                      createdAt: new Date().toISOString(),
+                      googleId: result.googleId,
+                    });
+                    router.replace("/");
+                  } catch (error: any) {
+                    const errorMessage = error.message || "Failed to sign up with Google";
+                    showAlert("Google Signup Failed", errorMessage, "error");
+                  } finally {
+                    setIsGoogleLoading(false);
+                  }
                 }}
                 variant="secondary"
                 icon="logo-google"
+                loading={isGoogleLoading}
+                disabled={isGoogleLoading}
               />
             </View>
 

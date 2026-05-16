@@ -7,16 +7,18 @@ import priorityRouter from "./priority.router.js";
 import commentRouter from "./comment.router.js";
 import userRouter from "./user.router.js";
 import activityRouter from "./activity.router.js";
-import calendarRouter from "./calendar.router.js";
 import chatbotRouter from "./chatbot.router.js";
 import predictionRouter from "./prediction.router.js";
 import insightsRouter from "./insights.router.js";
+import { getProjectInviteLandingController } from "../controllers/project.controller.js";
 
 const router = Router();
 
 router.get("/api/", (req, res) => {
   res.send("Hello World!!! Welcome");
 });
+
+router.get("/invite/:token", getProjectInviteLandingController);
 
 router.use("/api/auth", authRouter);
 router.use("/api/tasks", taskRouter);
@@ -27,7 +29,6 @@ router.use("/api/comments", commentRouter);
 router.use("/api/users", userRouter);
 router.use("/api", activityRouter);
 
-router.use("/api/calendar", calendarRouter);
 router.use("/api/chatbot", chatbotRouter);
 router.use("/api/predictions", predictionRouter);
 router.use("/api/insights", insightsRouter);

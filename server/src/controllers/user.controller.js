@@ -214,6 +214,22 @@ export const updateProfileController = async (req, res, next) => {
     }
 };
 
+export const deleteAccountController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+
+        await userService.deleteAccount(userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            SUCCESS_MESSAGES.DELETED
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const uploadAvatarController = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -252,6 +268,23 @@ export const updateDigestPreferencesController = async (req, res, next) => {
             HTTP_STATUS.OK,
             SUCCESS_MESSAGES.UPDATED,
             updated
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const clearBehavioralSignalsController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+
+        const result = await userService.clearBehavioralSignals(userId);
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            result.count ? "Cleared" : "No records",
+            { deletedCount: result.count }
         );
     } catch (error) {
         next(error);

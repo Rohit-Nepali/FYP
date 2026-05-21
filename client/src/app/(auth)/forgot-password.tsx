@@ -23,6 +23,7 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ email?: string }>({});
+  const [oauthProvider, setOauthProvider] = useState<string | null>(null);
 
   // Alert state
   const [alertVisible, setAlertVisible] = useState(false);
@@ -70,19 +71,25 @@ export default function ForgotPasswordScreen() {
 
     try {
       const response = await authService.forgotPassword(email);
-      showAlert(
-        "Success",
-        "If an account exists for this email, a password reset code has been sent. Please check your inbox.",
-        "success"
-      );
+      if (response.isOAuth) {
+        // Account uses Google - inform user and offer Google sign-in
+        setOauthProvider(response.provider || "google");
+        showAlert("Info", response.message || "This account uses Google Sign-In. So please sign in with Google", "info");
+      } else {
+        showAlert(
+          "Success",
+          "If an account exists for this email, a password reset code has been sent. Please check your inbox.",
+          "success"
+        );
 
-      // Redirect to reset password screen after a delay
-      setTimeout(() => {
-        router.push({
-          pathname: "/verify-reset-token",
-          params: { email },
-        });
-      }, 2000);
+        // Redirect to reset password screen after a delay
+        setTimeout(() => {
+          router.push({
+            pathname: "/verify-reset-token",
+            params: { email },
+          });
+        }, 2000);
+      }
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.error?.message ||
@@ -164,9 +171,20 @@ export default function ForgotPasswordScreen() {
             <PrimaryButton
               title={submitButtonText}
               onPress={handleForgotPassword}
-              disabled={isSubmitDisabled}
+              disabled={isSubmitDisabled || !!oauthProvider}
               loading={isSubmitDisabled}
             />
+
+            {oauthProvider && (
+              <View className="mt-4">
+                <PrimaryButton
+                  title={"Sign in with Google"}
+                  onPress={() => router.push('/login')}
+                  variant="secondary"
+                  icon="logo-google"
+                />
+              </View>
+            )}
           </View>
 
           {/* Footer */}

@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Activity } from "@/src/types/activity";
+import { Activity, CORE_ACTIVITY_TYPES } from "@/src/types/activity";
 import { useRouter } from "expo-router";
 import { resolveFileUrl } from "@/src/utils/url";
 
@@ -16,10 +16,8 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
     switch (activity.type) {
       case "TASK_CREATED":
         return { name: "add-circle-outline" as const, color: "#3B82F6" };
-      case "TASK_UPDATED":
-        return { name: "create-outline" as const, color: "#F97316" };
-      case "COMMENT_ADDED":
-        return { name: "chatbubble-outline" as const, color: "#10B981" };
+      case "ATTACHMENT_ADDED":
+        return { name: "attach-outline" as const, color: "#F59E0B" };
       default:
         return { name: "ellipse-outline" as const, color: "#6B7280" };
     }
@@ -32,12 +30,10 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
     switch (activity.type) {
       case "TASK_CREATED":
         return `${userName} created task "${taskTitle}"`;
-      case "TASK_UPDATED":
-        return `${userName} updated task "${taskTitle}"`;
-      case "COMMENT_ADDED":
-        return `${userName} commented on "${taskTitle}"`;
+      case "ATTACHMENT_ADDED":
+        return `${userName} uploaded file to "${taskTitle}"`;
       default:
-        return `${userName} performed an action`;
+        return null; // Should not display non-core activities
     }
   };
 
@@ -62,10 +58,8 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
     switch (activity.type) {
       case "TASK_CREATED":
         return { bg: "#3B82F615", border: "#3B82F640" };
-      case "TASK_UPDATED":
-        return { bg: "#F9731615", border: "#F9731640" };
-      case "COMMENT_ADDED":
-        return { bg: "#10B98115", border: "#10B98140" };
+      case "ATTACHMENT_ADDED":
+        return { bg: "#F59E0B15", border: "#F59E0B40" };
       default:
         return { bg: "#6B728015", border: "#6B728040" };
     }
@@ -129,11 +123,11 @@ export default function ActivityItem({ activity }: ActivityItemProps) {
           {formatRelativeTime(activity.createdAt)}
         </Text>
 
-        {/* Comment Preview (if applicable) */}
-        {activity.type === "COMMENT_ADDED" && activity.metadata?.commentPreview && (
+        {/* File name (if applicable) */}
+        {activity.type === "ATTACHMENT_ADDED" && activity.metadata?.fileName && (
           <View className="mt-2 ml-8 bg-gray-700/40 rounded-lg px-3 py-2 border border-gray-600/30">
             <Text className="text-gray-300 text-xs italic">
-              "{activity.metadata.commentPreview}..."
+              📎 {activity.metadata.fileName}
             </Text>
           </View>
         )}

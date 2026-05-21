@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { getProjectActivities } from "@/src/services/activityService";
-import { Activity } from "@/src/types/activity";
+import { Activity, CORE_ACTIVITY_TYPES } from "@/src/types/activity";
 import ActivityItem from "./ActivityItem";
 
 interface ActivitySectionProps {
@@ -26,11 +26,16 @@ export default function ActivitySection({ projectId }: ActivitySectionProps) {
       if (!append) setLoading(true);
       const response = await getProjectActivities(projectId, pageNum, 10);
       const nextActivities = Array.isArray(response?.data) ? response.data : [];
+      
+      // Filter to only show core activities
+      const coreActivities = nextActivities.filter((activity) =>
+        CORE_ACTIVITY_TYPES.includes(activity.type)
+      );
 
       if (append) {
-        setActivities((prev) => [...prev, ...nextActivities]);
+        setActivities((prev) => [...prev, ...coreActivities]);
       } else {
-        setActivities(nextActivities);
+        setActivities(coreActivities);
       }
       setHasMore(Boolean(response?.pagination?.hasMore));
       setPage(pageNum);
@@ -120,7 +125,7 @@ export default function ActivitySection({ projectId }: ActivitySectionProps) {
             </View>
             <Text className="text-gray-300 text-base font-semibold mt-2">No activity yet</Text>
             <Text className="text-gray-500 text-xs mt-2 text-center px-4">
-              Create tasks or add comments to see activity here
+              Create tasks or upload files to see activity here
             </Text>
           </View>
         ) : (

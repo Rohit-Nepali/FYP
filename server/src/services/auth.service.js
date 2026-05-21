@@ -397,6 +397,17 @@ export const authService = {
       };
     }
 
+    // If user signed up via Google, do not allow password reset
+    if (user.googleId) {
+      return {
+        shouldSendEmail: false,
+        email: user.email,
+        isOAuth: true,
+        provider: "google",
+        message: "This account uses Google Sign-In — please sign in with Google to access your account.",
+      };
+    }
+
     // Generate numeric OTP (6 digits)
     const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -449,6 +460,14 @@ export const authService = {
       throw new ApiError(
         "Password reset token has expired",
         HTTP_STATUS.UNAUTHORIZED
+      );
+    }
+
+    // Prevent password reset for OAuth (Google) users
+    if (resetRecord.user && resetRecord.user.googleId) {
+      throw new ApiError(
+        "Password change is not allowed for accounts created with Google Sign-In. Please sign in with Google.",
+        HTTP_STATUS.FORBIDDEN
       );
     }
 

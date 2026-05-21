@@ -159,6 +159,20 @@ export const forgotPasswordController = async (req, res, next) => {
 
     const result = await authService.forgotPassword(email);
 
+    // If account uses OAuth (e.g., Google), inform client to use OAuth sign-in
+    if (result && result.isOAuth) {
+      return ApiResponse.sendSuccessResponse(
+        res,
+        HTTP_STATUS.OK,
+        result.message,
+        {
+          email: result.email,
+          isOAuth: true,
+          provider: result.provider,
+        }
+      );
+    }
+
     if (result.shouldSendEmail && result.resetToken) {
       await emailService.sendPasswordResetEmail(email, result.resetToken, "Taskora");
     }

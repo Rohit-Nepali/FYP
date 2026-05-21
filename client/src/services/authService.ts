@@ -137,8 +137,10 @@ export async function getUserByEmail(
 export async function forgotPassword(email: string): Promise<{
   message: string;
   email: string;
+  isOAuth?: boolean;
+  provider?: string;
 }> {
-  return makeRequest<{ message: string; email: string }>(
+  return makeRequest<{ message: string; email: string; isOAuth?: boolean; provider?: string }>(
     "/auth/forgot-password",
     {
       method: "POST",

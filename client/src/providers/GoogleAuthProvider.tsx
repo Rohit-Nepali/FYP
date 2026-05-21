@@ -40,12 +40,12 @@ export const GoogleAuthProvider: React.FC<GoogleAuthProviderProps> = ({ children
       const signedIn = await isSignedIn();
       
       if (signedIn) {
-        console.log('✅ User already signed in, fetching info...');
+        console.log(' User already signed in, fetching info...');
         await refreshUser();
       }
       
     } catch (error) {
-      console.error('❌ Failed to initialize Google Sign-In:', error);
+      console.error(' Failed to initialize Google Sign-In:', error);
     } finally {
       setIsLoading(false);
     }

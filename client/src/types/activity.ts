@@ -1,4 +1,20 @@
-export type ActivityType = 'TASK_CREATED' | 'TASK_UPDATED' | 'COMMENT_ADDED';
+export type ActivityType = 
+  | 'TASK_CREATED'
+  | 'TASK_UPDATED'
+  | 'TASK_DELETED'
+  | 'COMMENT_ADDED'
+  | 'COMMENT_UPDATED'
+  | 'COMMENT_DELETED'
+  | 'ATTACHMENT_ADDED'
+  | 'ATTACHMENT_DELETED'
+  | 'PROJECT_CREATED'
+  | 'PROJECT_UPDATED'
+  | 'PROJECT_DELETED'
+  | 'MEMBER_INVITED'
+  | 'MEMBER_REMOVED';
+
+// Only show these core activities in the feed
+export const CORE_ACTIVITY_TYPES: ActivityType[] = ['TASK_CREATED', 'ATTACHMENT_ADDED'];
 
 export interface Activity {
   id: string;

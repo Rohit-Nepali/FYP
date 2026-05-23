@@ -17,8 +17,10 @@ const renderInviteLandingPage = ({
   title,
   subtitle,
   inviteToken,
-  deepLink,
+  actionBasePath,
   status = "valid",
+  resultMessage = "",
+  canAct = true,
 }) => `<!doctype html>
 <html lang="en">
   <head>
@@ -70,6 +72,7 @@ const renderInviteLandingPage = ({
         gap: 10px;
         flex-wrap: wrap;
       }
+      .action-form { margin: 0; }
       .btn {
         border: 0;
         border-radius: 10px;
@@ -79,12 +82,23 @@ const renderInviteLandingPage = ({
       }
       .btn.primary { background: var(--accent); color: #04210f; font-weight: 700; }
       .btn.secondary { background: rgba(255,255,255,0.08); color: var(--text); }
+      .btn.danger { background: var(--danger); color: #fff; font-weight: 700; }
+      .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
       .status {
         margin-bottom: 10px;
         font-weight: 700;
         color: ${status === "valid" ? "var(--accent)" : "var(--danger)"};
       }
       .hint { margin-top: 12px; font-size: 13px; }
+      .result {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -92,30 +106,22 @@ const renderInviteLandingPage = ({
       <div class="status">${status === "valid" ? "Invitation detected" : "Invitation unavailable"}</div>
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(subtitle)}</p>
-      <div class="actions">
-        <button class="btn primary" onclick="openApp()">Open in Taskora App</button>
-        <button class="btn secondary" onclick="copyToken()">Copy Invite Token</button>
+      ${resultMessage
+        ? `<div class="result" style="display:block;">${escapeHtml(resultMessage)}</div>`
+        : ""}
+      ${status === "valid" && canAct
+        ? `<div class="actions">
+        <form class="action-form" method="post" action="${escapeHtml(actionBasePath)}/accept">
+          <button class="btn primary" type="submit">Accept invitation</button>
+        </form>
+        <form class="action-form" method="post" action="${escapeHtml(actionBasePath)}/decline">
+          <button class="btn danger" type="submit">Decline invitation</button>
+        </form>
       </div>
-      <div class="token" id="token">${escapeHtml(inviteToken)}</div>
-      <p class="hint">If the app does not open, launch Taskora manually, sign in with the invited email, then use this invite token.</p>
+      <p class="hint">Choose one action. This invite link will be updated immediately.</p>`
+        : ""}
+      <div class="token" id="token" style="display:none;">${escapeHtml(inviteToken)}</div>
     </main>
-
-    <script>
-      const deepLink = ${JSON.stringify(deepLink)};
-      const token = ${JSON.stringify(inviteToken)};
-      function openApp() {
-        window.location.href = deepLink;
-      }
-      async function copyToken() {
-        try {
-          await navigator.clipboard.writeText(token);
-          alert("Invite token copied.");
-        } catch (_err) {
-          alert("Could not copy token automatically.");
-        }
-      }
-      ${status === "valid" ? "setTimeout(openApp, 300);" : ""}
-    </script>
   </body>
 </html>`;
 
@@ -576,9 +582,19 @@ export const getProjectAssignmentReportController = async (req, res, next) => {
 export const getProjectInviteLandingController = async (req, res, next) => {
   try {
     const { token } = req.params;
-    const scheme = (process.env.INVITE_APP_SCHEME || "Taskora").replace(/:\/\/?$/, "");
-    const deepLink = `${scheme}://invite/${encodeURIComponent(token)}`;
+    const { outcome, message } = req.query;
+    const actionBasePath = `/invite/${encodeURIComponent(token)}`;
     const invite = await projectService.getInviteByTokenPublic(token);
+
+    const normalizedOutcome = typeof outcome === "string" ? outcome : "";
+    const resultMessage =
+      typeof message === "string" && message.trim().length > 0
+        ? message.trim()
+        : normalizedOutcome === "accepted"
+          ? "Invitation accepted. You can now open Taskora and start collaborating."
+          : normalizedOutcome === "declined"
+            ? "Invitation declined successfully."
+            : "";
 
     if (!invite) {
       return res
@@ -588,8 +604,10 @@ export const getProjectInviteLandingController = async (req, res, next) => {
             title: "Invite link not found",
             subtitle: "This invitation is invalid or has already been used.",
             inviteToken: token,
-            deepLink,
+            actionBasePath,
             status: "invalid",
+            resultMessage,
+            canAct: false,
           })
         );
     }
@@ -602,22 +620,80 @@ export const getProjectInviteLandingController = async (req, res, next) => {
             title: "Invite link expired",
             subtitle: "Request a fresh invitation from the project owner.",
             inviteToken: token,
-            deepLink,
+            actionBasePath,
             status: "expired",
+            resultMessage,
+            canAct: false,
           })
         );
     }
 
+    const canAct = normalizedOutcome !== "accepted" && normalizedOutcome !== "declined";
+
     return res.status(HTTP_STATUS.OK).send(
       renderInviteLandingPage({
         title: `You are invited to ${invite.project.title}`,
-        subtitle: "Opening Taskora app now. If prompted, sign in to continue.",
+        subtitle: `Choose to accept or decline this invitation for ${invite.email}.`,
         inviteToken: token,
-        deepLink,
+        actionBasePath,
         status: "valid",
+        resultMessage,
+        canAct,
       })
     );
   } catch (error) {
+    next(error);
+  }
+};
+
+export const acceptProjectInvitePublicController = async (req, res, next) => {
+  const { token } = req.params;
+
+  try {
+    const result = await projectService.acceptInviteByToken(token);
+
+    if (req.accepts("html")) {
+      return res.redirect(`/invite/${encodeURIComponent(token)}?outcome=accepted`);
+    }
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Invite accepted successfully",
+      result
+    );
+  } catch (error) {
+    if (req.accepts("html")) {
+      const message = encodeURIComponent(error.message || "Could not accept invite.");
+      return res.redirect(`/invite/${encodeURIComponent(token)}?outcome=error&message=${message}`);
+    }
+
+    next(error);
+  }
+};
+
+export const declineProjectInvitePublicController = async (req, res, next) => {
+  const { token } = req.params;
+
+  try {
+    const result = await projectService.declineInviteByToken(token);
+
+    if (req.accepts("html")) {
+      return res.redirect(`/invite/${encodeURIComponent(token)}?outcome=declined`);
+    }
+
+    return ApiResponse.sendSuccessResponse(
+      res,
+      HTTP_STATUS.OK,
+      "Invite declined successfully",
+      result
+    );
+  } catch (error) {
+    if (req.accepts("html")) {
+      const message = encodeURIComponent(error.message || "Could not decline invite.");
+      return res.redirect(`/invite/${encodeURIComponent(token)}?outcome=error&message=${message}`);
+    }
+
     next(error);
   }
 };

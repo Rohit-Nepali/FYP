@@ -6,6 +6,26 @@ import { emailService } from "./email.service.js";
 import { createInAppNotification, sendPushNotification } from "./notification.service.js";
 import { getFrontendBaseUrl } from "../utils/network.utils.js";
 
+const triggerProjectInviteEmailAsync = ({ email, projectTitle, inviteLink, invitedBy }) => {
+    if (!emailService.isSmtpConfigured()) {
+        console.warn(
+            `SMTP is not configured. Skipping invite email for ${email} on project ${projectTitle}`
+        );
+        return;
+    }
+
+    setImmediate(() => {
+        emailService
+            .sendProjectInviteEmail(email, projectTitle, inviteLink, invitedBy)
+            .catch((error) => {
+                console.error(
+                    `Failed to send invite email to ${email} for project ${projectTitle}:`,
+                    error.message
+                );
+            });
+    });
+};
+
 export const projectService = {
     create: async (projectData, ownerId) => {
         const { title, description } = projectData;
@@ -361,8 +381,13 @@ export const projectService = {
             }
         }
 
-        // Send invite email
-        await emailService.sendProjectInviteEmail(normalizedEmail, project.title, inviteLink, invitedBy);
+        // Trigger invite email asynchronously so API response isn't blocked by SMTP latency/failures.
+        triggerProjectInviteEmailAsync({
+            email: normalizedEmail,
+            projectTitle: project.title,
+            inviteLink,
+            invitedBy,
+        });
 
         return invite;
 
@@ -441,6 +466,81 @@ export const projectService = {
         return await projectService.getById(invite.projectId, userId);
     },
 
+    acceptInviteByToken: async (token) => {
+        const invite = await prisma.projectInvite.findUnique({
+            where: { token },
+            include: {
+                project: true,
+            },
+        });
+
+        if (!invite) {
+            throw new ApiError("Invalid invite token", HTTP_STATUS.NOT_FOUND);
+        }
+
+        if (invite.expiresAt < new Date()) {
+            throw new ApiError("Invite has expired", HTTP_STATUS.BAD_REQUEST);
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { email: invite.email },
+            select: { id: true, name: true, email: true },
+        });
+
+        if (!user) {
+            throw new ApiError(
+                "No Taskora account found for this invite email. Please sign up first, then reopen this invite link.",
+                HTTP_STATUS.BAD_REQUEST
+            );
+        }
+
+        const existingMember = await prisma.projectMember.findUnique({
+            where: {
+                projectId_userId: {
+                    projectId: invite.projectId,
+                    userId: user.id,
+                },
+            },
+        });
+
+        if (!existingMember) {
+            await projectService.addMember(
+                invite.projectId,
+                invite.invitedById,
+                user.id,
+                invite.role
+            );
+        }
+
+        await prisma.projectInvite.delete({
+            where: { id: invite.id },
+        });
+
+        await createInAppNotification({
+            userId: invite.invitedById,
+            type: "PROJECT_INVITE_ACCEPTED",
+            title: "Invitation accepted",
+            message: `${user.name || user.email} accepted your invite to ${invite.project.title}`,
+            data: { projectId: invite.projectId, acceptedByUserId: user.id },
+        });
+
+        await createInAppNotification({
+            userId: user.id,
+            type: "PROJECT_INVITE_ACCEPTED",
+            title: "Welcome to project",
+            message: `You joined ${invite.project.title}`,
+            data: { projectId: invite.projectId },
+        });
+
+        return {
+            accepted: true,
+            projectId: invite.projectId,
+            projectTitle: invite.project.title,
+            joinedAsUserId: user.id,
+            joinedAsEmail: user.email,
+        };
+    },
+
     declineInvite: async (token, userId) => {
         const invite = await prisma.projectInvite.findUnique({
             where: { token },
@@ -490,6 +590,46 @@ export const projectService = {
             declined: true,
             projectId: invite.projectId,
             message: "Invite declined",
+        };
+    },
+
+    declineInviteByToken: async (token) => {
+        const invite = await prisma.projectInvite.findUnique({
+            where: { token },
+            include: {
+                project: true,
+            },
+        });
+
+        if (!invite) {
+            throw new ApiError("Invalid invite token", HTTP_STATUS.NOT_FOUND);
+        }
+
+        if (invite.expiresAt < new Date()) {
+            throw new ApiError("Invite has expired", HTTP_STATUS.BAD_REQUEST);
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { email: invite.email },
+            select: { id: true, name: true, email: true },
+        });
+
+        await prisma.projectInvite.delete({
+            where: { id: invite.id },
+        });
+
+        await createInAppNotification({
+            userId: invite.invitedById,
+            type: "PROJECT_INVITE_DECLINED",
+            title: "Invitation declined",
+            message: `${user?.name || invite.email} declined your invite to ${invite.project.title}`,
+            data: { projectId: invite.projectId, declinedByUserId: user?.id || null },
+        });
+
+        return {
+            declined: true,
+            projectId: invite.projectId,
+            projectTitle: invite.project.title,
         };
     },
 

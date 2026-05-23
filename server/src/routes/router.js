@@ -10,7 +10,11 @@ import activityRouter from "./activity.router.js";
 import chatbotRouter from "./chatbot.router.js";
 import predictionRouter from "./prediction.router.js";
 import insightsRouter from "./insights.router.js";
-import { getProjectInviteLandingController } from "../controllers/project.controller.js";
+import {
+  acceptProjectInvitePublicController,
+  declineProjectInvitePublicController,
+  getProjectInviteLandingController,
+} from "../controllers/project.controller.js";
 
 const router = Router();
 
@@ -19,6 +23,8 @@ router.get("/api/", (req, res) => {
 });
 
 router.get("/invite/:token", getProjectInviteLandingController);
+router.post("/invite/:token/accept", acceptProjectInvitePublicController);
+router.post("/invite/:token/decline", declineProjectInvitePublicController);
 
 router.use("/api/auth", authRouter);
 router.use("/api/tasks", taskRouter);

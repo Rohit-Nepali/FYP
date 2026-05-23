@@ -1,6 +1,6 @@
 import { prisma } from "#config/db.js";
-import { createInAppNotification, sendPushNotification } from "./notification.service.js";
 import { NotFoundError, AuthorizationError } from "#utils/error.utils.js";
+import { emailService } from "./email.service.js";
 
 const createComment = async ({ taskId, content, authorId }) => {
   // Verify task exists and user has access
@@ -85,24 +85,14 @@ const createComment = async ({ taskId, content, authorId }) => {
     },
   });
 
-  // Send notifications to task assignee and project members (except author)
+  // Send email notifications to task assignee and project members (except author)
   try {
-    const notifications = [];
+    const recipients = [];
 
     // Notify assignee if different from author
-    if (comment.task.assignee && comment.task.assignee.id !== authorId && comment.task.assignee.pushToken) {
-      notifications.push({
-        userId: comment.task.assignee.id,
-        token: comment.task.assignee.pushToken,
-        title: "New Comment",
-        body: `${comment.author.name} commented on task: ${comment.task.title || 'Untitled'}`,
-      });
-    } else if (comment.task.assignee && comment.task.assignee.id !== authorId) {
-      notifications.push({
-        userId: comment.task.assignee.id,
-        token: null,
-        title: "New Comment",
-        body: `${comment.author.name} commented on task: ${comment.task.title || 'Untitled'}`,
+    if (comment.task.assignee && comment.task.assignee.id !== authorId) {
+      recipients.push({
+        id: comment.task.assignee.id,
       });
     }
 
@@ -110,49 +100,45 @@ const createComment = async ({ taskId, content, authorId }) => {
     comment.task.project?.members?.forEach((member) => {
       if (
         member.userId !== authorId &&
-        member.userId !== comment.task.assignee?.id &&
-        member.user.pushToken
-      ) {
-        notifications.push({
-          userId: member.userId,
-          token: member.user.pushToken,
-          title: "New Comment",
-          body: `${comment.author.name} commented on task: ${comment.task.title || 'Untitled'}`,
-        });
-      } else if (
-        member.userId !== authorId &&
         member.userId !== comment.task.assignee?.id
       ) {
-        notifications.push({
-          userId: member.userId,
-          token: null,
-          title: "New Comment",
-          body: `${comment.author.name} commented on task: ${comment.task.title || 'Untitled'}`,
+        recipients.push({
+          id: member.userId,
         });
       }
     });
 
-    // Send all notifications
-    for (const notification of notifications) {
-      await createInAppNotification({
-        userId: notification.userId,
-        type: "COMMENT_ADDED",
-        title: notification.title,
-        message: notification.body,
-        data: { taskId, commentId: comment.id, type: "new_comment" },
+    const uniqueRecipientIds = [...new Set(recipients.map((recipient) => recipient.id))];
+
+    if (uniqueRecipientIds.length > 0 && emailService.isSmtpConfigured()) {
+      const users = await prisma.user.findMany({
+        where: {
+          id: { in: uniqueRecipientIds },
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
       });
 
-      if (notification.token) {
-        await sendPushNotification(
-          notification.token,
-          notification.title,
-          notification.body,
-          { taskId, commentId: comment.id, type: "new_comment" }
-        );
+      for (const user of users) {
+        if (!user.email) {
+          continue;
+        }
+
+        await emailService.sendCommentAddedEmail({
+          email: user.email,
+          recipientName: user.name,
+          taskTitle: comment.task.title,
+          commentAuthorName: comment.author.name,
+          commentContent: comment.content,
+          projectTitle: task.project?.title,
+        });
       }
     }
   } catch (error) {
-    console.error("Failed to send comment notifications:", error);
+    console.error("Failed to send comment email notifications:", error);
   }
 
   return comment;

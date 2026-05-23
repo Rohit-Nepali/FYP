@@ -1,7 +1,8 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/error.utils.js";
 import { HTTP_STATUS, ERROR_MESSAGES } from "../utils/response.utils.js";
-import { createInAppNotification, sendPushNotification } from "./notification.service.js";
+import { sendPushNotification } from "./notification.service.js";
+import { emailService } from "./email.service.js";
 
 const assignmentNotificationDelayMs = Number.parseInt(
   process.env.ASSIGN_NOTIFICATION_DELAY_MS || "5000",
@@ -9,6 +10,80 @@ const assignmentNotificationDelayMs = Number.parseInt(
 );
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const sendTaskAssignmentAlerts = async ({ task, assignedByName }) => {
+  if (!task?.assignee || !task?.project?.id) {
+    return;
+  }
+
+  try {
+    console.log("[TaskAssignmentNotification] Triggered", {
+      taskId: task.id,
+      assigneeId: task.assignee.id,
+      assigneeEmail: task.assignee.email,
+      hasPushToken: Boolean(task.assignee.pushToken),
+      hasProject: Boolean(task.project?.id),
+      delayMs: assignmentNotificationDelayMs,
+    });
+
+    if (emailService.isSmtpConfigured() && task.assignee.email) {
+      await emailService.sendTaskAssignmentEmail({
+        email: task.assignee.email,
+        assigneeName: task.assignee.name,
+        taskTitle: task.title,
+        projectTitle: task.project.title,
+        assignedByName,
+      });
+
+      console.log("[TaskAssignmentNotification] Email sent", {
+        taskId: task.id,
+        assigneeId: task.assignee.id,
+      });
+    } else {
+      console.log("[TaskAssignmentNotification] Email skipped", {
+        taskId: task.id,
+        assigneeId: task.assignee.id,
+        smtpConfigured: emailService.isSmtpConfigured(),
+        hasAssigneeEmail: Boolean(task.assignee.email),
+      });
+    }
+
+    if (task.assignee.pushToken) {
+      if (assignmentNotificationDelayMs > 0) {
+        console.log("[TaskAssignmentNotification] Delaying push", {
+          taskId: task.id,
+          assigneeId: task.assignee.id,
+          delayMs: assignmentNotificationDelayMs,
+        });
+        await delay(assignmentNotificationDelayMs);
+      }
+
+      console.log("[TaskAssignmentNotification] Sending push", {
+        taskId: task.id,
+        assigneeId: task.assignee.id,
+      });
+
+      await sendPushNotification(
+        task.assignee.pushToken,
+        "Task Assigned",
+        `You have been assigned to task: ${task.title}`,
+        { taskId: task.id, type: "task_assigned" }
+      );
+
+      console.log("[TaskAssignmentNotification] Push sent", {
+        taskId: task.id,
+        assigneeId: task.assignee.id,
+      });
+    } else {
+      console.log("[TaskAssignmentNotification] Push skipped - no token", {
+        taskId: task.id,
+        assigneeId: task.assignee.id,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to send assignment notification:", error);
+  }
+};
 
 export const taskService = {
   create: async (taskData, userId) => {
@@ -98,6 +173,20 @@ export const taskService = {
         attachments: true,
       },
     });
+
+    if (task.project?.id && task.assignee) {
+      const assigner = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      });
+
+      await sendTaskAssignmentAlerts({
+        task,
+        assignedByName: assigner?.name,
+      }).catch((error) => {
+        console.error("Failed to queue task assignment alerts:", error);
+      });
+    }
 
     return task;
   },
@@ -343,63 +432,15 @@ export const taskService = {
     const assigneeChanged = assigneeId !== undefined && assigneeId !== existingTask.assigneeId;
 
     if (assigneeChanged && task.assignee) {
-      try {
-        console.log("[TaskAssignmentNotification] Triggered", {
-          taskId: task.id,
-          previousAssigneeId: existingTask.assigneeId,
-          nextAssigneeId: task.assignee.id,
-          hasPushToken: Boolean(task.assignee.pushToken),
-          delayMs: assignmentNotificationDelayMs,
-        });
+      const assigner = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true },
+      });
 
-        await createInAppNotification({
-          userId: task.assignee.id,
-          type: "TASK_ASSIGNED",
-          title: "Task assigned",
-          message: `You have been assigned to: ${task.title}`,
-          data: { taskId: task.id, projectId: task.project?.id },
-        });
-
-        console.log("[TaskAssignmentNotification] In-app notification created", {
-          taskId: task.id,
-          assigneeId: task.assignee.id,
-        });
-
-        if (task.assignee.pushToken) {
-          if (assignmentNotificationDelayMs > 0) {
-            console.log("[TaskAssignmentNotification] Delaying push", {
-              taskId: task.id,
-              assigneeId: task.assignee.id,
-              delayMs: assignmentNotificationDelayMs,
-            });
-            await delay(assignmentNotificationDelayMs);
-          }
-
-          console.log("[TaskAssignmentNotification] Sending push", {
-            taskId: task.id,
-            assigneeId: task.assignee.id,
-          });
-
-          await sendPushNotification(
-            task.assignee.pushToken,
-            "Task Assigned",
-            `You have been assigned to task: ${task.title}`,
-            { taskId: task.id, type: "task_assigned" }
-          );
-
-          console.log("[TaskAssignmentNotification] Push sent", {
-            taskId: task.id,
-            assigneeId: task.assignee.id,
-          });
-        } else {
-          console.log("[TaskAssignmentNotification] Push skipped - no token", {
-            taskId: task.id,
-            assigneeId: task.assignee.id,
-          });
-        }
-      } catch (error) {
-        console.error("Failed to send assignment notification:", error);
-      }
+      await sendTaskAssignmentAlerts({
+        task,
+        assignedByName: assigner?.name,
+      });
     } else if (assigneeChanged && !task.assignee) {
       console.log("[TaskAssignmentNotification] Skipped - assignee object missing", {
         taskId: task.id,

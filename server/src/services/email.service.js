@@ -186,6 +186,152 @@ export const emailService = {
 
     await mailer.sendMail(mailOptions);
     logger.info(`Project invite email sent to ${email} for project ${projectName}`);
+  },
+
+  /**
+   * Send task assignment email
+   * @param {Object} payload - Assignment payload
+   * @param {string} payload.email - Recipient email address
+   * @param {string} payload.assigneeName - Assignee display name
+   * @param {string} payload.taskTitle - Task title
+   * @param {string} payload.projectTitle - Project title
+   * @param {string} payload.assignedByName - Name of assigner
+   */
+  sendTaskAssignmentEmail: async ({
+    email,
+    assigneeName,
+    taskTitle,
+    projectTitle,
+    assignedByName,
+  }) => {
+    try {
+      const mailer = getTransporter();
+
+      const mailOptions = {
+        from: getFromAddress("Taskora"),
+        to: email,
+        subject: `New Task Assignment: ${taskTitle}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">You Have A New Task</h2>
+            <p>Hello ${assigneeName || "there"},</p>
+            <p><strong>${assignedByName || "A project owner"}</strong> assigned you a task in <strong>${projectTitle || "your project"}</strong>.</p>
+            <div style="margin: 16px 0; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;">
+              <p style="margin: 0;"><strong>Task:</strong> ${taskTitle}</p>
+            </div>
+            <p>Please open Taskora to view the details.</p>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+            <p>Best regards,<br>The Taskora Team</p>
+          </div>
+        `,
+      };
+
+      await mailer.sendMail(mailOptions);
+      logger.info(`Task assignment email sent to ${email} for task ${taskTitle}`);
+    } catch (error) {
+      logger.error(`Failed to send task assignment email: ${error.message}`);
+      throw error;
+    }
+  },
+
+  /**
+   * Send project task attachment update email
+   * @param {Object} payload - Attachment payload
+   * @param {string} payload.email - Recipient email address
+   * @param {string} payload.recipientName - Recipient display name
+   * @param {string} payload.taskTitle - Task title
+   * @param {string} payload.projectTitle - Project title
+   * @param {string} payload.fileName - Uploaded file name
+   * @param {string} payload.uploadedByName - Uploader name
+   */
+  sendTaskAttachmentAddedEmail: async ({
+    email,
+    recipientName,
+    taskTitle,
+    projectTitle,
+    fileName,
+    uploadedByName,
+  }) => {
+    try {
+      const mailer = getTransporter();
+
+      const mailOptions = {
+        from: getFromAddress("Taskora"),
+        to: email,
+        subject: `New Attachment Added: ${taskTitle}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">New Task Attachment</h2>
+            <p>Hello ${recipientName || "there"},</p>
+            <p><strong>${uploadedByName || "A teammate"}</strong> added an attachment to a task in <strong>${projectTitle || "your project"}</strong>.</p>
+            <div style="margin: 16px 0; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;">
+              <p style="margin: 0;"><strong>Task:</strong> ${taskTitle || "Untitled"}</p>
+              <p style="margin: 8px 0 0 0;"><strong>Attachment:</strong> ${fileName || "File"}</p>
+            </div>
+            <p>Please open Taskora to view the task details.</p>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+            <p>Best regards,<br>The Taskora Team</p>
+          </div>
+        `,
+      };
+
+      await mailer.sendMail(mailOptions);
+      logger.info(`Task attachment email sent to ${email} for task ${taskTitle}`);
+    } catch (error) {
+      logger.error(`Failed to send task attachment email: ${error.message}`);
+      throw error;
+    }
+  },
+
+  /**
+   * Send comment added email
+   * @param {Object} payload - Comment payload
+   * @param {string} payload.email - Recipient email address
+   * @param {string} payload.recipientName - Recipient display name
+   * @param {string} payload.taskTitle - Task title
+   * @param {string} payload.commentAuthorName - Comment author name
+   * @param {string} payload.commentContent - Comment body
+   * @param {string} payload.projectTitle - Project title
+   */
+  sendCommentAddedEmail: async ({
+    email,
+    recipientName,
+    taskTitle,
+    commentAuthorName,
+    commentContent,
+    projectTitle,
+  }) => {
+    try {
+      const mailer = getTransporter();
+
+      const safeComment = commentContent || "A new comment was added.";
+
+      const mailOptions = {
+        from: getFromAddress("Taskora"),
+        to: email,
+        subject: `New Comment On Task: ${taskTitle || "Untitled"}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">New Comment Added</h2>
+            <p>Hello ${recipientName || "there"},</p>
+            <p><strong>${commentAuthorName || "A teammate"}</strong> added a comment on <strong>${taskTitle || "a task"}</strong>${projectTitle ? ` in <strong>${projectTitle}</strong>` : ""}.</p>
+            <div style="margin: 16px 0; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;">
+              <p style="margin: 0;"><strong>Comment:</strong></p>
+              <p style="margin: 8px 0 0 0; white-space: pre-wrap;">${safeComment}</p>
+            </div>
+            <p>Please open Taskora to view and reply.</p>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+            <p>Best regards,<br>The Taskora Team</p>
+          </div>
+        `,
+      };
+
+      await mailer.sendMail(mailOptions);
+      logger.info(`Comment notification email sent to ${email} for task ${taskTitle || "Untitled"}`);
+    } catch (error) {
+      logger.error(`Failed to send comment notification email: ${error.message}`);
+      throw error;
+    }
   }
 
 };

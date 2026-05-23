@@ -19,7 +19,6 @@
 - Add Member
 - Send Invite
 - Accept Invite
-- Change Member Role
 - Upload File
 - Download File
 - View Shared Files
@@ -48,7 +47,7 @@
 [Email Notification Service] --> [Notify via Email]
 [Add Member] <<include>> [Send Invite]
 [Send Invite] <<include>> [Notify via Email]
-[Generate Project Overview Report] <<include>> [Get ML Insights]
+[Generate Project Overview Report] 
 [Create Project] <<include>> [Assign Owner]
 
 ## 2. Entity Relationship Diagram (ERD) Data

@@ -17,6 +17,7 @@ import { getAllStatuses, Status } from "@/src/services/statusService";
 import { getAllPriorities, Priority } from "@/src/services/priorityService";
 import { createTask } from "@/src/services/taskService";
 import { Button } from "@/src/components/UI/Buttons";
+import useToast from "@/src/hooks/useToast";
 
 interface ProjectDetail extends Project {
   tasks?: any[];
@@ -36,6 +37,7 @@ export default function ProjectTasks() {
   const [selectedPriority, setSelectedPriority] = useState<string>("");
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [priorities, setPriorities] = useState<Priority[]>([]);
+  const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
 
   useEffect(() => {
     if (id && typeof id === "string") {
@@ -312,13 +314,11 @@ export default function ProjectTasks() {
         onSave={async (payload) => {
           try {
             const task = await createTask({ ...payload, projectId: id as string });
+            showSuccessToast("Task created successfully");
             loadProjectDetail(id as string);
             return task;
           } catch (err) {
-            Alert.alert(
-              "Error",
-              err instanceof Error ? err.message : "Failed to create task"
-            );
+            showErrorToast(err instanceof Error ? err.message : "Failed to create task");
             throw err;
           }
         }}
@@ -334,6 +334,8 @@ export default function ProjectTasks() {
         setPriorities={setPriorities}
         projectId={id as string}
       />
+
+      {ToastComponent}
     </SafeAreaView>
   );
 }

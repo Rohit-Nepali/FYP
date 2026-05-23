@@ -951,6 +951,7 @@ export default function HomeScreen() {
             ...(selectedProjectId ? { projectId: selectedProjectId } : {}),
           };
           const task = await createTask(taskData);
+          showSuccessToast("Task created successfully");
           await loadTasks();
           return task;
         }}

@@ -3,7 +3,6 @@
 ## 1. Use Case Diagram Data
 
 ### Actors
-- Authenticated User
 - Project Member
 - Project Owner
 - File Storage Service
@@ -20,7 +19,6 @@
 - View Comments
 - Upload Attachment
 - Download Attachment
-- Tag Task
 - Categorize Task
 - Sort Tasks
 - Filter Tasks

@@ -31,6 +31,8 @@ export const createTaskController = async (req, res, next) => {
                 userId,
                 taskId: task.id,
                 metadata: { taskTitle: task.title }
+            }).catch((error) => {
+                console.error("Failed to log task creation activity:", error);
             });
         }
 

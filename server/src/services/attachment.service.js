@@ -1,12 +1,107 @@
 import { prisma } from "#config/db.js";
 import { ApiError } from "#utils/error.utils.js";
 import { HTTP_STATUS } from "#utils/response.utils.js";
+import { sendPushNotification } from "./notification.service.js";
+import { emailService } from "./email.service.js";
+
+const notifyProjectMembersForTaskAttachment = async ({
+  task,
+  uploader,
+  attachment,
+}) => {
+  if (!task?.projectId || !task?.project) {
+    return;
+  }
+
+  const recipients = [];
+
+  if (task.project.owner && task.project.owner.id !== uploader.id) {
+    recipients.push(task.project.owner);
+  }
+
+  task.project.members.forEach((member) => {
+    if (member.user && member.user.id !== uploader.id) {
+      recipients.push(member.user);
+    }
+  });
+
+  const uniqueRecipients = Array.from(
+    new Map(recipients.map((recipient) => [recipient.id, recipient])).values()
+  );
+
+  for (const recipient of uniqueRecipients) {
+    try {
+      const notificationTitle = "Task Attachment Added";
+      const notificationBody = `${uploader.name || "A teammate"} added ${attachment.fileName} to task: ${task.title || "Untitled"}`;
+
+      if (emailService.isSmtpConfigured() && recipient.email) {
+        await emailService.sendTaskAttachmentAddedEmail({
+          email: recipient.email,
+          recipientName: recipient.name,
+          taskTitle: task.title,
+          projectTitle: task.project.title,
+          fileName: attachment.fileName,
+          uploadedByName: uploader.name,
+        });
+      }
+
+      if (recipient.pushToken) {
+        await sendPushNotification(
+          recipient.pushToken,
+          notificationTitle,
+          notificationBody,
+          {
+            taskId: task.id,
+            attachmentId: attachment.id,
+            projectId: task.project.id,
+            type: "task_attachment_added",
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Failed to notify project member about task attachment:", {
+        taskId: task.id,
+        attachmentId: attachment.id,
+        recipientId: recipient.id,
+        error: error.message,
+      });
+    }
+  }
+};
 
 
 export const attachmentService = {
   create: async ({ file, taskId, userId }) => {
     const task = await prisma.task.findUnique({
       where: { id: taskId },
+      include: {
+        project: {
+          select: {
+            id: true,
+            title: true,
+            owner: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                pushToken: true,
+              },
+            },
+            members: {
+              select: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    pushToken: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!task) {
@@ -33,6 +128,25 @@ export const attachmentService = {
         },
       },
     });
+
+    if (task.projectId) {
+      const uploader = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      });
+
+      if (uploader) {
+        await notifyProjectMembersForTaskAttachment({
+          task,
+          uploader,
+          attachment,
+        });
+      }
+    }
 
     return attachment;
   },

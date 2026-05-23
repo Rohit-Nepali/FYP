@@ -13,7 +13,7 @@ export function AvatarGroup({
     const extra = members.length - visible.length;
   
     const getInitials = (member: ProjectMember) => {
-      const name = member.name || member.fullName || member.username || "?";
+      const name = member.name || member.fullName || member.username || "M";
       const parts = name.trim().split(" ");
       if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
       return (

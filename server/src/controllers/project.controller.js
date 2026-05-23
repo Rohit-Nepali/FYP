@@ -211,15 +211,25 @@ export const deleteProjectController = async (req, res, next) => {
     const userId = req.user.id;
     const { id } = req.params;
 
-    const project = await projectService.delete(id, userId);
+    const project = await prisma.project.findFirst({
+      where: { id, ownerId: userId },
+    });
 
-    // Log activity (this will be deleted along with project, but logged for audit)
+    if (!project) {
+      throw new ApiError(
+        "Only the project owner can delete this project",
+        HTTP_STATUS.FORBIDDEN
+      );
+    }
+
     await logActivity({
       type: 'PROJECT_DELETED',
       projectId: project.id,
       userId,
       metadata: { projectTitle: project.title }
     });
+
+    await projectService.delete(id, userId);
 
     return ApiResponse.sendSuccessResponse(
       res,

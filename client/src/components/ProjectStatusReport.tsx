@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { getProjectStatistics, ProjectStatistics } from "../services/projectService";
@@ -16,18 +16,16 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
   const router = useRouter();
   const [statistics, setStatistics] = useState<ProjectStatistics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const loadStatistics = async (isRefresh = false) => {
+  const loadStatistics = async () => {
     try {
-      if (!isRefresh) setLoading(true);
+      setLoading(true);
       const data = await getProjectStatistics(projectId);
       setStatistics(data);
     } catch (err) {
       console.error("Failed to load statistics", err);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -35,14 +33,9 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
     loadStatistics();
   }, [projectId]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadStatistics(true);
-  };
-
   if (loading && !statistics) {
     return (
-      <View className="flex-1 justify-center items-center py-10">
+      <View className="items-center justify-center py-10">
         <ActivityIndicator size="large" color="#60A5FA" />
       </View>
     );
@@ -50,7 +43,7 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
 
   if (!statistics) {
     return (
-      <View className="flex-1 justify-center items-center py-10">
+      <View className="items-center justify-center py-10">
         <Text className="text-gray-400 text-sm">Failed to load statistics</Text>
       </View>
     );
@@ -73,80 +66,74 @@ export default function ProjectStatusReport({ projectId }: ProjectStatusReportPr
 
 
   return (
-    <ScrollView
-      className="flex-1"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#60A5FA" />
-      }
-    >
-      <View className="pb-4">
-        {/* Statistics Cards Grid */}
-        <View className="mb-6">
-          <Text className="text-white font-semibold text-lg px-1">Overview</Text>
-          <View className="mt-3 flex-row flex-wrap justify-between">
-            {statCards.map((card, i) => (
-              <View key={i} className="w-[31%] mb-3">
-                <StatCard
-                  title={card.title}
-                  value={card.value}
-                  icon={card.icon}
-                  iconColor={card.color}
-                  onPress={() => handleOpenTasks(card.quickFilter)}
-                />
-              </View>
-            ))}
-          </View>
-
-          {/* Completion Percentage Card */}
-          <LinearGradient
-            colors={["#2563EB", "#7C3AED"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            className="mt-1 rounded-xl border border-gray-700 p-4 overflow-hidden"
-          >
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text className="text-gray-200 text-xs mb-1">Project Completion</Text>
-                <Text className="text-white font-bold text-3xl">
-                  {overview.completionPercentage}%
-                </Text>
-              </View>
-              <View className="w-16 h-16 rounded-full bg-white/20 items-center justify-center">
-                <Text className="text-white font-bold text-xl">
-                  {overview.completedTasks}/{overview.totalTasks}
-                </Text>
-              </View>
-            </View>
-            <View className="mt-3 h-2 bg-white/20 rounded-full overflow-hidden">
-              <View
-                className="h-full bg-white rounded-full"
-                style={{ width: `${overview.completionPercentage}%` }}
+    <View className="bg-gray-800/60 rounded-2xl p-4 border border-gray-700/40">
+      {/* Statistics Cards Grid */}
+      <View className="mb-6">
+        <Text className="text-white font-semibold text-lg px-1">Overview</Text>
+        
+        <View className="mt-3 flex-row flex-wrap" style={{ gap: 8 }}>
+          {statCards.map((card, i) => (
+            <View key={i} style={{ width: "31%" }}>
+              <StatCard
+                title={card.title}
+                value={card.value}
+                icon={card.icon}
+                iconColor={card.color}
+                onPress={() => handleOpenTasks(card.quickFilter)}
               />
             </View>
-          </LinearGradient>
+          ))}
         </View>
 
-        {/* Task Status Breakdown */}
-        <View className="mb-6">
-          <TaskStatusBreakdown
-            statusBreakdown={statusBreakdown}
-            totalTasks={overview.totalTasks}
-          />
-        </View>
-
-        {/* Priority Distribution */}
-        <View className="mb-6">
-          <PriorityDistribution
-            priorityBreakdown={priorityBreakdown}
-            totalTasks={overview.totalTasks}
-          />
-        </View>
-
-        {/* Team Workload */}
-        <View className="mt-4">
-          <TeamWorkloadSection assigneeBreakdown={assigneeBreakdown} />
-        </View>
+        {/* Completion Percentage Card */}
+        <LinearGradient
+          colors={["#2563EB", "#7C3AED"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          className="mt-1 rounded-xl border border-gray-700 p-4 overflow-hidden"
+        >
+          <View className="flex-row items-center justify-between">
+            <View>
+              <Text className="text-gray-200 text-xs mb-1">Project Completion</Text>
+              <Text className="text-white font-bold text-3xl">
+                {overview.completionPercentage}%
+              </Text>
+            </View>
+            <View className="w-16 h-16 rounded-full bg-white/20 items-center justify-center">
+              <Text className="text-white font-bold text-xl">
+                {overview.completedTasks}/{overview.totalTasks}
+              </Text>
+            </View>
+          </View>
+          <View className="mt-3 h-2 bg-white/20 rounded-full overflow-hidden">
+            <View
+              className="h-full bg-white rounded-full"
+              style={{ width: `${overview.completionPercentage}%` }}
+            />
+          </View>
+        </LinearGradient>
       </View>
-    </ScrollView>
+
+      {/* Task Status Breakdown */}
+      <View className="mb-6">
+        <TaskStatusBreakdown
+          statusBreakdown={statusBreakdown}
+          totalTasks={overview.totalTasks}
+        />
+      </View>
+
+      {/* Priority Distribution */}
+      <View className="mb-6">
+        <PriorityDistribution
+          priorityBreakdown={priorityBreakdown}
+          totalTasks={overview.totalTasks}
+        />
+      </View>
+
+      {/* Team Workload */}
+      <View className="mt-4">
+        <TeamWorkloadSection assigneeBreakdown={assigneeBreakdown} />
+      </View>
+    </View>
   );
 }

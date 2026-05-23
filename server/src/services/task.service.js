@@ -11,12 +11,19 @@ const assignmentNotificationDelayMs = Number.parseInt(
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const sendTaskAssignmentAlerts = async ({ task, assignedByName }) => {
+const sendTaskAssignmentAlerts = async ({ task, assignedByUserId }) => {
   if (!task?.assignee || !task?.project?.id) {
     return;
   }
 
   try {
+    const assigner = assignedByUserId
+      ? await prisma.user.findUnique({
+          where: { id: assignedByUserId },
+          select: { name: true },
+        })
+      : null;
+
     console.log("[TaskAssignmentNotification] Triggered", {
       taskId: task.id,
       assigneeId: task.assignee.id,
@@ -32,7 +39,7 @@ const sendTaskAssignmentAlerts = async ({ task, assignedByName }) => {
         assigneeName: task.assignee.name,
         taskTitle: task.title,
         projectTitle: task.project.title,
-        assignedByName,
+        assignedByName: assigner?.name,
       });
 
       console.log("[TaskAssignmentNotification] Email sent", {
@@ -175,14 +182,9 @@ export const taskService = {
     });
 
     if (task.project?.id && task.assignee) {
-      const assigner = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { name: true },
-      });
-
-      await sendTaskAssignmentAlerts({
+      void sendTaskAssignmentAlerts({
         task,
-        assignedByName: assigner?.name,
+        assignedByUserId: userId,
       }).catch((error) => {
         console.error("Failed to queue task assignment alerts:", error);
       });

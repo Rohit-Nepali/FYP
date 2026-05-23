@@ -85,6 +85,7 @@
 [User] --one-to-one--> [NotificationPreference] (cardinality: one-to-one)
 [User] --one-to-many--> [BehavioralSignal] (cardinality: one-to-many)
 
+
 ## 3. Sequence Diagram Data
 
 Flow 1: Registration flow
@@ -119,23 +120,70 @@ Flow 3: Password reset
 1. [Unauthenticated User] -> [Frontend] : request password reset (enter email)
 2. [Frontend] -> [Auth API (POST /api/auth/forgot-password)] : POST email
 3. [Auth Service] -> [Database (Prisma)] : lookup User by email
-	 DECISION: if User.googleId exists (account created via Google OAuth)
+	DECISION: if User.googleId exists (account created via Google OAuth)
 		 - [Auth API] -> [Frontend] : return success-like response with `isOAuth=true` and provider="google" and message "This account uses Google Sign-In — please sign in with Google"
 		 - Flow ends here for password reset (no PasswordReset record is created)
 	 ELSE (regular local account):
 4. [Auth Service] -> [Database (Prisma)] : create PasswordReset record with token and expires_at
 5. [Auth Service] -> [Email Service] : send password reset token to user email
-5. [Frontend/User] -> [Auth API (POST /api/auth/verify-reset-token)] : submit token for verification
-6. [Auth API] -> [Auth Service] : verifyResetToken (validate token and expiry)
-7. [Frontend/User] -> [Auth API (POST /api/auth/reset-password)] : submit token + new password
-8. [Auth Service] -> [Hashing Library (bcryptjs)] : hash new password
-9. [Auth Service] -> [Database (Prisma)] : update user password, delete PasswordReset record, delete UserSession records (force re-login)
-10. [Auth API] -> [Frontend] : return success confirmation
+6. [Frontend/User] -> [Auth API (POST /api/auth/verify-reset-token)] : submit token for verification
+7. [Auth API] -> [Auth Service] : verifyResetToken (validate token and expiry)
+8. [Frontend/User] -> [Auth API (POST /api/auth/reset-password)] : submit token + new password
+9. [Auth Service] -> [Hashing Library (bcryptjs)] : hash new password
+10. [Auth Service] -> [Database (Prisma)] : update user password, delete PasswordReset record, delete UserSession records (force re-login)
+11. [Auth API] -> [Frontend] : return success confirmation
 
 Error handling:
 - 401 Unauthorized -> Verify-reset and reset-password return "Invalid or expired reset token" when the token is missing, invalid, or expired.
 - 404 Not Found -> Verify-email returns "User not found" when the account has been removed before verification.
 - 401 Unauthorized -> Verify-email returns "Invalid verification code" or "Verification code has expired" for stale OTPs.
+
+Flow 4: Login, token refresh, and error propagation
+1. [Unauthenticated User] -> [Frontend] : submit login form (email,password)
+2. [Frontend] -> [apiClient] : makeRequest -> POST /api/auth/sign-in
+3. [apiClient] -> [Auth API (auth.controller)] : forward credentials
+4. [Auth Controller] -> [Auth Service] : authenticate (compare password)
+5. [Auth Service] -> [Database (Prisma)] : fetch user record
+6. [Auth Service] -> [Hashing Library (bcryptjs)] : verify password
+   DECISION: if credentials valid
+	- [Auth Service] -> [JWT Service] : generate accessToken + refreshToken and create UserSession
+	- [Auth API] -> [apiClient] : return { user, accessToken, refreshToken }
+	- [apiClient] -> [Frontend] : resolve login success; store tokens in secure storage
+   ELSE (invalid credentials)
+	- [Auth API] -> [apiClient] : return 401 with error message = "Invalid email or password"
+	- [apiClient] -> [Frontend] : return error to frontend unchanged (no refresh attempt for public auth endpoints)
+	- [Frontend] -> [UI] : show backend-provided message (e.g., "Invalid email or password")
+
+Flow 5: Protected request 401 handling and refresh
+1. [Frontend] -> [apiClient] : makeRequest to protected endpoint with accessToken
+2. [apiClient] -> [Auth API / User API] : request is rejected with 401 (accessToken expired)
+3. [apiClient] -> [apiClient.refresh flow] : if request not a public auth endpoint, attempt refresh with stored refreshToken
+4. [apiClient] -> [Auth API (POST /api/auth/refresh-token)] : submit refreshToken
+   DECISION: if refresh succeeds
+	- [Auth API] -> [apiClient] : return new accessToken + refreshToken
+	- [apiClient] : store new tokens and retry original request
+   ELSE (refresh fails or refresh token invalid)
+	- [apiClient] -> [Frontend] : clear local tokens and return error "Session expired. Please sign in again."
+
+Flow 6: Update email (profile edit) — force re-login
+1. [Authenticated User] -> [Frontend EditProfile] : submit profile update with new email
+2. [Frontend] -> [User API (PATCH /api/users/profile)] : send update payload with accessToken
+3. [User Controller] -> [User Service] : validate and apply profile changes
+4. [User Service] -> [Database (Prisma)] : update User record (email field)
+5. [User Service] -> [Database (Prisma)] : delete UserSession records for that user (invalidate server sessions)
+6. [User API] -> [Frontend] : return success (email updated)
+7. [Frontend] : clear local tokens / auth state
+8. [Frontend] -> [UI] : redirect to login screen and prefill email param with updated address
+
+Flow 7: Change password (authenticated) — force re-login
+1. [Authenticated User] -> [Frontend ChangePassword] : submit currentPassword + newPassword
+2. [Frontend] -> [User API (PATCH /api/users/profile/password)] : send payload with accessToken
+3. [User Controller] -> [User Service] : verify currentPassword (bcrypt.compare)
+4. [User Service] -> [Hashing Library (bcryptjs)] : hash newPassword
+5. [User Service] -> [Database (Prisma)] : update user passwordHash and delete UserSession records (force re-login)
+6. [User API] -> [Frontend] : return success confirmation
+7. [Frontend] : clear local tokens / auth state and redirect to login
+
 
 ## 4. Activity Diagram Data
 

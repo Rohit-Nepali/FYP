@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -14,11 +14,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import BottomSheet from "@gorhom/bottom-sheet";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   getProjectById,
   deleteProject,
+  updateProject,
   Project,
 } from "../../services/projectService";
 import {
@@ -31,10 +33,12 @@ import InviteMemberModal from "../../components/UI/modals/InviteMemberModal";
 import AttachmentGrid from "../../components/UI/AttachmentGrid";
 import AttachmentPreviewModal from "../../components/UI/modals/AttachmentPreviewModal";
 import UploadAttachmentModal from "../../components/UI/modals/UploadAttachmentModal";
+import CreateProjectBottomSheet from "../../components/UI/modals/CreateProjectBottomSheet";
 import ActivitySection from "../../components/ActivitySection";
 import ProjectStatusReport from "../../components/ProjectStatusReport";
 import CustomAlert from "../../components/UI/CustomAlert";
 import { Button } from "@/src/components/UI/Buttons";
+import useAlert from "@/src/hooks/useAlert";
 import { getProjectPermissions } from "@/src/utils/permissions";
 import { AvatarGroup } from "@/src/components/project/AvatarGroup";
 import { SectionHeader } from "@/src/components/project/SectionHeader";
@@ -111,9 +115,8 @@ function MenuItem({
 }) {
   return (
     <TouchableOpacity
-      className={`flex-row items-center p-3 rounded-xl ${
-        disabled ? "opacity-50" : destructive ? "active:bg-red-900/20" : "active:bg-gray-700/60"
-      }`}
+      className={`flex-row items-center p-3 rounded-xl ${disabled ? "opacity-50" : destructive ? "active:bg-red-900/20" : "active:bg-gray-700/60"
+        }`}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.6}
@@ -133,9 +136,8 @@ function MenuItem({
         />
       </View>
       <Text
-        className={`ml-3 font-medium ${
-          disabled ? "text-gray-500" : destructive ? "text-red-400" : "text-white"
-        }`}
+        className={`ml-3 font-medium ${disabled ? "text-gray-500" : destructive ? "text-red-400" : "text-white"
+          }`}
       >
         {label}
       </Text>
@@ -158,23 +160,25 @@ export default function ProjectDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+  const { showError, AlertComponent } = useAlert();
 
   const [project, setProject] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingProject, setEditingProject] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "tasks">(
     "dashboard"
   );
   const [addMembersModalVisible, setAddMembersModalVisible] = useState(false);
   const [inviteEmailModalVisible, setInviteEmailModalVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
+  const editProjectSheetRef = useRef<BottomSheet>(null);
+  const [projectTitle, setProjectTitle] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
 
   // Delete confirmation alert state
   const [deleteAlertVisible, setDeleteAlertVisible] = useState(false);
-  const [successAlertVisible, setSuccessAlertVisible] = useState(false);
-  const [errorAlertVisible, setErrorAlertVisible] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
 
   // Attachments state
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -300,6 +304,67 @@ export default function ProjectDetail() {
     setPreviewModalVisible(true);
   };
 
+  const closeEditProjectSheet = useCallback(() => {
+    editProjectSheetRef.current?.close();
+  }, []);
+
+  const resetEditProjectForm = useCallback(() => {
+    setProjectTitle("");
+    setProjectDescription("");
+    setEditingProject(false);
+    closeEditProjectSheet();
+  }, [closeEditProjectSheet]);
+
+  const openEditProjectModal = useCallback(() => {
+    if (!project) return;
+
+    setMenuVisible(false);
+    setProjectTitle(project.title);
+    setProjectDescription(project.description ?? "");
+    setEditingProject(false);
+    setTimeout(() => {
+      editProjectSheetRef.current?.expand();
+    }, 200);
+  }, [project]);
+
+  const handleUpdateProject = async () => {
+    if (!id || typeof id !== "string" || !project) return;
+
+    const trimmedTitle = projectTitle.trim();
+    if (!trimmedTitle) {
+      Alert.alert("Validation Error", "Project title is required.");
+      return;
+    }
+
+    try {
+      setEditingProject(true);
+      const updatedProject = await updateProject(id, {
+        title: trimmedTitle,
+        description: projectDescription.trim() || undefined,
+      });
+
+      setProject((current) =>
+        current
+          ? {
+            ...current,
+            ...updatedProject,
+            tasks: current.tasks,
+          }
+          : current
+      );
+
+      resetEditProjectForm();
+    } catch (err) {
+      console.error("Failed to update project", err);
+      Alert.alert(
+        "Update Failed",
+        err instanceof Error ? err.message : "Failed to update project"
+      );
+    } finally {
+      setEditingProject(false);
+    }
+  };
+
   const handleUploadSuccess = () => {
     if (id && typeof id === "string") loadAttachments(id);
   };
@@ -315,21 +380,16 @@ export default function ProjectDetail() {
       setDeleting(true);
       await deleteProject(id as string);
       setDeleteAlertVisible(false);
-      setSuccessAlertVisible(true);
+      router.replace({ pathname: "/projects/page", params: { deleted: "1" } });
     } catch (err) {
       setDeleteAlertVisible(false);
-      setErrorMessage(
-        err instanceof Error ? err.message : "Failed to delete project"
+      showError(
+        err instanceof Error ? err.message : "Failed to delete project",
+        "Delete Failed"
       );
-      setErrorAlertVisible(true);
     } finally {
       setDeleting(false);
     }
-  };
-
-  const handleDeleteSuccess = () => {
-    setSuccessAlertVisible(false);
-    router.back();
   };
 
   // ─── Loading ───────────────────────────────────────────────────
@@ -378,8 +438,9 @@ export default function ProjectDetail() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-900">
-      {/* ─── Header ──────────────────────────────────────────────── */}
-      <Animated.View entering={FadeInUp.duration(350)}>
+      <View style={{ flexShrink: 0 }}>
+        {/* ─── Header ──────────────────────────────────────────────── */}
+        <Animated.View entering={FadeInUp.duration(350)}>
 
           <View className="px-5 pt-4 pb-2">
             {/* Top row */}
@@ -447,108 +508,106 @@ export default function ProjectDetail() {
               )}
             </View>
           </View>
-      </Animated.View>
-
-      {/* ─── Stat Cards ──────────────────────────────────────────── */}
-      <View className="px-4 flex-row gap-3 mb-2 mt-1">
-        <StatCard
-          icon="people-outline"
-          label="Members"
-          value={memberCount}
-          color="#60A5FA"
-          index={0}
-          onPress={() => router.push(`/projects/${id}/members`)}
-        />
-        <StatCard
-          icon="checkbox-outline"
-          label="Tasks"
-          value={taskCount}
-          color="#34D399"
-          index={1}
-          onPress={() => setActiveTab("tasks")}
-        />
-        <StatCard
-          icon="attach-outline"
-          label="Files"
-          value={attachments.length}
-          color="#A78BFA"
-          index={2}
-        />
-      </View>
-
-      {/* ─── Member Avatars Row ──────────────────────────────────── */}
-      {members.length > 0 && (
-        <Animated.View entering={FadeInDown.delay(200).duration(350)}>
-          <TouchableOpacity
-            onPress={() => router.push(`/projects/${id}/members`)}
-            activeOpacity={0.7}
-            className="px-4 py-3 flex-row items-center justify-between"
-          >
-            <AvatarGroup members={members} maxVisible={6} />
-            <View className="flex-row items-center">
-              <Text className="text-gray-400 text-xs mr-1">View all</Text>
-              <Ionicons
-                name="chevron-forward"
-                size={14}
-                color="#6B7280"
-              />
-            </View>
-          </TouchableOpacity>
         </Animated.View>
-      )}
 
-      {/* ─── Tab Bar ─────────────────────────────────────────────── */}
-      <View className="px-4 mb-2">
-        <View className="flex-row bg-gray-800/60 rounded-2xl p-1 border border-gray-700/40">
-          {tabs.map((tab) => (
+        {/* ─── Stat Cards ──────────────────────────────────────────── */}
+        <View className="px-4 flex-row gap-3 mb-2 mt-1">
+          <StatCard
+            icon="people-outline"
+            label="Members"
+            value={memberCount}
+            color="#60A5FA"
+            index={0}
+            onPress={() => router.push(`/projects/${id}/members`)}
+          />
+          <StatCard
+            icon="checkbox-outline"
+            label="Tasks"
+            value={taskCount}
+            color="#34D399"
+            index={1}
+            onPress={() => setActiveTab("tasks")}
+          />
+          <StatCard
+            icon="attach-outline"
+            label="Files"
+            value={attachments.length}
+            color="#A78BFA"
+            index={2}
+          />
+        </View>
+
+        {/* ─── Member Avatars Row ──────────────────────────────────── */}
+        {members.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(200).duration(350)}>
             <TouchableOpacity
-              key={tab.key}
-              onPress={() => setActiveTab(tab.key)}
-              className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl ${
-                activeTab === tab.key ? "bg-gray-700/80" : ""
-              }`}
+              onPress={() => router.push(`/projects/${id}/members`)}
               activeOpacity={0.7}
+              className="px-4 py-3 flex-row items-center justify-between"
             >
-              <Ionicons
-                name={tab.icon}
-                size={16}
-                color={activeTab === tab.key ? "#fff" : "#6B7280"}
-              />
-              <Text
-                className={`ml-2 font-medium text-sm ${
-                  activeTab === tab.key ? "text-white" : "text-gray-500"
-                }`}
-              >
-                {tab.label}
-              </Text>
-              {tab.count !== undefined && (
-                <View
-                  className={`ml-1.5 px-1.5 py-0.5 rounded-md ${
-                    activeTab === tab.key
-                      ? "bg-blue-500/25"
-                      : "bg-gray-700/50"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-medium ${
-                      activeTab === tab.key
-                        ? "text-blue-400"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    {tab.count}
-                  </Text>
-                </View>
-              )}
+              <AvatarGroup members={members} maxVisible={6} />
+              <View className="flex-row items-center">
+                <Text className="text-gray-400 text-xs mr-1">View all</Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={14}
+                  color="#6B7280"
+                />
+              </View>
             </TouchableOpacity>
-          ))}
+          </Animated.View>
+        )}
+
+        {/* ─── Tab Bar ─────────────────────────────────────────────── */}
+        <View className="px-4 mb-2">
+          <View className="flex-row bg-gray-800/60 rounded-2xl p-1 border border-gray-700/40">
+            {tabs.map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
+                onPress={() => setActiveTab(tab.key)}
+                className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl ${activeTab === tab.key ? "bg-gray-700/80" : ""
+                  }`}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={tab.icon}
+                  size={16}
+                  color={activeTab === tab.key ? "#fff" : "#6B7280"}
+                />
+                <Text
+                  className={`ml-2 font-medium text-sm ${activeTab === tab.key ? "text-white" : "text-gray-500"
+                    }`}
+                >
+                  {tab.label}
+                </Text>
+                {tab.count !== undefined && (
+                  <View
+                    className={`ml-1.5 px-1.5 py-0.5 rounded-md ${activeTab === tab.key
+                        ? "bg-blue-500/25"
+                        : "bg-gray-700/50"
+                      }`}
+                  >
+                    <Text
+                      className={`text-xs font-medium ${activeTab === tab.key
+                          ? "text-blue-400"
+                          : "text-gray-500"
+                        }`}
+                    >
+                      {tab.count}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </View>
 
       {/* ─── Scrollable Content ──────────────────────────────────── */}
       <ScrollView
         className="flex-1 px-4"
-        contentContainerStyle={{ paddingBottom: 100 }}
+        style={{ flex: 1, minHeight: 0 }}
+        contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -612,18 +671,16 @@ export default function ProjectDetail() {
                       <TouchableOpacity
                         key={type}
                         onPress={() => setFilterType(type)}
-                        className={`px-3 py-1.5 rounded-xl border ${
-                          filterType === type
+                        className={`px-3 py-1.5 rounded-xl border ${filterType === type
                             ? "bg-blue-500/15 border-blue-500/30"
                             : "bg-gray-700/30 border-gray-700/50"
-                        }`}
+                          }`}
                       >
                         <Text
-                          className={`text-xs font-medium ${
-                            filterType === type
+                          className={`text-xs font-medium ${filterType === type
                               ? "text-blue-400"
                               : "text-gray-400"
-                          }`}
+                            }`}
                         >
                           {type.charAt(0).toUpperCase() + type.slice(1)}
                         </Text>
@@ -784,6 +841,14 @@ export default function ProjectDetail() {
                   disabled={!permissions?.canManageMembers}
                 />
 
+                {isOwner && (
+                  <MenuItem
+                    icon="create-outline"
+                    label="Edit Project"
+                    onPress={openEditProjectModal}
+                  />
+                )}
+
                 {isOwner && permissions?.canDelete && (
                   <>
                     <View className="h-px bg-gray-700/50 my-2 mx-3" />
@@ -856,6 +921,21 @@ export default function ProjectDetail() {
         onClose={() => setPreviewModalVisible(false)}
       />
 
+      <CreateProjectBottomSheet
+        sheetRef={editProjectSheetRef}
+        projectTitle={projectTitle}
+        projectDescription={projectDescription}
+        creating={editingProject}
+        onChangeProjectTitle={setProjectTitle}
+        onChangeProjectDescription={setProjectDescription}
+        onCreateProject={handleUpdateProject}
+        onClose={resetEditProjectForm}
+        title="Edit Project"
+        subtitle="Update the project name or description."
+        submitLabel="Save Changes"
+        submitIcon="save-outline"
+      />
+
       <UploadAttachmentModal
         visible={uploadModalVisible}
         projectId={id as string}
@@ -876,24 +956,7 @@ export default function ProjectDetail() {
         onClose={() => setDeleteAlertVisible(false)}
         onConfirm={confirmDeleteProject}
       />
-      <CustomAlert
-        visible={successAlertVisible}
-        title="Success"
-        message="Project has been deleted successfully."
-        type="success"
-        confirmText="OK"
-        onClose={handleDeleteSuccess}
-        onConfirm={handleDeleteSuccess}
-      />
-      <CustomAlert
-        visible={errorAlertVisible}
-        title="Error"
-        message={errorMessage}
-        type="error"
-        confirmText="OK"
-        onClose={() => setErrorAlertVisible(false)}
-        onConfirm={() => setErrorAlertVisible(false)}
-      />
+      {AlertComponent}
     </SafeAreaView>
   );
 }

@@ -9,7 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import ProjectCard from "../../components/UI/ProjectCard";
 import { Button } from "@/src/components/UI/Buttons";
@@ -41,6 +41,7 @@ type SortOption =
 
 export default function Projects() {
   const router = useRouter();
+  const { deleted } = useLocalSearchParams<{ deleted?: string | string[] }>();
   const { user } = useAuth();
   const { showSuccess, showError, AlertComponent } = useAlert();
 
@@ -64,6 +65,13 @@ export default function Projects() {
   useEffect(() => {
     loadProjects();
   }, []);
+
+  useEffect(() => {
+    const deletedFlag = Array.isArray(deleted) ? deleted[0] : deleted;
+    if (deletedFlag === "1") {
+      showSuccess("Project deleted successfully.", "Success");
+    }
+  }, [deleted, showSuccess]);
 
   const loadProjects = async () => {
     try {
@@ -597,7 +605,8 @@ export default function Projects() {
             <View className="mt-4 gap-3">
               {statusOptions.map((option) => {
                 const active =
-                  statusTargetProject && getStatus(statusTargetProject) === option.value;
+                  !!statusTargetProject &&
+                  getStatus(statusTargetProject) === option.value;
                 const meta = getStatusMeta(option.value);
 
                 return (

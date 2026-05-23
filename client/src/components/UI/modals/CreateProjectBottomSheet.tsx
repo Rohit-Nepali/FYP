@@ -19,6 +19,8 @@ interface CreateProjectBottomSheetProps {
   onClose: () => void;
   title?: string;
   subtitle?: string;
+  submitLabel?: string;
+  submitIcon?: keyof typeof Ionicons.glyphMap;
 }
 
 export default function CreateProjectBottomSheet({
@@ -32,6 +34,8 @@ export default function CreateProjectBottomSheet({
   onClose,
   title = "Create New Project",
   subtitle = "Organize your tasks into a new project.",
+  submitLabel = "Create",
+  submitIcon = "add-outline",
 }: CreateProjectBottomSheetProps) {
   const titleInputRef = useRef<any>(null);
   const sheetIndexRef = useRef(-1);
@@ -133,8 +137,8 @@ export default function CreateProjectBottomSheet({
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="add-outline" size={18} color="#fff" />
-                  <Text className="text-white font-semibold ml-1">Create</Text>
+                  <Ionicons name={submitIcon} size={18} color="#fff" />
+                  <Text className="text-white font-semibold ml-1">{submitLabel}</Text>
                 </>
               )}
             </TouchableOpacity>

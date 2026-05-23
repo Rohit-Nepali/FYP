@@ -164,6 +164,8 @@ export const projectService = {
         }
     
         await prisma.project.delete({ where: { id: projectId } });
+
+        return project;
     },
 
     addMember: async (projectId, userId, memberId, role = "member") => {

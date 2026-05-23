@@ -21,10 +21,14 @@ import { useAuth } from "../../contexts/AuthContext";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { inviteToken } = useLocalSearchParams<{ inviteToken?: string | string[] }>();
+  const { inviteToken, email: emailParam } = useLocalSearchParams<{ inviteToken?: string | string[]; email?: string | string[] }>();
   const normalizedInviteToken = useMemo(
     () => (Array.isArray(inviteToken) ? inviteToken[0] : inviteToken),
     [inviteToken]
+  );
+  const normalizedEmail = useMemo(
+    () => (Array.isArray(emailParam) ? emailParam[0] : emailParam) || "",
+    [emailParam]
   );
   const { login, isAuthChecking, setUserFromGoogle } = useAuth();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -50,7 +54,7 @@ export default function LoginScreen() {
     setIsSubmitting,
     clearError,
     togglePasswordVisibility,
-  } = useLoginForm();
+  } = useLoginForm(normalizedEmail);
 
   // Alert helper function
   const showAlert = useCallback(
@@ -104,7 +108,9 @@ export default function LoginScreen() {
       }
     } catch (error) {
       const errorType = handleAuthError(error);
+      console.log("Login error type:", errorType);
       const errorInfo = getAuthErrorMessage(errorType);
+      console.log("Error info:", errorInfo);
 
       if (errorType === "INVALID_CREDENTIALS") {
         setErrors({

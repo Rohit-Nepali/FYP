@@ -18,7 +18,6 @@ import {
   updateProfile,
   uploadAvatar,
 } from "@/src/services/userService";
-import { clearTokens } from "@/src/services/authService";
 import { resolveFileUrl } from "@/src/utils/url";
 import { CustomAlert } from "@/src/components/UI/CustomAlert";
 
@@ -45,7 +44,7 @@ const INITIAL_ALERT: AlertState = {
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { user, setUserFromGoogle, clearAuthState } = useAuth();
+  const { user, setUserFromGoogle, logout } = useAuth();
   const isGoogleAccount = !!user?.googleId;
 
   const [name, setName] = useState(user?.name || "");
@@ -130,12 +129,14 @@ export default function EditProfileScreen() {
 
     setSaving(true);
     try {
+      const trimmedEmail = email.trim();
+      const emailChanged = !isGoogleAccount && trimmedEmail !== originalEmail;
       const profileUpdatePayload: { name: string; email?: string } = {
         name: name.trim(),
       };
 
       if (!isGoogleAccount) {
-        profileUpdatePayload.email = email.trim();
+        profileUpdatePayload.email = trimmedEmail;
       }
 
       const updatedUser = await updateProfile(profileUpdatePayload);
@@ -153,7 +154,18 @@ export default function EditProfileScreen() {
         title: "Profile Updated",
         message: "Your profile has been updated successfully.",
         type: "success",
-        onConfirm: () => router.back(),
+        onConfirm: async () => {
+          if (emailChanged) {
+            await logout();
+            router.replace({
+              pathname: "/login",
+              params: { email: trimmedEmail },
+            });
+            return;
+          }
+
+          router.back();
+        },
       });
     } catch (error: any) {
       showAlert({
@@ -193,8 +205,7 @@ export default function EditProfileScreen() {
 
     try {
       await deleteAccount();
-      clearAuthState();
-      await clearTokens();
+      await logout();
       router.replace("/login");
     } catch (error: any) {
       showAlert({

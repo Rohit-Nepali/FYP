@@ -13,6 +13,7 @@ import {
 	unarchiveNotificationController,
 	searchUsersController,
 	updateProfileController,
+	changePasswordController,
 	clearBehavioralSignalsController,
 	uploadAvatarController,
 	updateDigestPreferencesController,
@@ -37,6 +38,7 @@ userRouter.delete("/notifications/:notificationId", deleteNotificationController
 
 // Profile routes
 userRouter.put("/profile", updateProfileController);
+userRouter.put("/profile/password", changePasswordController);
 userRouter.delete("/profile", deleteAccountController);
 userRouter.post("/profile/avatar", uploadAvatar.single("file"), uploadAvatarController);
 userRouter.patch("/preferences/digest", updateDigestPreferencesController);

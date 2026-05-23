@@ -214,6 +214,31 @@ export const updateProfileController = async (req, res, next) => {
     }
 };
 
+export const changePasswordController = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            throw new ApiError("Current password and new password are required", HTTP_STATUS.BAD_REQUEST);
+        }
+
+        const result = await userService.changePassword(userId, {
+            currentPassword,
+            newPassword,
+        });
+
+        return ApiResponse.sendSuccessResponse(
+            res,
+            HTTP_STATUS.OK,
+            result.message,
+            result
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const deleteAccountController = async (req, res, next) => {
     try {
         const userId = req.user.id;

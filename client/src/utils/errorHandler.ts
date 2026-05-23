@@ -8,10 +8,11 @@ export type AuthErrorType =
 export const handleAuthError = (error: unknown): AuthErrorType => {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
+    console.log("Error message:", message);
 
     if (
       message.includes("user not found") ||
-      message.includes("invalid credentials")
+      message.includes("invalid email or password")
     ) {
       return "INVALID_CREDENTIALS";
     } else if (

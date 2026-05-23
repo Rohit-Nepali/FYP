@@ -90,10 +90,13 @@ Notes: The ML step is synchronous from the user's point of view (server waits fo
   - Call ML engine (direct Python call or HTTP endpoint in `ml-service/`).
   - Interpret output and persist.
 - If ML endpoint is down: server logs error, returns default risk, and enqueues the task for async re-scoring (background worker or cron). A re-evaluation endpoint exists to process pending tasks.
+- A gated retrain endpoint (`POST /retrain-risk-model`) refreshes the risk model artifacts.
+- A nightly server scheduler (`server/src/services/modelRetrainScheduler.service.js`) can trigger retraining at 02:00 when `MODEL_RETRAIN_ENABLED=true`.
 
 ## 13) Background Re-Evaluation and Batch Jobs
 - Periodic jobs re-score tasks after major model updates or when new features appear. These jobs read tasks in DB, call the ML service in batches, and update DB.
 - Job outputs are stored in `reports/` and `ml-service/reports` for analysis.
+- Model refresh jobs may also invoke the retrain endpoint before batch rescoring so the latest artifact set is used.
 
 ## 14) Security and Permissions
 - All API endpoints validate JWTs and check resource permissions (project membership, task visibility).
@@ -122,6 +125,7 @@ Notes: The ML step is synchronous from the user's point of view (server waits fo
 - Notification provider: `client/src/providers/NotificationProvider.tsx`
 - Server services: `server/src/services/taskService.js`, `server/src/services/taskRiskPrediction.service.js`
 - ML service: `ml-service/main.py`, `ml-service/ml_engine.py`, `ml-service/models/`, `ml-service/model_metadata.json`
+- Retrain scheduler: `server/src/services/modelRetrainScheduler.service.js`
 - Prisma schema and migrations: `server/prisma/schema.prisma`, `server/prisma/migrations/`
 
 ---

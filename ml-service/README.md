@@ -74,6 +74,23 @@ You can override this location with:
 python training/train_risk_model.py --visualization-dir reports/figures/risk
 ```
 
+## Retrain risk model via API
+
+The FastAPI service exposes a gated retrain endpoint:
+
+```http
+POST /retrain-risk-model
+```
+
+This endpoint runs the risk-model training script, refreshes the persisted model artifacts, and reloads the models in memory after a successful run.
+
+Use this only when retraining is enabled:
+
+- `ML_ALLOW_RETRAIN=true` allows the endpoint to run
+- `ML_ALLOW_RETRAIN=false` disables retraining and returns `403 Forbidden`
+
+In the full Taskora deployment, the Node server also includes a nightly scheduler that calls this endpoint automatically around 02:00 server time when `MODEL_RETRAIN_ENABLED=true`.
+
 ## Run inference API
 
 ```bash
@@ -87,6 +104,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 - `ML_RISK_FALLBACK_ENABLED`: defaults to `true`
 - `ML_RISK_THRESHOLD_MEDIUM`: defaults to `0.45`
 - `ML_RISK_THRESHOLD_HIGH`: defaults to `0.75`
+- `ML_ALLOW_RETRAIN`: defaults to `false` unless set to `true` to allow `/retrain-risk-model`
 
 ## Model metadata
 

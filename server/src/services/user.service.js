@@ -1,6 +1,7 @@
 import { HTTP_STATUS } from "#utils/response.utils.js";
 import { prisma } from "../config/db.js";
 import { ApiError } from "#utils/error.utils.js";
+import bcrypt from "bcryptjs";
 import {
     archiveInAppNotification,
     deleteInAppNotification,
@@ -117,6 +118,56 @@ export const userService = {
         });
 
         return updatedUser;
+    },
+
+    changePassword: async (userId, { currentPassword, newPassword }) => {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                passwordHash: true,
+                googleId: true,
+            },
+        });
+
+        if (!user) {
+            throw new ApiError("User not found", HTTP_STATUS.NOT_FOUND);
+        }
+
+        if (user.googleId) {
+            throw new ApiError(
+                "Password changes are managed through Google for this account",
+                HTTP_STATUS.FORBIDDEN
+            );
+        }
+
+        if (!user.passwordHash) {
+            throw new ApiError(
+                "Password is not set for this account",
+                HTTP_STATUS.BAD_REQUEST
+            );
+        }
+
+        const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!isCurrentPasswordValid) {
+            throw new ApiError(
+                "Current password is incorrect",
+                HTTP_STATUS.UNAUTHORIZED
+            );
+        }
+
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { passwordHash },
+        });
+
+        await prisma.userSession.deleteMany({
+            where: { userId },
+        });
+
+        return { success: true, message: "Password changed successfully" };
     },
 
     deleteAccount: async (userId) => {

@@ -2,11 +2,11 @@
 
 ## 1. Subsystem Overview
 
-The AI/ML Feature Module implements Taskora's intelligent analytics and conversational assistant functionality. It is delivered as a standalone FastAPI microservice (located in the repository under `ml-service/`) that exposes prediction, classification, feature-extraction, and insight-generation endpoints. The subsystem ingests structured user and task activity signals from core Taskora components, performs feature engineering and supervised inference, and emits risk assessments, productivity insights, and text-based feedback used by the mobile client.
+The AI/ML Feature Module implements Taskora's intelligent analytics and conversational assistant functionality. It is delivered as a standalone FastAPI microservice (located in the repository under `ml-service/`) that exposes prediction, classification, feature-extraction, insight-generation, and retraining endpoints. The subsystem ingests structured user and task activity signals from core Taskora components, performs feature engineering and supervised inference, and emits risk assessments, productivity insights, and text-based feedback used by the mobile client. It also supports a scheduled nightly retrain pipeline so refreshed risk artifacts can be produced automatically and reloaded without a manual deploy.
 
 This module integrates with the Taskora mobile client and backend: it consumes event and task data produced by the `client` (UI) and `server` (task APIs and webhooks), and it writes derived artifacts (risk snapshots, behavior signals) to the central persistent store so that `server` and `client` can query and render results. Authentication and user identity are validated using the same credentials and tokens used by `server` (the microservice accepts bearer tokens compatible with Taskora's auth flow and validates them against `server` endpoints or the identity provider configured in `server/src/config`).
 
-The technical approach emphasises classical NLP feature extraction (TF–IDF) combined with lightweight supervised learning (scikit-learn) for behavioral classification and risk prediction. Models are trained offline using the training pipeline in `ml-service/training/` and persisted with joblib; the microservice performs feature extraction using `sklearn.feature_extraction.text.TfidfVectorizer`, computes engineered task-risk features (temporal, completion, and interaction signals), and serves predictions with FastAPI + Uvicorn for low-latency inference.
+The technical approach emphasises classical NLP feature extraction (TF–IDF) combined with lightweight supervised learning (scikit-learn) for behavioral classification and risk prediction. Models are trained offline using the training pipeline in `ml-service/training/` and persisted with joblib; the microservice performs feature extraction using `sklearn.feature_extraction.text.TfidfVectorizer`, computes engineered task-risk features (temporal, completion, and interaction signals), and serves predictions with FastAPI + Uvicorn for low-latency inference. A server-side scheduler can call the retrain endpoint nightly to regenerate the risk model, persist updated artifacts, and reload them in memory.
 
 ## 2. Functional Requirements
 
@@ -40,6 +40,8 @@ FR-AI-14: The system shall generate AI feedback (actionable text suggestions) fo
 
 FR-AI-15: The system shall record and surface model version metadata with every prediction response to support reproducibility. (Test: response includes `model_version` and `vocab_hash`.)
 
+FR-AI-16: The system shall support retraining the risk model through a gated endpoint and a scheduled nightly job, updating persisted artifacts and model metadata after successful training. (Test: scheduled retrain or manual POST to `/retrain-risk-model` completes, artifacts are refreshed, and the service reloads the updated model.)
+
 ## 3. Non-Functional Requirements
 
 - NFR-AI-01 (Performance): 95% of inference requests shall return within 300 ms for single-text classification under typical load (p95 latency). Batch jobs and heavy feature recomputations may be slower. (Measurement: p95 latency under representative load test.)
@@ -50,6 +52,7 @@ FR-AI-15: The system shall record and surface model version metadata with every 
 - NFR-AI-06 (Compatibility): The module shall provide JSON APIs consumable by both iOS and Android clients; response schemas must be stable and versioned to maintain compatibility across client releases. (Verification: integration tests on both platforms.)
 - NFR-AI-07 (Privacy): User reflection text shall be retained only for a configurable retention period; retention policy must be enforced automatically. (Verification: retention job and deletion audit logs.)
 - NFR-AI-08 (Model Management): The system shall support model versioning and rollback; each deployed model must be traceable to a training commit and dataset snapshot. (Verification: model registry metadata and deployment logs.)
+- NFR-AI-09 (Retraining / Automation): The system shall support scheduled retraining with a safe runtime gate so automatic model refreshes can run without exposing the training endpoint publicly. (Verification: nightly scheduler logs, retrain endpoint gating, and refreshed model metadata.)
 
 ## 4. Key Features Breakdown
 
@@ -67,6 +70,9 @@ The module uses `sklearn.feature_extraction.text.TfidfVectorizer` with a determi
 
 Supervised ML behavioral classification:
 Behavioral classification uses supervised models (scikit-learn: Logistic Regression / RandomForest / CalibratedClassifierCV) trained with engineered features (TF–IDF, interaction counts, temporal deltas). Training occurs offline in `ml-service/training/`, with experiments recorded in metadata and models exported with `joblib`. This feature provides discrete labels that drive feedback and downstream risk scoring.
+
+Model retraining pipeline:
+The risk model can be retrained through a gated FastAPI endpoint (`POST /retrain-risk-model`) that runs the training script, writes updated artifacts, and reloads the model in memory. A server-side cron scheduler triggers this endpoint nightly when `MODEL_RETRAIN_ENABLED=true`, allowing the deployment to refresh risk artifacts automatically while keeping the training workflow isolated from normal inference traffic.
 
 Confidence score analysis:
 Each model inference returns a calibrated confidence score (probability) computed with classifier probability outputs or calibration wrappers. The microservice formats confidence into both raw probability and binned confidence levels (`low`, `medium`, `high`) for UI consumption. Confidence enables the UI to surface certainty and helps determine when human review or fallback logic is required.
@@ -101,6 +107,7 @@ AI feedback generation composes contextual, actionable suggestions using templat
 - `server` — provides authentication, persistent user/task data, and optionally central ingestion endpoints; the microservice validates tokens against `server` and may write derived artifacts back to `server` data stores or call `server` APIs for persistence. Relevant code areas include `server/src/routes/` and `server/src/services/`.
 - `firebase` / `config/firebase.ts` (if used) — for push notifications or background messaging integration when feedback needs to be pushed to devices.
 - `ml-service/training/` — the training pipeline that produces the model artifacts consumed by this microservice.
+- `server/src/services/modelRetrainScheduler.service.js` — nightly scheduler that triggers the retrain endpoint when enabled.
 - Persistent storage (shared DB or object store) — to store signals, snapshots, and cached aggregates (the project uses `server/prisma/` for DB schema; the microservice conforms to the same storage schema or writes via `server` APIs).
 
 ## 6. API Endpoints Summary
@@ -112,6 +119,7 @@ AI feedback generation composes contextual, actionable suggestions using templat
 | POST | /features/compute | Compute engineered task risk features from provided task/activity data | Yes |
 | POST | /predict/risk | Predict risk level for a task or user given features | Yes |
 | POST | /classify/behavior | Return behavioral class label and confidence for supplied signals | Yes |
+| POST | /retrain-risk-model | Retrain the risk model, persist updated artifacts, and reload the service model | Yes (internal / gated by env) |
 | POST | /signals | Persist a behaviour signal/event to durable storage | Yes |
 | GET | /snapshots | Query risk snapshots by task/user and date range | Yes |
 | GET | /insights/productivity | Return productivity aggregates for dashboard consumption | Yes |

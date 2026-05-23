@@ -44,6 +44,18 @@ Error handling:
 - 503 Service Unavailable -> The service returns a model error when inference cannot run and no fallback path is available.
 - 422 Validation Error -> Invalid insight or classify payloads are rejected before aggregation or inference begins.
 
+### Flow 4: Model retraining
+1. System (Nightly Scheduler) -> Server Retrain Scheduler : Trigger nightly retrain job at 02:00
+2. Server Retrain Scheduler -> FastAPI ML Microservice : POST /retrain-risk-model
+3. FastAPI ML Microservice -> FastAPI ML Microservice : Run training script (train_risk_model.py)
+4. FastAPI ML Microservice -> ML Artifacts / Model Metadata : Save refreshed model, preprocessor, metrics, and metadata
+5. FastAPI ML Microservice -> FastAPI ML Microservice : Reload models into memory after successful retrain
+6. FastAPI ML Microservice -> Server Retrain Scheduler : Return retrain status and logs
+
+Error handling:
+- 403 Forbidden -> Retrain endpoint returns disabled when `ML_ALLOW_RETRAIN=false`.
+- 500 Internal Server Error -> Training failure, missing script, or model reload failure is returned to the scheduler.
+
 ## 4. Activity Diagram Data
 
 ### Start node
@@ -61,6 +73,7 @@ Start
 - DECISION: [intent == command] → Generate action payload / Generate analytical reply
 - Persist BehaviorSignal to MongoDB
 - Generate AI feedback text
+- Nightly retrain scheduler triggers risk model refresh when enabled
 - Return response to Chatbot UI
 - Render feedback to user
 - Surface model, validation, or fallback errors to the UI when inference fails
@@ -71,6 +84,7 @@ DECISION: [intent == command] → [Generate action payload] / [Generate analytic
 DECISION: [confidence < threshold] → [Request clarification from user] / [Proceed with feedback]
 DECISION: [model available?] → [Run classification or risk prediction] / [Return 503 service unavailable]
 DECISION: [fallback enabled?] → [Return fallback prediction] / [Return model failure error]
+DECISION: [retrain enabled?] → [Run nightly retrain pipeline] / [Skip retrain job]
 
 ### End node
 End
@@ -82,7 +96,10 @@ End
 [Express Backend] --> [FastAPI ML Microservice] : HTTP JSON API (forward reflections, /predict/risk, /classify/behavior)
 [FastAPI ML Microservice] --> [MongoDB (behavior signals)] : DB read/write (persist BehaviorSignal, RiskSnapshot, InsightReport)
 [FastAPI ML Microservice] --> [ML Model artifact] : Local model inference (joblib loaded model)
+[Server Retrain Scheduler] --> [FastAPI ML Microservice] : HTTP JSON API (POST /retrain-risk-model)
+[FastAPI ML Microservice] --> [ML training pipeline] : Execute train_risk_model.py and refresh artifacts
 [Express Backend] --> [Auth Provider] : Token validation / authentication
 [Chatbot UI] --> [Firebase (optional)] : Push notifications (background feedback)
 [Scheduler] --> [Express Backend] : Cron trigger (risk job)
 [Scheduler] --> [FastAPI ML Microservice] : Cron trigger (insights aggregation)
+[System (Nightly Scheduler)] --> [Server Retrain Scheduler] : Nightly retrain trigger (02:00)

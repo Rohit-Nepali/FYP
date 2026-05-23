@@ -15,6 +15,11 @@ export interface UpdateProfileData {
   profileImage?: string;
 }
 
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -79,6 +84,15 @@ export async function updateProfile(
   data: UpdateProfileData
 ): Promise<UserProfile> {
   return makeRequest<UserProfile>(`/users/profile`, {
+    method: "PUT",
+    data,
+  });
+}
+
+export async function changePassword(
+  data: ChangePasswordData
+): Promise<{ success: boolean; message: string }> {
+  return makeRequest<{ success: boolean; message: string }>(`/users/profile/password`, {
     method: "PUT",
     data,
   });

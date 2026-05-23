@@ -80,7 +80,7 @@ export default function AccountSettingsScreen() {
                 return;
               }
 
-              Alert.alert("Coming Soon", "Password reset feature coming soon");
+              router.push("/settings/ChangePassword");
             }}
             className={`flex-row items-center justify-between px-4 py-3.5 border-b border-gray-700/30 ${isGoogleAccount ? "opacity-70" : ""}`}
           >

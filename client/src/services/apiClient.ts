@@ -22,6 +22,19 @@ export interface ApiSuccess<T> {
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
+const PUBLIC_AUTH_ENDPOINTS = [
+  "/auth/sign-in",
+  "/auth/sign-up",
+  "/auth/forgot-password",
+  "/auth/verify-email",
+  "/auth/resend-verification",
+  "/auth/verify-reset-token",
+  "/auth/reset-password",
+];
+
+const isPublicAuthEndpoint = (url?: string) =>
+  !!url && PUBLIC_AUTH_ENDPOINTS.some((endpoint) => url.includes(endpoint));
+
 // ─── Token Helpers ───────────────────────────────────────────────────────────
 
 export async function storeTokens(
@@ -103,6 +116,10 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 apiClient.interceptors.request.use(
   async (cfg) => {
+    if (isPublicAuthEndpoint(cfg.url)) {
+      return cfg;
+    }
+
     const tokens = await getStoredTokens();
     if (tokens.accessToken) {
       cfg.headers = cfg.headers ?? {};
@@ -125,12 +142,14 @@ apiClient.interceptors.response.use(
     const statusCode = error.response?.status;
     const requestUrl = originalRequest?.url || "";
     const isRefreshRequest = requestUrl.includes("/auth/refresh-token");
+    const isPublicAuthRequest = isPublicAuthEndpoint(requestUrl);
 
     if (
       statusCode === 401 &&
       originalRequest &&
       !originalRequest._retry &&
-      !isRefreshRequest
+      !isRefreshRequest &&
+      !isPublicAuthRequest
     ) {
       const tokens = await getStoredTokens();
       if (!tokens.refreshToken) {

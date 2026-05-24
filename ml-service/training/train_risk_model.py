@@ -21,7 +21,9 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, classification_report, f1_score, roc_auc_score, roc_curve, auc
+from sklearn.svm import LinearSVC
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -768,6 +770,36 @@ def main() -> None:
     joblib.dump(model, RISK_MODEL_PATH)
     joblib.dump(model.named_steps["preprocessor"], RISK_PREPROCESSOR_PATH)
 
+    # Baseline: majority-class predictor
+    majority_label = int(pd.Series(y_train).mode().iloc[0])
+    baseline_pred = [majority_label] * len(y_test)
+    baseline_accuracy = float(accuracy_score(y_test, baseline_pred))
+    baseline_macro_f1 = float(f1_score(y_test, baseline_pred, average="macro"))
+
+    # Train and evaluate a calibrated Linear SVM for comparison
+    svm_metrics = None
+    try:
+        svm_base = LinearSVC(random_state=args.random_state, class_weight="balanced", max_iter=2000)
+        svm_calibrated = CalibratedClassifierCV(svm_base, cv=3)
+        svm_pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("classifier", svm_calibrated)])
+        svm_pipeline.fit(x_train, y_train)
+
+        y_pred_svm = svm_pipeline.predict(x_test)
+        y_proba_svm = svm_pipeline.predict_proba(x_test)[:, 1]
+
+        accuracy_svm = float(accuracy_score(y_test, y_pred_svm))
+        macro_f1_svm = float(f1_score(y_test, y_pred_svm, average="macro"))
+        roc_auc_svm = float(roc_auc_score(y_test, y_proba_svm))
+
+        svm_metrics = {
+            "accuracy": accuracy_svm,
+            "macro_f1": macro_f1_svm,
+            "roc_auc": roc_auc_svm,
+        }
+    except Exception as exc:  # pragma: no cover
+        print(f"Warning: risk SVM training failed: {exc}")
+        svm_pipeline = None
+
     update_metadata(
         "risk_model",
         {
@@ -779,6 +811,9 @@ def main() -> None:
                 "accuracy": round(accuracy, 6),
                 "macro_f1": round(macro_f1, 6),
                 "roc_auc": round(roc_auc, 6),
+                "baseline_accuracy": round(baseline_accuracy, 6),
+                "baseline_macro_f1": round(baseline_macro_f1, 6),
+                "svm": {k: round(v, 6) for k, v in svm_metrics.items()} if svm_metrics is not None else None,
             },
             "thresholds": {
                 "medium": args.medium_threshold,
@@ -788,12 +823,81 @@ def main() -> None:
                 "risk_model": str(RISK_MODEL_PATH),
                 "risk_preprocessor": str(RISK_PREPROCESSOR_PATH),
             },
+            "visualizations": {
+                "roc_curve": None,
+                "algorithm_comparison": None,
+            },
             "report": report,
             "train_samples": int(len(x_train)),
             "test_samples": int(len(x_test)),
             "random_state": args.random_state,
         },
     )
+
+    # Save ROC curve (logistic vs SVM) and algorithm comparison to visualization_dir
+    viz_dir = Path(args.visualization_dir)
+    (viz_dir / "figures").mkdir(parents=True, exist_ok=True)
+
+    try:
+        # ROC plot
+        plt.figure(figsize=(8, 6))
+        fpr, tpr, _ = roc_curve(y_test, y_proba)
+        auc_log = auc(fpr, tpr)
+        plt.plot(fpr, tpr, label=f"Logistic (AUC={auc_log:.3f})", color="#2563eb", linewidth=2)
+
+        if svm_metrics is not None and y_proba_svm is not None:
+            fpr_s, tpr_s, _ = roc_curve(y_test, y_proba_svm)
+            auc_svm = auc(fpr_s, tpr_s)
+            plt.plot(fpr_s, tpr_s, label=f"SVM (AUC={auc_svm:.3f})", color="#10b981", linewidth=2)
+
+        plt.plot([0, 1], [0, 1], linestyle="--", color="gray")
+        plt.title("Risk Model ROC Curve")
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.legend(loc="lower right")
+        roc_path = viz_dir / "figures" / "risk_roc_curve.png"
+        plt.tight_layout()
+        plt.savefig(roc_path, dpi=200)
+        plt.close()
+
+        # Algorithm comparison bar chart
+        labels = ["Logistic", "SVM" if svm_metrics is not None else None, "Majority baseline"]
+        labels = [l for l in labels if l is not None]
+        accs = [accuracy, svm_metrics["accuracy"] if svm_metrics is not None else None, baseline_accuracy]
+        f1s = [macro_f1, svm_metrics["macro_f1"] if svm_metrics is not None else None, baseline_macro_f1]
+
+        x = np.arange(2)  # two metrics: accuracy, macro_f1
+        total = len(labels)
+        width = 0.8 / total
+
+        plt.figure(figsize=(8, 5))
+        cmap = plt.get_cmap("tab10")
+        for i, lbl in enumerate(labels):
+            vals = [accs[i], f1s[i]]
+            offsets = x - 0.4 + (i + 0.5) * width
+            plt.bar(offsets, vals, width=width, label=lbl, color=cmap(i))
+        plt.xticks(x, ["Accuracy", "Macro F1"])
+        plt.ylim(0, 1.05)
+        plt.ylabel("Score")
+        plt.title("Risk model vs SVM vs Majority baseline")
+        plt.legend()
+        comp_path = viz_dir / "figures" / "risk_algorithm_comparison.png"
+        plt.tight_layout()
+        plt.savefig(comp_path, dpi=200)
+        plt.close()
+
+        # Update metadata with visualization paths
+        update_metadata(
+            "risk_model",
+            {
+                "visualizations": {
+                    "roc_curve": str(roc_path),
+                    "algorithm_comparison": str(comp_path),
+                }
+            },
+        )
+    except Exception as exc:  # pragma: no cover
+        print(f"Warning: could not save risk visualizations: {exc}")
 
     output = {
         "status": "ok",

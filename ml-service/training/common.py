@@ -100,8 +100,14 @@ def update_metadata(section: str, payload: dict) -> None:
         with METADATA_PATH.open("r", encoding="utf-8") as file_obj:
             existing = json.load(file_obj)
 
+    # Merge payload into existing section if present to avoid overwriting unrelated keys.
+    if section in existing and isinstance(existing[section], dict):
+        merged = {**existing[section], **payload}
+    else:
+        merged = {**payload}
+
     existing[section] = {
-        **payload,
+        **merged,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
 

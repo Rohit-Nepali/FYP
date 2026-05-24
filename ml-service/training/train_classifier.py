@@ -8,7 +8,9 @@ from pathlib import Path
 import joblib
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, f1_score
+from sklearn.metrics import accuracy_score, classification_report, f1_score, roc_auc_score
+from sklearn.svm import LinearSVC
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion
@@ -276,11 +278,47 @@ def main() -> None:
     )
     classifier.fit(x_train_vec, y_train)
 
+    # Logistic Regression (existing model)
     y_pred = classifier.predict(x_test_vec)
+    y_proba = classifier.predict_proba(x_test_vec)
 
     accuracy = float(accuracy_score(y_test, y_pred))
     macro_f1 = float(f1_score(y_test, y_pred, average="macro"))
+    roc_auc_macro = float(roc_auc_score(y_test, y_proba, multi_class="ovr", average="macro"))
     report = classification_report(y_test, y_pred, output_dict=True)
+
+    # Train a calibrated Linear SVM as a second algorithm to compare against
+    try:
+        svm_base = LinearSVC(random_state=args.random_state, class_weight="balanced", max_iter=2000)
+        svm_clf = CalibratedClassifierCV(svm_base, cv=3)
+        svm_clf.fit(x_train_vec, y_train)
+
+        y_pred_svm = svm_clf.predict(x_test_vec)
+        y_proba_svm = svm_clf.predict_proba(x_test_vec)
+
+        accuracy_svm = float(accuracy_score(y_test, y_pred_svm))
+        macro_f1_svm = float(f1_score(y_test, y_pred_svm, average="macro"))
+        roc_auc_macro_svm = float(roc_auc_score(y_test, y_proba_svm, multi_class="ovr", average="macro"))
+        svm_metrics = {
+            "accuracy": accuracy_svm,
+            "macro_f1": macro_f1_svm,
+            "roc_auc_macro": roc_auc_macro_svm,
+        }
+    except Exception as exc:  # pragma: no cover - best-effort training of comparison model
+        print(f"Warning: SVM training failed: {exc}")
+        svm_clf = None
+        y_pred_svm = None
+        y_proba_svm = None
+        svm_metrics = None
+
+    majority_label = str(y_train.mode().iloc[0])
+    baseline_pred = [majority_label] * len(y_test)
+    baseline_accuracy = float(accuracy_score(y_test, baseline_pred))
+    baseline_macro_f1 = float(f1_score(y_test, baseline_pred, average="macro"))
+    baseline_metrics = {
+        "accuracy": baseline_accuracy,
+        "macro_f1": baseline_macro_f1,
+    }
 
     gold_evaluation = None
     if args.gold_dataset is not None:
@@ -292,6 +330,14 @@ def main() -> None:
     
     # Generate EDA visualizations and save to figures subdirectory
     print("\nGenerating EDA visualizations...")
+    # Prepare other models metrics dict for plotting in EDA
+    other_models_metrics = {}
+    if svm_metrics is not None:
+        other_models_metrics["SVM"] = {
+            "accuracy": float(svm_metrics["accuracy"]),
+            "macro_f1": float(svm_metrics["macro_f1"]),
+        }
+
     eda_reports = generate_all_eda_reports(
         work_df=work_df,
         x_train=x_train,
@@ -299,9 +345,12 @@ def main() -> None:
         y_train=y_train,
         y_test=y_test,
         y_pred=y_pred,
+        y_score=y_proba,
         vectorizer=vectorizer,
         classifier=classifier,
         report_dict=report,
+        baseline_metrics=baseline_metrics,
+        other_models_metrics=other_models_metrics,
         text_col=text_col,
         label_col=label_col,
         output_dir=args.report_dir,
@@ -326,8 +375,26 @@ def main() -> None:
         "metrics": {
             "accuracy": round(accuracy, 6),
             "macro_f1": round(macro_f1, 6),
+            "roc_auc_macro": round(roc_auc_macro, 6),
+            "baseline_accuracy": round(baseline_accuracy, 6),
+            "baseline_macro_f1": round(baseline_macro_f1, 6),
         },
         "gold_standard": None,
+        "comparison": {
+            "baseline_type": "majority_class",
+            "baseline_label": majority_label,
+            "metrics": {
+                "accuracy": round(baseline_accuracy, 6),
+                "macro_f1": round(baseline_macro_f1, 6),
+            },
+            "gap_vs_model": {
+                "accuracy": round(accuracy - baseline_accuracy, 6),
+                "macro_f1": round(macro_f1 - baseline_macro_f1, 6),
+            },
+            "artifacts": {
+                "algorithm_comparison": str(eda_reports.get("algorithm_comparison")),
+            },
+        },
         "classification_report": report,
         "train_samples": int(len(x_train)),
         "test_samples": int(len(x_test)),
@@ -348,8 +415,10 @@ def main() -> None:
                 "class_distribution_test": str(eda_reports.get("class_distribution_test")),
                 "text_length_distribution": str(eda_reports.get("text_length_distribution")),
                 "confusion_matrix": str(eda_reports.get("confusion_matrix")),
+                "roc_curve": str(eda_reports.get("roc_curve")),
                 "top_features_per_class": str(eda_reports.get("top_features")),
                 "per_class_metrics": str(eda_reports.get("per_class_metrics")),
+                "algorithm_comparison": str(eda_reports.get("algorithm_comparison")),
             },
         },
     }
@@ -384,6 +453,9 @@ def main() -> None:
             "metrics": {
                 "accuracy": round(accuracy, 6),
                 "macro_f1": round(macro_f1, 6),
+                "roc_auc_macro": round(roc_auc_macro, 6),
+                "baseline_accuracy": round(baseline_accuracy, 6),
+                "baseline_macro_f1": round(baseline_macro_f1, 6),
             },
             "preprocessing": {
                 "word_stopwords": "custom_english_preserve_negations",
@@ -408,8 +480,10 @@ def main() -> None:
                     "class_distribution_test": str(eda_reports.get("class_distribution_test")),
                     "text_length_distribution": str(eda_reports.get("text_length_distribution")),
                     "confusion_matrix": str(eda_reports.get("confusion_matrix")),
+                    "roc_curve": str(eda_reports.get("roc_curve")),
                     "top_features_per_class": str(eda_reports.get("top_features")),
                     "per_class_metrics": str(eda_reports.get("per_class_metrics")),
+                    "algorithm_comparison": str(eda_reports.get("algorithm_comparison")),
                 },
             },
             "train_samples": int(len(x_train)),
@@ -428,6 +502,7 @@ def main() -> None:
         "status": "ok",
         "accuracy": accuracy,
         "macro_f1": macro_f1,
+        "roc_auc_macro": roc_auc_macro,
         "classifier_path": str(CLASSIFIER_PATH),
         "tfidf_path": str(TFIDF_PATH),
         "evaluation_report_path": str(report_path),
@@ -440,8 +515,10 @@ def main() -> None:
             "class_distribution_test": str(eda_reports.get("class_distribution_test")),
             "text_length_distribution": str(eda_reports.get("text_length_distribution")),
             "confusion_matrix": str(eda_reports.get("confusion_matrix")),
+            "roc_curve": str(eda_reports.get("roc_curve")),
             "top_features_per_class": str(eda_reports.get("top_features")),
             "per_class_metrics": str(eda_reports.get("per_class_metrics")),
+            "algorithm_comparison": str(eda_reports.get("algorithm_comparison")),
         },
     }
     print(json.dumps(output, indent=2))

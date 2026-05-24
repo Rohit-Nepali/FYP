@@ -1,6 +1,6 @@
 {
   "classifier": {
-    "dataset": "training\\raw\\classifier\\productivity_dataset_4.csv",
+    "dataset": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\training\\raw\\classifier\\productivity_dataset_4.csv",
     "text_column": "text",
     "label_column": "label",
     "classes": [
@@ -15,7 +15,10 @@
     ],
     "metrics": {
       "accuracy": 0.821429,
-      "macro_f1": 0.811106
+      "macro_f1": 0.811106,
+      "roc_auc_macro": 0.964731,
+      "baseline_accuracy": 0.080357,
+      "baseline_macro_f1": 0.018595
     },
     "preprocessing": {
       "word_stopwords": "custom_english_preserve_negations",
@@ -108,8 +111,10 @@
         "class_distribution_test": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\03_class_distribution_test.png",
         "text_length_distribution": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\04_text_length_distribution.png",
         "confusion_matrix": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\05_confusion_matrix.png",
+        "roc_curve": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\08_roc_curve.png",
         "top_features_per_class": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\06_top_features_per_class.png",
-        "per_class_metrics": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\07_per_class_metrics.png"
+        "per_class_metrics": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\07_per_class_metrics.png",
+        "algorithm_comparison": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\reports\\classifier\\figures\\09_algorithm_comparison.png"
       }
     },
     "train_samples": 9776,
@@ -121,9 +126,14 @@
       "ratio": 0.013393
     },
     "random_state": 42,
-    "updated_at": "2026-05-12T04:24:08.087033+00:00"
+    "updated_at": "2026-05-24T04:46:16.867442+00:00"
   },
   "risk_model": {
+    "visualizations": {
+      "roc_curve": "reports\\figures\\risk\\figures\\risk_roc_curve.png",
+      "algorithm_comparison": "reports\\figures\\risk\\figures\\risk_algorithm_comparison.png"
+    },
+    "updated_at": "2026-05-24T05:00:50.600421+00:00",
     "raw_risk_dir": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\training\\raw\\risk",
     "dataset": "D:\\Uni\\FInal Year Project\\Taskora\\ml-service\\data\\processed\\risk_training.csv",
     "target_column": "risk_target",
@@ -136,7 +146,14 @@
     "metrics": {
       "accuracy": 0.935001,
       "macro_f1": 0.771024,
-      "roc_auc": 0.942876
+      "roc_auc": 0.942876,
+      "baseline_accuracy": 0.941469,
+      "baseline_macro_f1": 0.484926,
+      "svm": {
+        "accuracy": 0.95135,
+        "macro_f1": 0.719737,
+        "roc_auc": 0.937286
+      }
     },
     "thresholds": {
       "medium": 0.45,
@@ -175,7 +192,6 @@
     },
     "train_samples": 502772,
     "test_samples": 125694,
-    "random_state": 42,
-    "updated_at": "2026-05-16T07:16:11.523007+00:00"
+    "random_state": 42
   }
 }

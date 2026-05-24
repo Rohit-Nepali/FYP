@@ -12,7 +12,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import auc, confusion_matrix, roc_curve
+from sklearn.preprocessing import label_binarize
 
 # Set style for all plots
 sns.set_style("whitegrid")
@@ -110,6 +111,103 @@ def save_confusion_matrix(
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close()
     
+    return output_path
+
+
+def save_roc_curve(
+    y_true: np.ndarray | pd.Series,
+    y_score: np.ndarray,
+    classes: list[str],
+    output_dir: Path,
+    title: str = "ROC Curve (Test Set)",
+    filename: str = "08_roc_curve.png",
+) -> Path:
+    """Save one-vs-rest ROC curves for a multiclass classifier."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    y_true_binarized = label_binarize(y_true, classes=classes)
+    if y_true_binarized.shape[1] == 1:
+        y_true_binarized = np.hstack([1 - y_true_binarized, y_true_binarized])
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    for index, class_label in enumerate(classes):
+        fpr, tpr, _ = roc_curve(y_true_binarized[:, index], y_score[:, index])
+        roc_auc = auc(fpr, tpr)
+        ax.plot(fpr, tpr, linewidth=2, label=f"{class_label} (AUC = {roc_auc:.3f})")
+
+    ax.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1.5, label="Chance")
+    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.set_xlabel("False Positive Rate", fontsize=12)
+    ax.set_ylabel("True Positive Rate", fontsize=12)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1.05)
+    ax.grid(alpha=0.3)
+    ax.legend(loc="lower right", fontsize=8)
+
+    output_path = output_dir / filename
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+
+    return output_path
+
+
+def save_algorithm_comparison(
+    models_metrics: dict[str, dict[str, float]],
+    baseline_metrics: dict[str, float],
+    output_dir: Path,
+    title: str = "Model vs Baseline on Test Data",
+    filename: str = "09_algorithm_comparison.png",
+) -> Path:
+    """Save a grouped comparison chart for multiple models vs a baseline."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    metric_names = ["accuracy", "macro_f1"]
+
+    # Build labels order: models first, then baseline
+    labels = list(models_metrics.keys()) + ["Majority baseline"]
+
+    # Gather values for each label and metric
+    values = []
+    for lbl in models_metrics.keys():
+        values.append([models_metrics[lbl].get(m, 0.0) for m in metric_names])
+    # append baseline
+    values.append([baseline_metrics.get(m, 0.0) for m in metric_names])
+
+    values = np.array(values)  # shape (n_labels, n_metrics)
+
+    n_labels = values.shape[0]
+    n_metrics = values.shape[1]
+
+    x = np.arange(n_metrics)
+    total_width = 0.8
+    width = total_width / n_labels
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    cmap = plt.get_cmap("tab10")
+    bars = []
+    for i in range(n_labels):
+        offsets = x - total_width / 2 + (i + 0.5) * width
+        bar = ax.bar(offsets, values[i], width=width, label=labels[i], color=cmap(i % 10))
+        bars.append(bar)
+
+    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.set_ylabel("Score", fontsize=12)
+    ax.set_ylim(0, 1.05)
+    ax.set_xticks(x)
+    ax.set_xticklabels([name.replace("_", " ").title() for name in metric_names])
+    ax.grid(axis="y", alpha=0.3)
+    ax.legend(loc="upper right")
+
+    for bar_group in bars:
+        ax.bar_label(bar_group, fmt="%.3f", fontsize=9)
+
+    output_path = output_dir / filename
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.close()
+
     return output_path
 
 
@@ -258,12 +356,15 @@ def generate_all_eda_reports(
     y_train: pd.Series,
     y_test: pd.Series,
     y_pred: np.ndarray,
+    y_score: np.ndarray,
     vectorizer,
     classifier,
     report_dict: dict,
+    baseline_metrics: dict[str, float] | None,
     text_col: str,
     label_col: str,
     output_dir: Path,
+    other_models_metrics: dict[str, dict[str, float]] | None = None,
 ) -> dict[str, Path]:
     """Generate all EDA visualizations and save them to output_dir."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -317,7 +418,17 @@ def generate_all_eda_reports(
         filename="05_confusion_matrix.png",
     )
     
-    # 6. Top features per class
+    # 6. ROC curve
+    report_paths["roc_curve"] = save_roc_curve(
+        y_test,
+        y_score,
+        list(classifier.classes_),
+        figures_dir,
+        title="One-vs-Rest ROC Curve (Test Set)",
+        filename="08_roc_curve.png",
+    )
+
+    # 7. Top features per class
     report_paths["top_features"] = save_top_features_per_class(
         vectorizer,
         classifier,
@@ -327,7 +438,7 @@ def generate_all_eda_reports(
         filename="06_top_features_per_class.png",
     )
     
-    # 7. Per-class metrics
+    # 8. Per-class metrics
     report_paths["per_class_metrics"] = save_per_class_metrics(
         report_dict,
         classifier.classes_,
@@ -335,8 +446,23 @@ def generate_all_eda_reports(
         title="Per-Class Performance Metrics",
         filename="07_per_class_metrics.png",
     )
+
+    if baseline_metrics is not None:
+        # 9. Model-vs-baseline comparison (support multiple models)
+        models_metrics = {"Taskora model": {"accuracy": float(report_dict["accuracy"]), "macro_f1": float(report_dict["macro avg"]["f1-score"])}}
+        if other_models_metrics:
+            for k, v in other_models_metrics.items():
+                models_metrics[k] = {"accuracy": float(v.get("accuracy", 0.0)), "macro_f1": float(v.get("macro_f1", 0.0))}
+
+        report_paths["algorithm_comparison"] = save_algorithm_comparison(
+            models_metrics,
+            baseline_metrics,
+            figures_dir,
+            title="Model vs Majority Baseline on Test Data",
+            filename="09_algorithm_comparison.png",
+        )
     
-    # 8. Dataset overview (text report)
+    # 10. Dataset overview (text report)
     report_paths["dataset_overview"] = save_dataset_overview(
         work_df,
         text_col,

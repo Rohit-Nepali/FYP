@@ -21,7 +21,7 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, f1_score, roc_auc_score, roc_curve, auc
+from sklearn.metrics import accuracy_score, classification_report, f1_score, roc_auc_score, roc_curve, auc, confusion_matrix
 from sklearn.svm import LinearSVC
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
@@ -839,6 +839,45 @@ def main() -> None:
     (viz_dir / "figures").mkdir(parents=True, exist_ok=True)
 
     try:
+        # Confusion matrix (counts and normalized)
+        try:
+            figures_dir = viz_dir / "figures"
+            figures_dir.mkdir(parents=True, exist_ok=True)
+            cm = confusion_matrix(y_test, y_pred)
+            fig, ax = plt.subplots(figsize=(5, 4))
+            im = ax.imshow(cm, cmap="Blues")
+            ax.set_title("Risk model confusion matrix (counts)")
+            ax.set_xlabel("Predicted")
+            ax.set_ylabel("True")
+            for (i, j), val in np.ndenumerate(cm):
+                ax.text(j, i, int(val), ha='center', va='center', color='black')
+            fig.colorbar(im, ax=ax)
+            cm_path = figures_dir / "risk_confusion_matrix_counts.png"
+            fig.tight_layout()
+            fig.savefig(cm_path, dpi=160)
+            plt.close(fig)
+
+            # Normalized confusion matrix (percent)
+            cm_norm = cm.astype(float) / cm.sum(axis=1, keepdims=True)
+            fig, ax = plt.subplots(figsize=(5, 4))
+            im = ax.imshow(cm_norm, cmap="Blues", vmin=0, vmax=1)
+            ax.set_title("Risk model confusion matrix (normalized)")
+            ax.set_xlabel("Predicted")
+            ax.set_ylabel("True")
+            for (i, j), val in np.ndenumerate(cm_norm):
+                ax.text(j, i, f"{val:.2f}", ha='center', va='center', color='black')
+            fig.colorbar(im, ax=ax)
+            cmn_path = figures_dir / "risk_confusion_matrix_normalized.png"
+            fig.tight_layout()
+            fig.savefig(cmn_path, dpi=160)
+            plt.close(fig)
+
+            # record paths
+            roc_path = None
+            comp_path = None
+        except Exception as exc:  # pragma: no cover
+            print(f"Warning: could not save risk confusion matrix: {exc}")
+
         # ROC plot
         plt.figure(figsize=(8, 6))
         fpr, tpr, _ = roc_curve(y_test, y_proba)

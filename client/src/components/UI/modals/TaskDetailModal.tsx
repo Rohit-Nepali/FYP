@@ -13,6 +13,7 @@ import {
   StatusBar,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -78,6 +79,8 @@ export default function TaskDetailModal({
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingPriority, setUpdatingPriority] = useState(false);
   const [updatingCompletion, setUpdatingCompletion] = useState(false);
+  const [updatingDueDate, setUpdatingDueDate] = useState(false);
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
   const [selectedAttachment, setSelectedAttachment] =
     useState<Attachment | null>(null);
   const [deletingAttachment, setDeletingAttachment] = useState(false);
@@ -91,6 +94,12 @@ export default function TaskDetailModal({
     Platform.OS === "ios"
       ? insets.bottom + 16
       : (StatusBar.currentHeight ?? 0) + 16;
+
+    const getStartOfToday = () => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      return date;
+    };
 
   // Compute permissions with optional project context when available from API.
   const permissions =
@@ -116,6 +125,7 @@ export default function TaskDetailModal({
   const canDelete = permissions?.canDelete ?? false;
   const canManageAssignees = permissions?.canAssign ?? false;
   const canManageStatus = permissions?.canEditStatus ?? false;
+  const canEditDueDate = permissions?.canEditDueDate ?? false;
   const canMarkComplete = permissions?.canMarkComplete ?? false;
   const canComment = permissions?.canComment ?? false;
   const canViewAttachments = permissions?.canView ?? false;
@@ -134,6 +144,8 @@ export default function TaskDetailModal({
       setSelectedAttachment(null);
       setDeletingAttachment(false);
       setUploadingAttachment(false);
+      setUpdatingDueDate(false);
+      setShowDueDatePicker(false);
       setShowAssigneePicker(false);
     }
   }, [visible, taskId]);
@@ -224,6 +236,30 @@ export default function TaskDetailModal({
     }
   };
 
+  const handleUpdateDueDate = async (dueDate: Date | null) => {
+    if (!task || !canEditDueDate) {
+      showError("You don't have permission to update due date");
+      return;
+    }
+
+    if (dueDate && dueDate < getStartOfToday()) {
+      showError("Due date cannot be in the past");
+      return;
+    }
+
+    try {
+      setUpdatingDueDate(true);
+      const dueDatePayload = dueDate ? dueDate.toISOString() : null;
+      await updateTask(task.id, { dueDate: dueDatePayload });
+      setTask({ ...task, dueDate: dueDatePayload ?? undefined });
+      showSuccessToast(dueDate ? "Due date updated" : "Due date removed");
+    } catch {
+      showErrorToast("Failed to update due date");
+    } finally {
+      setUpdatingDueDate(false);
+    }
+  };
+
   const handlePostComment = async () => {
     if (!newComment.trim() || !taskId) return;
 
@@ -257,7 +293,8 @@ export default function TaskDetailModal({
     }
 
     try {
-      const updatedTask = { ...task, assigneeId: memberId };
+      const assigneeId = memberId ?? null;
+      const updatedTask = { ...task, assigneeId };
       const member = projectMembers.find(
         (projectMember) => projectMember.id === memberId
       );
@@ -271,12 +308,12 @@ export default function TaskDetailModal({
       setTask(updatedTask);
       setShowAssigneePicker(false);
 
-      await updateTask(task.id, { assigneeId: memberId });
+      await updateTask(task.id, { assigneeId });
       
       // Show appropriate toast message
-      if (!memberId) {
+      if (!assigneeId) {
         showSuccessToast("Task unassigned");
-      } else if (memberId === user?.id) {
+      } else if (assigneeId === user?.id) {
         showSuccessToast(`Assigned yourself to ${task.title}`);
       } else if (member) {
         showSuccessToast(`Assigned ${member.name} to ${task.title}`);
@@ -432,8 +469,11 @@ export default function TaskDetailModal({
                         task={task}
                         isDone={isDone}
                         formatDate={formatDate}
+                        updatingDueDate={updatingDueDate}
                         updatingCompletion={updatingCompletion}
                         onToggleCompletion={handleToggleCompletion}
+                        onOpenDueDatePicker={() => setShowDueDatePicker(true)}
+                        canEditDueDate={canEditDueDate}
                         canMarkComplete={canMarkComplete}
                         projectMembers={projectMembers}
                         showAssigneePicker={showAssigneePicker}
@@ -534,6 +574,23 @@ export default function TaskDetailModal({
         onClose={() => setSelectedAttachment(null)}
         onDelete={canDeleteAttachments && !deletingAttachment ? handleDeleteAttachment : undefined}
       />
+
+      {showDueDatePicker && (
+        <DateTimePicker
+          value={task?.dueDate ? new Date(task.dueDate) : new Date()}
+          mode="date"
+          display="default"
+          minimumDate={getStartOfToday()}
+          onChange={(_, selectedDate) => {
+            setShowDueDatePicker(false);
+            if (selectedDate) {
+              const normalized = new Date(selectedDate);
+              normalized.setHours(23, 59, 59, 999);
+              handleUpdateDueDate(normalized);
+            }
+          }}
+        />
+      )}
 
       {AlertComponent}
       {ToastComponent}

@@ -25,6 +25,7 @@ import {
 } from "../../services/projectService";
 import {
   getProjectAttachments,
+  deleteProjectAttachment,
   Attachment,
 } from "../../services/attachmentService";
 import ProjectTasksList from "../../components/ProjectTasksList";
@@ -192,6 +193,7 @@ export default function ProjectDetail() {
   const [selectedAttachment, setSelectedAttachment] =
     useState<Attachment | null>(null);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [deletingAttachment, setDeletingAttachment] = useState(false);
 
   const loadAttachments = useCallback(async (projectId: string) => {
     try {
@@ -368,6 +370,42 @@ export default function ProjectDetail() {
   const handleUploadSuccess = () => {
     if (id && typeof id === "string") loadAttachments(id);
   };
+
+  const handleDeleteAttachment = useCallback(() => {
+    if (!id || typeof id !== "string" || !selectedAttachment) return;
+    if (!isOwner) {
+      showError("Only the project owner can remove attachments", "Permission Denied");
+      return;
+    }
+
+    Alert.alert(
+      "Remove Attachment",
+      `Remove "${selectedAttachment.fileName}" from this project? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setDeletingAttachment(true);
+              await deleteProjectAttachment(id, selectedAttachment.id);
+              setAttachments((prev) => prev.filter((item) => item.id !== selectedAttachment.id));
+              setSelectedAttachment(null);
+            } catch (error) {
+              console.error("Failed to delete project attachment", error);
+              showError(
+                error instanceof Error ? error.message : "Failed to remove attachment",
+                "Delete Failed"
+              );
+            } finally {
+              setDeletingAttachment(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [id, isOwner, selectedAttachment, showError]);
 
   const handleDeleteProject = () => {
     setMenuVisible(false);
@@ -919,6 +957,7 @@ export default function ProjectDetail() {
         visible={previewModalVisible}
         attachment={selectedAttachment}
         onClose={() => setPreviewModalVisible(false)}
+        onDelete={isOwner && !deletingAttachment ? handleDeleteAttachment : undefined}
       />
 
       <CreateProjectBottomSheet

@@ -150,8 +150,11 @@ interface DetailsTabProps {
   task: Task;
   isDone: boolean;
   formatDate: (dateString?: string) => string;
+  updatingDueDate: boolean;
   updatingCompletion: boolean;
   onToggleCompletion: () => void;
+  onOpenDueDatePicker: () => void;
+  canEditDueDate: boolean;
   canMarkComplete: boolean;
   projectMembers: ProjectMember[];
   showAssigneePicker: boolean;
@@ -164,8 +167,11 @@ export function TaskDetailsTab({
   task,
   isDone,
   formatDate,
+  updatingDueDate,
   updatingCompletion,
   onToggleCompletion,
+  onOpenDueDatePicker,
+  canEditDueDate,
   canMarkComplete,
   projectMembers,
   showAssigneePicker,
@@ -209,17 +215,33 @@ export function TaskDetailsTab({
 
       {/* Meta Information (Due Date & Assignee) without boxes */}
       <View className="ml-10 gap-6">
-        {task.dueDate && (
-          <View className="flex-row items-center">
-            <View className="w-8 items-center justify-center mr-3">
-              <Ionicons name="calendar-clear-outline" size={20} color="#6B7280" />
+        <View>
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <View className="w-8 items-center justify-center mr-3">
+                <Ionicons name="calendar-clear-outline" size={20} color="#6B7280" />
+              </View>
+              <View>
+                <Text className="text-gray-500 text-xs mb-0.5 uppercase tracking-wider font-semibold">Due Date</Text>
+                <Text className="text-white text-base">
+                  {task.dueDate ? formatDate(task.dueDate) : "No due date"}
+                </Text>
+              </View>
             </View>
-            <View>
-              <Text className="text-gray-500 text-xs mb-0.5 uppercase tracking-wider font-semibold">Due Date</Text>
-              <Text className="text-white text-base">{formatDate(task.dueDate)}</Text>
-            </View>
+
+            {canEditDueDate && (
+              <TouchableOpacity onPress={onOpenDueDatePicker} disabled={updatingDueDate}>
+                {updatingDueDate ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text className="text-blue-400 text-sm font-medium">
+                    Update Due Date
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
-        )}
+        </View>
 
         <View>
           <View className="flex-row items-center justify-between mb-2">

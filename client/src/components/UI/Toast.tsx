@@ -17,6 +17,7 @@ interface ToastProps {
   message: string;
   type?: ToastType;
   duration?: number;
+  position?: "top" | "bottom";
   onDismiss: () => void;
 }
 
@@ -59,9 +60,10 @@ export const Toast: React.FC<ToastProps> = ({
   message,
   type = "info",
   duration = 2500,
+  position = "bottom",
   onDismiss,
 }) => {
-  const { bottom } = useSafeAreaInsets();
+  const { top, bottom } = useSafeAreaInsets();
   const slideAnim = React.useRef(new Animated.Value(0)).current;
   const config = getToastConfig(type);
 
@@ -89,7 +91,7 @@ export const Toast: React.FC<ToastProps> = ({
 
   const translateY = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [200, 0],
+    outputRange: position === "top" ? [-200, 0] : [200, 0],
   });
 
   return (
@@ -97,7 +99,8 @@ export const Toast: React.FC<ToastProps> = ({
       style={{
         transform: [{ translateY }],
         position: "absolute",
-        bottom: bottom + 16,
+        top: position === "top" ? top + 16 : undefined,
+        bottom: position === "bottom" ? bottom + 16 : undefined,
         left: 16,
         right: 16,
         zIndex: 999,

@@ -5,6 +5,7 @@ export interface ToastOptions {
   message: string;
   type?: ToastType;
   duration?: number;
+  position?: "top" | "bottom";
 }
 
 export function useToast() {
@@ -63,6 +64,7 @@ export function useToast() {
       message={options.message}
       type={options.type || "info"}
       duration={options.duration || 2500}
+      position={options.position || "bottom"}
       onDismiss={hideToast}
     />
   );

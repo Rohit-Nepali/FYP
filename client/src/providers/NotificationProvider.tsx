@@ -11,11 +11,11 @@ import { useAuth } from "../contexts/AuthContext";
 import messaging from '@react-native-firebase/messaging';
 import { axiosInstance } from "../services/authService";
 import { updateDigestPreferences } from "../services/userService";
-import useAlert from "../hooks/useAlert";
+import useToast from "../hooks/useToast";
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, user } = useAuth();
-  const { showAlert, AlertComponent } = useAlert();
+  const { showToast, ToastComponent } = useToast();
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -49,12 +49,14 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       // Listen for foreground notifications
       const receivedSub = addNotificationReceivedListener(notification => {
         console.log("🔔 Notification received:", notification);
-        // Show in-app custom alert for foreground notifications
-        showAlert({
-          title: notification.request.content.title || 'Notification',
-          message: notification.request.content.body || 'You have a new notification',
-          type: 'info',
-          confirmText: 'OK',
+        const title = notification.request.content.title || "Notification";
+        const body = notification.request.content.body || "You have a new notification";
+
+        showToast({
+          message: body ? `${title}\n${body}` : title,
+          type: "info",
+          duration: 3500,
+          position: "top",
         });
       });
 
@@ -104,7 +106,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   return (
     <>
       {children}
-      {AlertComponent}
+      {ToastComponent}
     </>
   );
 };

@@ -62,7 +62,7 @@ export interface UpdateTaskData {
   statusId?: string;
   priorityId?: string;
   dueDate?: string | null;
-  assigneeId?: string;
+  assigneeId?: string | null;
   projectId?: string;
 }
 

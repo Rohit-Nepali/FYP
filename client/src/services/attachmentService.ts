@@ -60,6 +60,16 @@ export async function createProjectAttachment(
   });
 }
 
+export async function deleteProjectAttachment(
+  projectId: string,
+  attachmentId: string
+): Promise<void> {
+  return makeRequest<void>(`/projects/${projectId}/attachments/${attachmentId}`, {
+    method: "DELETE",
+  });
+}
+
+// Backward-compatible alias.
 export async function deleteAttachment(attachmentId: string): Promise<void> {
   return makeRequest<void>(`/attachments/${attachmentId}`, {
     method: "DELETE",

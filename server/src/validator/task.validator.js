@@ -34,7 +34,7 @@ export const updateTaskSchema = joi.object({
     isCompleted: joi.boolean().optional(),
     statusId: joi.string().allow(null).optional(),
     priorityId: joi.string().allow(null).optional(),
-    dueDate: joi.date().iso().allow(null).optional(),
+    dueDate: joi.date().iso().allow(null).optional().custom(pastDateValidation),
     assigneeId: joi.string().allow(null).optional(),
     projectId: joi.string().optional(),
 });

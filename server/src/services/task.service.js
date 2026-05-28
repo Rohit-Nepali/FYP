@@ -378,7 +378,17 @@ export const taskService = {
         }
       }
 
-      if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
+      if (dueDate !== undefined) {
+        if (dueDate) {
+          const parsedDueDate = new Date(dueDate);
+          if (parsedDueDate < new Date()) {
+            throw new ApiError("Due date cannot be in the past", HTTP_STATUS.BAD_REQUEST);
+          }
+          data.dueDate = parsedDueDate;
+        } else {
+          data.dueDate = null;
+        }
+      }
 
       if (assigneeId !== undefined && existingTask.project) {
         if (assigneeId === null) {

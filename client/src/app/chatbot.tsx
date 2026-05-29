@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Animated,
 } from "react-native";
@@ -331,6 +332,25 @@ export default function Chatbot() {
   const [isTyping, setIsTyping] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") {
+      return;
+    }
+
+    const showSubscription = Keyboard.addListener("keyboardDidShow", (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   // Load tasks on mount
   useEffect(() => {
@@ -614,7 +634,10 @@ export default function Chatbot() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-900">
+    <SafeAreaView
+      className="flex-1 bg-gray-900"
+      style={Platform.OS === "android" ? { paddingBottom: keyboardHeight } : { paddingBottom: keyboardHeight }}
+    >
       {/* Header */}
       <View className="px-4 py-3 border-b border-gray-800 flex-row items-center">
         <BotAvatar size={40} />
@@ -640,7 +663,7 @@ export default function Chatbot() {
 
       {/* Chat Messages */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
         keyboardVerticalOffset={0}
       >
@@ -649,6 +672,7 @@ export default function Chatbot() {
           className="flex-1 px-4 py-4"
           contentContainerStyle={{ paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Date Separator */}
           <View className="items-center mb-4">

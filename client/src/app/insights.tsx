@@ -191,9 +191,9 @@ export default function InsightsScreen() {
       <View className="px-4 pt-2 pb-3 border-b border-gray-800">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center">
-            <TouchableOpacity onPress={() => router.back()} className="mr-3">
+            {/* <TouchableOpacity onPress={() => router.back()} className="mr-3">
               <Ionicons name="arrow-back" size={22} color="#E5E7EB" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <Text className="text-white text-xl font-bold">Behavior Insights</Text>
           </View>
           <TouchableOpacity

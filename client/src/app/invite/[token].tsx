@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../../contexts/AuthContext";
 import { acceptProjectInvite, declineProjectInvite } from "../../services/projectService";
 import { theme } from "../../config/theme";
+import { formatInviteTokenError } from "../../utils/errorMessages";
 
 type InviteState = "loading" | "ready" | "processing" | "success" | "error";
 
@@ -55,13 +56,15 @@ export default function InviteTokenScreen() {
         router.replace("/");
       }, 900);
     } catch (error: any) {
-      const apiMessage =
+      const apiMessage = formatInviteTokenError(
         error?.response?.data?.error?.message ||
-        error?.message ||
-        "Could not accept this invitation.";
+          error?.response?.data?.message ||
+          error?.message ||
+          "Could not accept this invitation."
+      );
 
       setState("error");
-      setMessage(apiMessage);
+      setMessage(apiMessage.message);
     }
   };
 
@@ -79,13 +82,15 @@ export default function InviteTokenScreen() {
         router.replace("/");
       }, 900);
     } catch (error: any) {
-      const apiMessage =
+      const apiMessage = formatInviteTokenError(
         error?.response?.data?.error?.message ||
-        error?.message ||
-        "Could not decline this invitation.";
+          error?.response?.data?.message ||
+          error?.message ||
+          "Could not decline this invitation."
+      );
 
       setState("error");
-      setMessage(apiMessage);
+      setMessage(apiMessage.message);
     }
   };
 
@@ -100,7 +105,9 @@ export default function InviteTokenScreen() {
           {state === "success"
             ? "Invite Updated"
             : state === "error"
-              ? "Invite Issue"
+              ? message.includes("expired")
+                ? "Invite Expired"
+                : "Invite Issue"
               : state === "ready"
                 ? "Project Invitation"
                 : "Working on your invite"}

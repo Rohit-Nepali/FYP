@@ -23,6 +23,7 @@ import {
 } from "../services/userService";
 import { acceptProjectInvite, declineProjectInvite } from "../services/projectService";
 import useToast from "../hooks/useToast";
+import { formatInviteTokenError } from "../utils/errorMessages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -266,7 +267,7 @@ function SwipeActions({
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { success: showSuccessToast, ToastComponent } = useToast();
+  const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -452,9 +453,37 @@ export default function NotificationsScreen() {
     );
   }, []);
 
+  const isExpiredInvite = useCallback((item: InAppNotification) => {
+    if (item.type !== "PROJECT_INVITE_RECEIVED") return false;
+
+    const inviteExpiresAt = item.data?.inviteExpiresAt;
+    const expiryDate =
+      typeof inviteExpiresAt === "string" && inviteExpiresAt
+        ? new Date(inviteExpiresAt)
+        : new Date(new Date(item.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    return Number.isFinite(expiryDate.getTime()) && expiryDate.getTime() <= Date.now();
+  }, []);
+
+  const getInviteCardState = useCallback((item: InAppNotification) => {
+    if (!isExpiredInvite(item)) return null;
+
+    return {
+      label: "Expired",
+      badgeStyle: "bg-red-500/15",
+      badgeTextStyle: "text-red-300",
+      note: "This invitation has expired. Ask the project owner for a new invite.",
+    };
+  }, [isExpiredInvite]);
+
   const handleAcceptInvite = useCallback(async (item: InAppNotification) => {
     const inviteToken = item.data?.inviteToken;
     if (typeof inviteToken !== "string" || !inviteToken) return;
+
+    if (isExpiredInvite(item)) {
+      showErrorToast("This invite token has expired or is no longer valid.");
+      return;
+    }
 
     try {
       setResolvingInviteId(item.id);
@@ -463,14 +492,21 @@ export default function NotificationsScreen() {
       await deleteNotification(item.id).catch(() => {});
       setNotifications((prev) => prev.filter((n) => n.id !== item.id));
       showSuccessToast("Invite accepted");
+    } catch (caughtError) {
+      showErrorToast(formatInviteTokenError(caughtError).message);
     } finally {
       setResolvingInviteId(null);
     }
-  }, [showSuccessToast]);
+  }, [isExpiredInvite, showErrorToast, showSuccessToast]);
 
   const handleDeclineInvite = useCallback(async (item: InAppNotification) => {
     const inviteToken = item.data?.inviteToken;
     if (typeof inviteToken !== "string" || !inviteToken) return;
+
+    if (isExpiredInvite(item)) {
+      showErrorToast("This invite token has expired or is no longer valid.");
+      return;
+    }
 
     try {
       setResolvingInviteId(item.id);
@@ -479,10 +515,12 @@ export default function NotificationsScreen() {
       await deleteNotification(item.id).catch(() => {});
       setNotifications((prev) => prev.filter((n) => n.id !== item.id));
       showSuccessToast("Invite declined");
+    } catch (caughtError) {
+      showErrorToast(formatInviteTokenError(caughtError).message);
     } finally {
       setResolvingInviteId(null);
     }
-  }, [showSuccessToast]);
+  }, [isExpiredInvite, showErrorToast, showSuccessToast]);
 
   // ─── Derived state ──────────────────────────────────────────────────────────
 
@@ -515,7 +553,8 @@ export default function NotificationsScreen() {
   const renderItem = useCallback(
     ({ item }: { item: InAppNotification }) => {
       const meta = getNotificationMeta(item.type);
-      const actionableInvite = isActionableInvite(item);
+      const inviteCardState = getInviteCardState(item);
+      const actionableInvite = isActionableInvite(item) && !inviteCardState;
       const isResolvingThisInvite = resolvingInviteId === item.id;
 
       return (
@@ -530,7 +569,16 @@ export default function NotificationsScreen() {
           overshootRight={false}
         >
           <TouchableOpacity
-            onPress={() => !actionableInvite && handleOpenNotification(item)}
+            onPress={() => {
+              if (inviteCardState) {
+                showErrorToast(inviteCardState.note);
+                return;
+              }
+
+              if (!actionableInvite) {
+                handleOpenNotification(item);
+              }
+            }}
             disabled={actionableInvite}
             className={`flex-row items-start gap-3 px-5 py-3.5 ${
               item.isRead ? "opacity-55" : ""
@@ -563,32 +611,45 @@ export default function NotificationsScreen() {
                 <Text className="text-gray-600 text-xs">
                   {formatRelativeTime(item.createdAt)}
                 </Text>
-                <View className={`px-1.5 py-0.5 rounded ${meta.tagStyle}`}>
-                  <Text className={`text-xs font-medium ${meta.tagTextStyle}`}>
-                    {meta.tag}
+                <View
+                  className={`px-1.5 py-0.5 rounded ${inviteCardState ? inviteCardState.badgeStyle : meta.tagStyle}`}
+                >
+                  <Text
+                    className={`text-xs font-medium ${inviteCardState ? inviteCardState.badgeTextStyle : meta.tagTextStyle}`}
+                  >
+                    {inviteCardState ? inviteCardState.label : meta.tag}
                   </Text>
                 </View>
               </View>
-              {actionableInvite && (
+              {inviteCardState && (
+                <Text className="text-red-300 text-xs mt-1.5 leading-relaxed">
+                  {inviteCardState.note}
+                </Text>
+              )}
+              {item.type === "PROJECT_INVITE_RECEIVED" && !item.isArchived && (
                 <View className="flex-row gap-2 mt-2">
                   <TouchableOpacity
                     onPress={() => handleDeclineInvite(item)}
                     disabled={isResolvingThisInvite}
-                    className="px-3 py-1.5 rounded-lg bg-gray-700"
+                    className={`px-3 py-1.5 rounded-lg ${inviteCardState ? "bg-white/5" : "bg-gray-700"}`}
                     activeOpacity={0.8}
                   >
-                    <Text className="text-gray-200 text-xs font-medium">Decline</Text>
+                    <Text className={`text-xs font-medium ${inviteCardState ? "text-gray-400" : "text-gray-200"}`}>
+                      Decline
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleAcceptInvite(item)}
                     disabled={isResolvingThisInvite}
-                    className="px-3 py-1.5 rounded-lg bg-purple-600"
+                    className={`px-3 py-1.5 rounded-lg ${inviteCardState ? "bg-red-500/15" : "bg-purple-600"}`}
                     activeOpacity={0.8}
                   >
                     {isResolvingThisInvite ? (
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                      <Text className="text-white text-xs font-semibold">Accept</Text>
+                      <Text className={`text-xs font-semibold ${inviteCardState ? "text-red-300" : "text-white"}`}>
+                        Accept
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -603,7 +664,7 @@ export default function NotificationsScreen() {
         </Swipeable>
       );
     },
-    [handleAcceptInvite, handleArchive, handleDeclineInvite, handleDelete, handleOpenNotification, handleRestore, isActionableInvite, resolvingInviteId]
+    [getInviteCardState, handleAcceptInvite, handleArchive, handleDeclineInvite, handleDelete, handleOpenNotification, handleRestore, isActionableInvite, resolvingInviteId, showErrorToast]
   );
 
   const renderEmpty = useCallback(() => {

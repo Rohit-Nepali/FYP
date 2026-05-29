@@ -114,6 +114,37 @@ export function formatErrorMessage(error: unknown): FormattedError {
   };
 }
 
+export function formatInviteTokenError(error: unknown): FormattedError {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (
+    message.includes("Invite has expired") ||
+    message.includes("Invalid invite token") ||
+    message.includes("token has expired") ||
+    message.includes("no longer valid")
+  ) {
+    return {
+      title: "Invite Expired",
+      message: "This invite token has expired or is no longer valid.",
+      suggestion: "Ask the project owner to send a fresh invitation.",
+    };
+  }
+
+  if (message.includes("This invite is not for your email address")) {
+    return {
+      title: "Wrong Email",
+      message: "This invitation was sent to a different email address.",
+      suggestion: "Sign in with the email address that received the invite.",
+    };
+  }
+
+  return {
+    title: "Invite Issue",
+    message: message || "Could not process this invitation.",
+    suggestion: "Please try again or request a new invitation.",
+  };
+}
+
 /**
  * Get error details suitable for logging
  */

@@ -38,7 +38,7 @@ interface ChatMessage {
 interface QuickAction {
   id: string;
   label: string;
-  action: "view_task" | "mark_complete" | "snooze" | "remind_later";
+  action: "view_task" | "snooze" | "remind_later";
   taskId?: string;
 }
 
@@ -416,12 +416,6 @@ export default function Chatbot() {
               action: "view_task",
               taskId: task.id,
             },
-            {
-              id: `complete-${task.id}`,
-              label: "✅ Mark Complete",
-              action: "mark_complete",
-              taskId: task.id,
-            },
           ],
         });
       });
@@ -600,36 +594,6 @@ export default function Chatbot() {
       router.push(`/tasks?taskId=${action.taskId}`);
     } else if (action.action === "view_task") {
       router.push("/tasks");
-    } else if (action.action === "mark_complete" && action.taskId) {
-      // Add user message
-      const userMessage: ChatMessage = {
-        id: Date.now().toString(),
-        type: "user",
-        content: `Mark task as complete`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
-
-      // Simulate bot response
-      setIsTyping(true);
-      setTimeout(() => {
-        const botResponse: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          type: "bot",
-          content:
-            "Great! I've marked the task as complete. 🎉 Would you like to view your other tasks?",
-          timestamp: new Date(),
-          quickActions: [
-            {
-              id: "view-tasks",
-              label: "📋 View All Tasks",
-              action: "view_task",
-            },
-          ],
-        };
-        setMessages((prev) => [...prev, botResponse]);
-        setIsTyping(false);
-      }, 1000);
     }
   };
 

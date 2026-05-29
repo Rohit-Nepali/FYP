@@ -368,7 +368,13 @@ export const projectService = {
                 type: "PROJECT_INVITE_RECEIVED",
                 title: "Project invitation",
                 message: `${invitedBy} invited you to join ${project.title}`,
-                data: { projectId, inviteToken: token, role, invitedByUserId: userId },
+                data: {
+                    projectId,
+                    inviteToken: token,
+                    inviteExpiresAt: expiresAt.toISOString(),
+                    role,
+                    invitedByUserId: userId,
+                },
             });
 
             if (existingUser.pushToken) {
@@ -376,7 +382,12 @@ export const projectService = {
                     existingUser.pushToken,
                     "Project invitation",
                     `${invitedBy} invited you to join ${project.title}`,
-                    { projectId, type: "project_invite_received", inviteToken: token }
+                    {
+                        projectId,
+                        type: "project_invite_received",
+                        inviteToken: token,
+                        inviteExpiresAt: expiresAt.toISOString(),
+                    }
                 );
             }
         }

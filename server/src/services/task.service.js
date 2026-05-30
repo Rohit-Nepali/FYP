@@ -308,15 +308,19 @@ export const taskService = {
     const isOwner = existingTask.project?.ownerId === userId;
     const isAssignee = existingTask.assigneeId === userId;
     const isProjectTask = Boolean(existingTask.projectId);
+    const isProjectMember =
+      isOwner ||
+      Boolean(existingTask.project?.members?.some((member) => member.userId === userId));
+    const isAssignedProjectMember = isProjectTask && isAssignee && isProjectMember;
 
-    if (isProjectTask && !isOwner) {
+    if (isProjectTask && !isOwner && !isCreator && !isAssignedProjectMember) {
       throw new ApiError(
-        "Project members can only view tasks",
+        "Only the project owner, task creator, or assigned member can update this task",
         HTTP_STATUS.FORBIDDEN
       );
     }
 
-    if (!isCreator && !isOwner && !isAssignee) {
+    if (!isCreator && !isOwner && !isAssignedProjectMember) {
       throw new ApiError(
         "Only the task creator, project owner, or assignee can update this task",
         HTTP_STATUS.FORBIDDEN
@@ -336,7 +340,7 @@ export const taskService = {
     const data = {};
 
     // Completion can only be toggled by task creator, assignee, or project owner.
-    if (isCompleted !== undefined && !isCreator && !isAssignee && !isOwner) {
+    if (isCompleted !== undefined && !isCreator && !isAssignedProjectMember && !isOwner) {
       throw new ApiError(
         "Only the task creator, assignee, or project owner can update completion status",
         HTTP_STATUS.FORBIDDEN
@@ -406,8 +410,7 @@ export const taskService = {
           data.assigneeId = assigneeId;
         }
       }
-    } else if (isAssignee) {
-      if (title !== undefined) data.title = title;
+    } else if (isAssignedProjectMember) {
       if (isCompleted !== undefined) data.isCompleted = isCompleted;
       if (statusId !== undefined) {
         if (statusId === null || statusId === "") {
@@ -422,7 +425,20 @@ export const taskService = {
           data.statusId = statusId;
         }
       }
-      // Assignees cannot change other fields
+      if (priorityId !== undefined) {
+        if (priorityId === null || priorityId === "") {
+          data.priorityId = null;
+        } else {
+          const priority = await prisma.priority.findFirst({
+            where: { id: priorityId, projectId: existingTask.projectId },
+          });
+          if (!priority) {
+            throw new ApiError("Priority not found", HTTP_STATUS.NOT_FOUND);
+          }
+          data.priorityId = priorityId;
+        }
+      }
+      // Assigned members can only update status, priority, and completion.
     }
 
     const task = await prisma.task.update({

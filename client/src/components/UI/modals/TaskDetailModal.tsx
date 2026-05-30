@@ -129,6 +129,7 @@ export default function TaskDetailModal({
   const canDelete = permissions?.canDelete ?? false;
   const canManageAssignees = permissions?.canAssign ?? false;
   const canManageStatus = permissions?.canEditStatus ?? false;
+  const canManagePriority = permissions?.canEditPriority ?? false;
   const canEditDueDate = permissions?.canEditDueDate ?? false;
   const canMarkComplete = permissions?.canMarkComplete ?? false;
   const canComment = permissions?.canComment ?? false;
@@ -199,7 +200,7 @@ export default function TaskDetailModal({
   };
 
   const handleUpdatePriority = async (priorityId: string) => {
-    if (!task || !canEdit) {
+    if (!task || !canManagePriority) {
       showError("You don't have permission to update task priority");
       return;
     }
@@ -299,8 +300,8 @@ export default function TaskDetailModal({
     }
 
     try {
-      const assigneeId = memberId ?? null;
-      const updatedTask = { ...task, assigneeId };
+      const assigneeIdForApi = memberId ?? null;
+      const updatedTask = { ...task, assigneeId: memberId ?? undefined };
       const member = projectMembers.find(
         (projectMember) => projectMember.id === memberId
       );
@@ -314,12 +315,12 @@ export default function TaskDetailModal({
       setTask(updatedTask);
       setShowAssigneePicker(false);
 
-      await updateTask(task.id, { assigneeId });
+      await updateTask(task.id, { assigneeId: assigneeIdForApi });
       
       // Show appropriate toast message
-      if (!assigneeId) {
+      if (!assigneeIdForApi) {
         showSuccessToast("Task unassigned");
-      } else if (assigneeId === user?.id) {
+      } else if (assigneeIdForApi === user?.id) {
         showSuccessToast(`Assigned yourself to ${task.title}`);
       } else if (member) {
         showSuccessToast(`Assigned ${member.name} to ${task.title}`);
@@ -347,7 +348,7 @@ export default function TaskDetailModal({
           await deleteTask(task.id);
           showSuccessToast("Task deleted");
           onClose();
-          if (typeof (onDeleted as any) === "function") {
+          if (onDeleted) {
             try { onDeleted(task.id); } catch { }
           }
         } catch (err) {
@@ -557,7 +558,7 @@ export default function TaskDetailModal({
                         onUpdatePriority={handleUpdatePriority}
                         formatDate={formatDate}
                         canManageStatus={canManageStatus}
-                        canEdit={canEdit}
+                        canEdit={canManagePriority}
                       />
                     )}
 

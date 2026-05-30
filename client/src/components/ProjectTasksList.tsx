@@ -289,7 +289,7 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
       ) : (
         <View className="mt-4 mb-8 rounded-xl border border-gray-700 bg-gray-900/60 px-4 py-3">
           <Text className="text-center text-xs text-gray-500">
-            You are a project member. Tasks are view-only, but you can leave comments for other members .
+             Members can only view Tasks, but you can leave comments and attach files for other members .
           </Text>
         </View>
       )}

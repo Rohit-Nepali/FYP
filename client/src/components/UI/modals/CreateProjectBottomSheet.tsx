@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef } from "react";
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Keyboard, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -38,11 +38,26 @@ export default function CreateProjectBottomSheet({
   submitIcon = "add-outline",
 }: CreateProjectBottomSheetProps) {
   const titleInputRef = useRef<any>(null);
+  const descriptionInputRef = useRef<any>(null);
   const sheetIndexRef = useRef(-1);
   const snapPoints = useMemo(() => ["30%", "80%"], []);
 
+  const dismissKeyboardAndBlurInputs = useCallback(() => {
+    titleInputRef.current?.blur?.();
+    descriptionInputRef.current?.blur?.();
+    Keyboard.dismiss();
+  }, []);
+
+  const handleClose = useCallback(() => {
+    dismissKeyboardAndBlurInputs();
+    onClose();
+  }, [dismissKeyboardAndBlurInputs, onClose]);
+
   const handleSheetChange = useCallback((index: number) => {
     const wasClosed = sheetIndexRef.current < 0;
+    if (index < 0) {
+      dismissKeyboardAndBlurInputs();
+    }
     if (wasClosed && index >= 0) {
       setTimeout(() => {
         titleInputRef.current?.focus?.();
@@ -74,7 +89,7 @@ export default function CreateProjectBottomSheet({
       enableContentPanningGesture={false}
       backdropComponent={renderBackdrop}
       keyboardBehavior="interactive"
-      keyboardBlurBehavior="restore"
+      keyboardBlurBehavior="none"
       android_keyboardInputMode="adjustResize"
       handleIndicatorStyle={{ backgroundColor: "transparent" }}
       backgroundStyle={{
@@ -106,6 +121,7 @@ export default function CreateProjectBottomSheet({
             Description <Text className="text-gray-500 font-normal">(Optional)</Text>
           </Text>
           <BottomSheetTextInput
+            ref={descriptionInputRef}
             value={projectDescription}
             onChangeText={onChangeProjectDescription}
             placeholder="Add a brief description"
@@ -118,7 +134,7 @@ export default function CreateProjectBottomSheet({
 
           <View className="flex-row gap-3">
             <TouchableOpacity
-              onPress={onClose}
+              onPress={handleClose}
               className="flex-1 py-3.5 rounded-xl bg-gray-800 border border-gray-700/50 items-center"
               activeOpacity={0.7}
             >
@@ -126,7 +142,10 @@ export default function CreateProjectBottomSheet({
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={onCreateProject}
+              onPress={async () => {
+                await onCreateProject();
+                dismissKeyboardAndBlurInputs();
+              }}
               disabled={creating || !projectTitle.trim()}
               className={`flex-1 py-3.5 rounded-xl items-center flex-row justify-center ${
                 creating || !projectTitle.trim() ? "bg-blue-600/50" : "bg-blue-600"

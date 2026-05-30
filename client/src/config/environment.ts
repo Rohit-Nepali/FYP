@@ -1,4 +1,4 @@
-const apiBase = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:5000";
+const apiBase = process.env.EXPO_PUBLIC_API_URL ?? "https://awake-jaybird-neat.ngrok-free.app";
 console.log(apiBase);
 
 export const config = {

@@ -94,8 +94,31 @@ export function getTaskPermissions(
     return fullTaskPermissions();
   }
 
-  if (isTaskCreator || isTaskAssignee || isProjectMember) {
-    // Project members are view-only for task fields.
+  if (isTaskCreator) {
+    return fullTaskPermissions();
+  }
+
+  if (isTaskAssignee && isProjectMember) {
+    // Assigned project member can progress their own task.
+    return {
+      canView: true,
+      canEditTitle: false,
+      canEditDescription: false,
+      canEditStatus: true,
+      canEditPriority: true,
+      canEditDueDate: false,
+      canAssign: false,
+      canDelete: false,
+      canMarkComplete: true,
+      canComment: true,
+      canUploadAttachment: true,
+      canDeleteOwnAttachment: true,
+      canDeleteAnyAttachment: false,
+    };
+  }
+
+  if (isProjectMember) {
+    // Non-assigned project members are view-only for task fields.
     return {
       canView: true,
       canEditTitle: false,

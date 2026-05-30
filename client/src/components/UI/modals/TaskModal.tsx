@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   ScrollView,
   Image,
@@ -137,10 +138,23 @@ export default function TaskModal({
   const [creatingStatus, setCreatingStatus] = useState(false);
   const [creatingPriority, setCreatingPriority] = useState(false);
   const wasVisibleRef = useRef(false);
+  const titleInputRef = useRef<TextInput>(null);
+  const descriptionInputRef = useRef<TextInput>(null);
   const router = useRouter();
   const { showAlert, showError, showSuccess, showValidationError, hideAlert, AlertComponent } = useAlert();
   const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
   const [deleting, setDeleting] = useState(false);
+
+  const dismissKeyboardAndBlurInputs = () => {
+    titleInputRef.current?.blur();
+    descriptionInputRef.current?.blur();
+    Keyboard.dismiss();
+  };
+
+  const handleClose = () => {
+    dismissKeyboardAndBlurInputs();
+    onClose();
+  };
 
   useEffect(() => {
     const justOpened = visible && !wasVisibleRef.current;
@@ -168,6 +182,7 @@ export default function TaskModal({
 
     if (justClosed) {
       // hideAlert();
+      dismissKeyboardAndBlurInputs();
       setPreviewAttachment(null);
       setShowDatePicker(false);
       setStatusModalVisible(false);
@@ -217,6 +232,7 @@ export default function TaskModal({
         ...(assigneeId ? { assigneeId } : {}),
       });
       if (attachments.length > 0 && task?.id) await uploadAttachments(task.id, attachments);
+      dismissKeyboardAndBlurInputs();
       onClose();
       void Promise.resolve(onCreated?.(task)).catch(() => {});
       showSuccessToast(` Task created successfully`);
@@ -293,7 +309,7 @@ export default function TaskModal({
 
   return (
     <>
-      <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
+      <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose} statusBarTranslucent>
         <View className={`flex-1 justify-end bg-black/40`}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -309,7 +325,7 @@ export default function TaskModal({
               <View className="flex-row items-center justify-between border-b border-[#374151] px-[18px] pb-[14px] pt-[18px]">
                 <Text className="text-base font-bold text-[#F3F4F6]">New Task</Text>
                 <TouchableOpacity
-                  onPress={onClose}
+                  onPress={handleClose}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   className="h-7 w-7 items-center justify-center rounded-full border border-[#4B5563] bg-[#374151]"
                 >
@@ -322,6 +338,7 @@ export default function TaskModal({
                 {/* Title + Description — single card, no label overhead */}
                 <View className="mb-[14px] mt-[14px] mx-[18px] overflow-hidden rounded-xl border border-[#4B5563] bg-[#374151]">
                   <TextInput
+                    ref={titleInputRef}
                     className="px-[14px] pb-[10px] pt-3 text-[15px] font-semibold text-[#F3F4F6]"
                     placeholder="Task title"
                     placeholderTextColor={COLORS.textMuted}
@@ -331,6 +348,7 @@ export default function TaskModal({
                   />
                   <View className="mx-[14px] h-px bg-[#4B5563]" />
                   <TextInput
+                    ref={descriptionInputRef}
                     className="min-h-[52px] px-[14px] pb-3 pt-[10px] text-[13px] text-[#9CA3AF]"
                     placeholder="Description (optional)"
                     placeholderTextColor={COLORS.textMuted}
@@ -531,7 +549,7 @@ export default function TaskModal({
                     )
                   }
                 </TouchableOpacity>
-                <TouchableOpacity onPress={onClose} disabled={saving} activeOpacity={0.7} className="items-center py-[6px]">
+                <TouchableOpacity onPress={handleClose} disabled={saving} activeOpacity={0.7} className="items-center py-[6px]">
                   <Text className="text-[13px] text-[#9CA3AF]">Cancel</Text>
                 </TouchableOpacity>
               </View>

@@ -460,7 +460,7 @@ export default function Chatbot() {
         id: "missed-task-reason",
         type: "bot",
         content:
-          "Can you share why these task(s) were missed? Your answer helps me understand your productivity pattern.",
+          "Can you share why these tasks were missed? Your answer helps me understand your productivity pattern.",
         timestamp: new Date(Date.now() - 1000),
       });
     } else {
@@ -539,7 +539,7 @@ export default function Chatbot() {
         return {
           id: Date.now().toString(),
           type: "bot",
-          content: `You have ${overdueTasks.length} overdue task(s). Here's the most urgent one:`,
+          content: `You have ${overdueTasks.length} overdue tasks. Here's the most urgent one:`,
           timestamp: new Date(),
           taskData: {
             taskId: task.id,

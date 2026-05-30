@@ -264,7 +264,7 @@ export default function InsightsScreen() {
               </View>
 
               <View className="bg-gray-800 rounded-xl p-4 w-[48%]">
-                <Text className="text-gray-400 text-xs">High Risk (latest)</Text>
+                <Text className="text-gray-400 text-xs">High Risk</Text>
                 <Text className="text-rose-300 text-2xl font-bold mt-1">
                   {insights.summary.highRiskToday}
                 </Text>

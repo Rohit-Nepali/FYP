@@ -587,7 +587,7 @@ export default function ProjectAssignmentReportScreen() {
           key={row.id}
           entering={FadeInDown.delay(index * 50)
             .springify()
-            .damping(10)}
+            .damping(50)}
         >
           <View
             className={`bg-gray-800/70 rounded-2xl border mb-3 overflow-hidden ${row.isCompleted
@@ -837,7 +837,7 @@ export default function ProjectAssignmentReportScreen() {
 
             <View className="mt-4">
               <Text className="text-gray-400 text-xs font-medium uppercase tracking-wider">
-                Assignment Report
+                Assignment Overview Report
               </Text>
               <Text
                 className="text-white text-2xl font-bold mt-1"

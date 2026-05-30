@@ -142,18 +142,23 @@ export const deleteTaskController = async (req, res, next) => {
             select: { id: true, title: true, projectId: true }
         });
 
-        await taskService.delete(id, userId);
-
-        // Log activity
+        // Log activity BEFORE deletion so activity.taskId FK remains valid
         if (task && task.projectId) {
-            await logActivity({
-                type: 'TASK_DELETED',
-                projectId: task.projectId,
-                userId,
-                taskId: task.id,
-                metadata: { taskTitle: task.title }
-            });
+            try {
+                await logActivity({
+                    type: 'TASK_DELETED',
+                    projectId: task.projectId,
+                    userId,
+                    taskId: task.id,
+                    metadata: { taskTitle: task.title }
+                });
+            } catch (logErr) {
+                // Don't fail deletion if logging fails — just warn
+                console.warn('Failed to log task deletion activity:', logErr);
+            }
         }
+
+        await taskService.delete(id, userId);
 
         return ApiResponse.sendSuccessResponse(
             res,

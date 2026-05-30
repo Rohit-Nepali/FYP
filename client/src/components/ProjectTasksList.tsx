@@ -299,19 +299,16 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
         visible={modalVisible}
         onClose={resetModal}
         onSave={async (payload) => {
+          setSavingTask(true);
           try {
-            setSavingTask(true);
-            const newTask = await createTask({ ...payload, projectId });
-            showSuccessToast("Task created successfully");
-            resetModal();
-            loadProjectDetail(projectId);
-            return newTask;
-          } catch (err) {
-            showErrorToast(err instanceof Error ? err.message : "Failed to create task");
-            throw err;
+            return await createTask({ ...payload, projectId });
           } finally {
             setSavingTask(false);
           }
+        }}
+        onCreated={() => {
+          resetModal();
+          loadProjectDetail(projectId);
         }}
         initialValues={{
           title: taskTitle,
@@ -332,6 +329,10 @@ export default function ProjectTasksList({ projectId }: ProjectTasksListProps) {
         visible={taskDetailModal.visible}
         taskId={taskDetailModal.taskId}
         onClose={handleCloseTaskDetail}
+        onDeleted={(taskId) => {
+          // reload project after task deletion
+          void loadProjectDetail(projectId);
+        }}
         projectMembers={projectMembers}
         statuses={statuses.map(s => ({ id: s.id, name: s.name }))}
         priorities={priorities.map(p => ({ id: p.id, name: p.name }))}

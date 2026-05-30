@@ -3,8 +3,8 @@ import {
   View,
   Text,
   Animated,
-  Dimensions,
   TouchableOpacity,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -95,57 +95,68 @@ export const Toast: React.FC<ToastProps> = ({
   });
 
   return (
-    <Animated.View
-      style={{
-        transform: [{ translateY }],
-        position: "absolute",
-        top: position === "top" ? top + 16 : undefined,
-        bottom: position === "bottom" ? bottom + 16 : undefined,
-        left: 16,
-        right: 16,
-        zIndex: 999,
-      }}
-      pointerEvents="box-none"
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent
+      presentationStyle="overFullScreen"
+      onRequestClose={onDismiss}
     >
-      <TouchableOpacity
-        onPress={onDismiss}
-        activeOpacity={0.9}
-        style={{
-          backgroundColor: config.bgColor,
-          borderWidth: 1,
-          borderColor: config.borderColor,
-          borderRadius: 12,
-          paddingVertical: 12,
-          paddingHorizontal: 16,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 12,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 6,
-        }}
-      >
-        <Ionicons
-          name={config.icon as any}
-          size={20}
-          color={config.textColor}
-        />
-        <Text
+      <View style={{ flex: 1 }} pointerEvents="box-none">
+        <Animated.View
           style={{
-            flex: 1,
-            color: config.textColor,
-            fontSize: 14,
-            fontWeight: "500",
-            lineHeight: 20,
+            transform: [{ translateY }],
+            position: "absolute",
+            top: position === "top" ? top + 16 : undefined,
+            bottom: position === "bottom" ? bottom + 16 : undefined,
+            left: 16,
+            right: 16,
+            zIndex: 999,
           }}
-          numberOfLines={2}
+          pointerEvents="box-none"
         >
-          {message}
-        </Text>
-      </TouchableOpacity>
-    </Animated.View>
+          <TouchableOpacity
+            onPress={onDismiss}
+            activeOpacity={0.9}
+            style={{
+              backgroundColor: config.bgColor,
+              borderWidth: 1,
+              borderColor: config.borderColor,
+              borderRadius: 12,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 6,
+            }}
+          >
+            <Ionicons
+              name={config.icon as any}
+              size={20}
+              color={config.textColor}
+            />
+            <Text
+              style={{
+                flex: 1,
+                color: config.textColor,
+                fontSize: 14,
+                fontWeight: "500",
+                lineHeight: 20,
+              }}
+              numberOfLines={2}
+            >
+              {message}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 };
 

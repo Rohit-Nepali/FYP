@@ -13,14 +13,14 @@ export function useToast() {
   const [options, setOptions] = useState<ToastOptions>({
     message: "",
     type: "info",
-    duration: 2500,
+    duration: 3500,
   });
 
   const showToast = useCallback((options: ToastOptions) => {
     setOptions({
       message: options.message,
       type: options.type || "info",
-      duration: options.duration || 2500,
+      duration: options.duration || 3500,
     });
     setVisible(true);
   }, []);
@@ -63,7 +63,7 @@ export function useToast() {
       visible={visible}
       message={options.message}
       type={options.type || "info"}
-      duration={options.duration || 2500}
+      duration={options.duration || 3500}
       position={options.position || "bottom"}
       onDismiss={hideToast}
     />

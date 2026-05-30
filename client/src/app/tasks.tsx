@@ -939,16 +939,18 @@ export default function TasksPage() {
                 )}
 
                 {/* Tomorrow Group */}
-                <TaskGroup
-                    title="Tomorrow"
-                    icon="sunny-outline"
-                    color={GROUP_CONFIG.tomorrow.color}
-                    bgColor={GROUP_CONFIG.tomorrow.bgColor}
-                    tasks={groupedTasks.tomorrow}
-                    expanded={expandedGroups.tomorrow}
-                    onToggle={() => toggleGroup("tomorrow")}
-                    onTaskPress={handleTaskPress}
-                />
+                {groupedTasks.tomorrow.length > 0 && (
+                    <TaskGroup
+                        title="Tomorrow"
+                        icon="sunny-outline"
+                        color={GROUP_CONFIG.tomorrow.color}
+                        bgColor={GROUP_CONFIG.tomorrow.bgColor}
+                        tasks={groupedTasks.tomorrow}
+                        expanded={expandedGroups.tomorrow}
+                        onToggle={() => toggleGroup("tomorrow")}
+                        onTaskPress={handleTaskPress}
+                    />
+                )}
 
                 {/* Upcoming Group */}
                 {groupedTasks.upcoming.length > 0 && (
@@ -1014,12 +1016,13 @@ export default function TasksPage() {
                 onSave={async (payload) => {
                     try {
                         const { createTask } = await import("@/src/services/taskService");
-                        const newTask = await createTask(payload);
-                        await loadTasks();
-                        return newTask;
+                        return await createTask(payload);
                     } catch (err) {
                         throw err;
                     }
+                }}
+                onCreated={() => {
+                    void loadTasks();
                 }}
                 initialValues={{
                     title: "",
@@ -1038,6 +1041,10 @@ export default function TasksPage() {
                 visible={taskDetailModal.visible}
                 taskId={taskDetailModal.taskId}
                 onClose={() => setTaskDetailModal({ visible: false, taskId: null })}
+                onDeleted={() => {
+                    void loadTasks();
+                    setTaskDetailModal({ visible: false, taskId: null });
+                }}
                 statuses={statuses}
                 priorities={priorities}
             />

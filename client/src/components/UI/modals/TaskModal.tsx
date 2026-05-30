@@ -13,15 +13,17 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { Status, createStatus } from "../../../services/statusService";
 import { Priority, createPriority } from "../../../services/priorityService";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Platform } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
-import { Task, uploadAttachments } from "@/src/services/taskService";
+ 
 import useAlert from "@/src/hooks/useAlert";
 import useToast from "@/src/hooks/useToast";
 import { resolveFileUrl } from "@/src/utils/url";
+import { getUploadFileValidationError } from "@/src/utils/fileValidation";
 import { LinearGradient } from "expo-linear-gradient";
 import { AddChip, RowDivider, RowIcon, SelectionChip } from "@/src/components/common";
 import MiniInputModal from "@/src/components/modals/MiniInputModal";
@@ -49,6 +51,7 @@ interface Props {
     dueDate?: string;
     assigneeId?: string;
   }) => Promise<Task>;
+  onCreated?: (task: Task) => void | Promise<void>;
   initialValues?: InitialValues;
   statuses: Status[];
   setStatuses: React.Dispatch<React.SetStateAction<Status[]>>;
@@ -61,6 +64,9 @@ interface Props {
     email: string;
     profileImage?: string;
   }>;
+  taskId?: string;
+  canDelete?: boolean;
+  onDeleted?: (taskId: string) => void;
 }
 
 interface Attachment {
@@ -97,6 +103,7 @@ export default function TaskModal({
   visible,
   onClose,
   onSave,
+  onCreated,
   initialValues,
   statuses,
   setStatuses,
@@ -126,9 +133,10 @@ export default function TaskModal({
   const [creatingStatus, setCreatingStatus] = useState(false);
   const [creatingPriority, setCreatingPriority] = useState(false);
   const wasVisibleRef = useRef(false);
-
+  const router = useRouter();
   const { showAlert, showError, showSuccess, showValidationError, hideAlert, AlertComponent } = useAlert();
   const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const justOpened = visible && !wasVisibleRef.current;
@@ -171,12 +179,24 @@ export default function TaskModal({
   const handlePickAttachment = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
-      if (!result.canceled) {
-        setAttachments((prev) => [
-          ...prev,
-          ...result.assets.map((f) => ({ uri: f.uri, name: f.name, size: f.size, mimeType: f.mimeType })),
-        ]);
+      if (result.canceled || result.assets.length === 0) return;
+
+      const invalidFile = result.assets.find((asset) =>
+        getUploadFileValidationError(asset, ["image", "csv", "pdf"])
+      );
+
+      if (invalidFile) {
+        showError(
+          getUploadFileValidationError(invalidFile, ["image", "csv", "pdf"]) ||
+            "Invalid file selected"
+        );
+        return;
       }
+
+      setAttachments((prev) => [
+        ...prev,
+        ...result.assets.map((f) => ({ uri: f.uri, name: f.name, size: f.size, mimeType: f.mimeType })),
+      ]);
     } catch { showError("Failed to pick file"); }
   };
 
@@ -193,10 +213,57 @@ export default function TaskModal({
         ...(assigneeId ? { assigneeId } : {}),
       });
       if (attachments.length > 0 && task?.id) await uploadAttachments(task.id, attachments);
+      // Close modal, execute created callback, then show a custom alert with actions
       onClose();
+      void Promise.resolve(onCreated?.(task)).catch(() => {});
+
+      showAlert({
+        title: "Task created",
+        message: task.title || "",
+        showCancel: true,
+        confirmText: "View Task",
+        cancelText: "Close",
+        onConfirm: () => {
+          try {
+            router.push(`/tasks?taskId=${task.id}`);
+          } catch (err) {
+            // ignore
+          }
+        },
+      });
     } catch (err) {
       showError(err instanceof Error ? err.message : String(err));
     } finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!taskId) return;
+    if (!canDelete) {
+      showError("You don't have permission to delete this task");
+      return;
+    }
+
+    showAlert({
+      title: "Confirm Delete",
+      message: `Delete task \"${title}\"? This cannot be undone.`,
+      showCancel: true,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        try {
+          setDeleting(true);
+          await deleteTask(taskId);
+          showSuccess("Task deleted");
+          showSuccessToast("Task deleted");
+          onDeleted?.(taskId);
+          onClose();
+        } catch (err) {
+          showError(err instanceof Error ? err.message : "Failed to delete task");
+        } finally {
+          setDeleting(false);
+        }
+      },
+    });
   };
 
   const handleOpenAttachment = async () => {

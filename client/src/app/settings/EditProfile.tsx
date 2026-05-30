@@ -20,6 +20,7 @@ import {
 } from "@/src/services/userService";
 import { resolveFileUrl } from "@/src/utils/url";
 import { CustomAlert } from "@/src/components/UI/CustomAlert";
+import { getUploadFileValidationError } from "@/src/utils/fileValidation";
 
 type AlertType = "default" | "success" | "error" | "warning" | "info";
 
@@ -80,6 +81,17 @@ export default function EditProfileScreen() {
 
       if (!result.canceled && result.assets.length > 0) {
         const asset = result.assets[0];
+        const validationError = getUploadFileValidationError(asset, ["image"]);
+
+        if (validationError) {
+          showAlert({
+            title: "Upload Failed",
+            message: validationError,
+            type: "error",
+          });
+          return;
+        }
+
         setAvatarUploading(true);
 
         const updatedUser = await uploadAvatar({

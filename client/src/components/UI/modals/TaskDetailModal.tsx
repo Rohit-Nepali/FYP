@@ -23,6 +23,7 @@ import {
   updateTask,
   deleteTaskAttachment,
   uploadAttachments,
+  deleteTask,
 } from "@/src/services/taskService";
 import {
   Comment,
@@ -35,6 +36,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import useAlert from "@/src/hooks/useAlert";
 import useToast from "@/src/hooks/useToast";
 import AttachmentPreviewModal from "./AttachmentPreviewModal";
+import { getUploadFileValidationError } from "@/src/utils/fileValidation";
 import {
   TaskAttachmentsTab,
   TaskCommentsTab,
@@ -57,6 +59,7 @@ interface Props {
   }>;
   statuses?: Array<{ id: string; name: string }>;
   priorities?: Array<{ id: string; name: string }>;
+  onDeleted?: (taskId: string) => void;
 }
 
 export default function TaskDetailModal({
@@ -66,6 +69,7 @@ export default function TaskDetailModal({
   projectMembers = [],
   statuses = [],
   priorities = [],
+  onDeleted,
 }: Props) {
   const { user } = useAuth();
   const [task, setTask] = useState<Task | null>(null);
@@ -86,7 +90,7 @@ export default function TaskDetailModal({
   const [deletingAttachment, setDeletingAttachment] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
-  const { showError, AlertComponent } = useAlert();
+  const { showError, AlertComponent, showConfirm } = useAlert();
   const { success: showSuccessToast, error: showErrorToast, ToastComponent } = useToast();
 
   const insets = useSafeAreaInsets();
@@ -149,6 +153,8 @@ export default function TaskDetailModal({
       setShowAssigneePicker(false);
     }
   }, [visible, taskId]);
+
+  const [deletingTask, setDeletingTask] = useState(false);
 
   const loadTaskData = async () => {
     if (!taskId) return;
@@ -326,6 +332,36 @@ export default function TaskDetailModal({
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!task) return;
+    if (!canDelete) {
+      showError("You don't have permission to delete this task");
+      return;
+    }
+
+    showConfirm(
+      `Are you sure you want to delete "${task.title}"? This action cannot be undone.`,
+      async () => {
+        try {
+          setDeletingTask(true);
+          await deleteTask(task.id);
+          showSuccessToast("Task deleted");
+          onClose();
+          if (typeof (onDeleted as any) === "function") {
+            try { onDeleted(task.id); } catch { }
+          }
+        } catch (err) {
+          showErrorToast("Failed to delete task");
+        } finally {
+          setDeletingTask(false);
+        }
+      },
+      "Confirm Delete",
+      "Delete",
+      "Cancel"
+    );
+  };
+
   const handleDeleteAttachment = async () => {
     if (!task || !selectedAttachment) return;
 
@@ -361,6 +397,18 @@ export default function TaskDetailModal({
       });
 
       if (result.canceled || result.assets.length === 0) {
+        return;
+      }
+
+      const invalidFile = result.assets.find((asset) =>
+        getUploadFileValidationError(asset, ["image", "csv", "pdf"])
+      );
+
+      if (invalidFile) {
+        showError(
+          getUploadFileValidationError(invalidFile, ["image", "csv", "pdf"]) ||
+            "Invalid file selected"
+        );
         return;
       }
 
@@ -416,6 +464,7 @@ export default function TaskDetailModal({
                   loading={loading}
                   onClose={onClose}
                   canDelete={canDelete}
+                  onDelete={handleDeleteTask}
                 />
 
                 <TaskDetailTabBar

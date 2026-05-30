@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { createProjectAttachment } from "../../../services/attachmentService";
+import { getUploadFileValidationError } from "@/src/utils/fileValidation";
 
 interface UploadAttachmentModalProps {
   visible: boolean;
@@ -48,6 +49,13 @@ export default function UploadAttachmentModal({
 
       if (!result.canceled && result.assets.length > 0) {
         const asset = result.assets[0];
+        const validationError = getUploadFileValidationError(asset, ["image", "csv", "pdf"]);
+
+        if (validationError) {
+          setError(validationError);
+          return;
+        }
+
         setSelectedFile({
           name: asset.name,
           uri: asset.uri,
@@ -65,6 +73,12 @@ export default function UploadAttachmentModal({
   const handleUpload = async () => {
     if (!selectedFile) {
       setError("Please select a file first");
+      return;
+    }
+
+    const validationError = getUploadFileValidationError(selectedFile, ["image", "csv", "pdf"]);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 

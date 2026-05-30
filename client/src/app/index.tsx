@@ -950,10 +950,10 @@ export default function HomeScreen() {
             ...payload,
             ...(selectedProjectId ? { projectId: selectedProjectId } : {}),
           };
-          const task = await createTask(taskData);
-          showSuccessToast("Task created successfully");
-          await loadTasks();
-          return task;
+          return await createTask(taskData);
+        }}
+        onCreated={() => {
+          void loadTasks();
         }}
         statuses={statuses}
         setStatuses={setStatuses}

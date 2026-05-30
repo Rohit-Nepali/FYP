@@ -73,9 +73,10 @@ interface HeaderProps {
   loading: boolean;
   onClose: () => void;
   canDelete?: boolean;
+  onDelete?: () => void;
 }
 
-export function TaskDetailHeader({ title, loading, onClose }: HeaderProps) {
+export function TaskDetailHeader({ title, loading, onClose, canDelete, onDelete }: HeaderProps) {
   return (
     <View className="flex-row items-center justify-between p-5 pt-6 bg-gray-900">
       <View className="flex-1 mr-4">
@@ -83,9 +84,20 @@ export function TaskDetailHeader({ title, loading, onClose }: HeaderProps) {
           {loading ? "Loading..." : title || "Task Detail"}
         </Text>
       </View>
-      <TouchableOpacity onPress={onClose} className="p-2 -mr-2 rounded-full bg-gray-900">
-        <Ionicons name="close" size={24} color="#9CA3AF" />
-      </TouchableOpacity>
+      <View className="flex-row items-center">
+        {canDelete && (
+          <TouchableOpacity
+            onPress={onDelete}
+            className="p-2 rounded-full mr-2 bg-gray-900"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="trash-outline" size={20} color="#F87171" />
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity onPress={onClose} className="p-2 -mr-2 rounded-full bg-gray-900">
+          <Ionicons name="close" size={24} color="#9CA3AF" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }

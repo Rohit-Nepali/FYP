@@ -52,73 +52,79 @@ const generateInsights = ({
   labelCounts,
   completionRate,
   riskTrend,
+  behaviorSignals,
 }) => {
   const insights = [];
 
+  // Helper: average confidence of signals matching a label
+  const avgSignalConfidence = (label) => {
+    const matching = behaviorSignals.filter(s => s.label === label);
+    if (matching.length === 0) return null;
+    return Number((matching.reduce((sum, s) => sum + s.confidence, 0) / matching.length).toFixed(2));
+  };
+
   const mondayMissed = weekdayMissedCounts.Monday || 0;
-  const totalMissed = Object.values(weekdayMissedCounts).reduce((sum, value) => sum + value, 0);
+  const totalMissed = Object.values(weekdayMissedCounts).reduce((sum, v) => sum + v, 0);
   if (totalMissed > 0 && mondayMissed / totalMissed >= 0.35) {
+    const ratio = Number((mondayMissed / totalMissed).toFixed(2));
     insights.push({
       key: "monday_missed_pattern",
       severity: "medium",
-      confidence: 0.78,
-      message:
-        "You miss tasks most often on Mondays. Consider planning lighter starts and setting one priority task for early Monday.",
+      confidence: Number(Math.min(0.5 + ratio, 0.95).toFixed(2)), // scales with how dominant Monday is
+      evidence: { mondayMissed, totalMissed, ratio },
+      message: `You miss tasks most often on Mondays (${Math.round(ratio * 100)}% of all missed tasks). Consider planning lighter starts and setting one priority task for early Monday.`,
     });
   }
 
-  const totalLabels = Object.values(labelCounts).reduce((sum, value) => sum + value, 0);
+  const totalLabels = Object.values(labelCounts).reduce((sum, v) => sum + v, 0);
   const procrastinationCount = labelCounts[PROCRASTINATION_LABEL] || 0;
   if (totalLabels > 0 && procrastinationCount / totalLabels >= 0.25) {
+    const ratio = Number((procrastinationCount / totalLabels).toFixed(2));
+    const avgConf = avgSignalConfidence(PROCRASTINATION_LABEL);
     insights.push({
       key: "high_procrastination_frequency",
       severity: "high",
-      confidence: 0.84,
-      message:
-        "Procrastination signals are frequent in your recent chats. Try breaking tasks into 15-minute starter actions to reduce delay.",
+      confidence: avgConf ?? Number(Math.min(0.5 + ratio, 0.95).toFixed(2)), // uses real ML signal confidence
+      evidence: { procrastinationCount, totalLabels, ratio, avgSignalConfidence: avgConf },
+      message: `Procrastination signals appeared in ${Math.round(ratio * 100)}% of recent behavior signals (${procrastinationCount} of ${totalLabels}). Try breaking tasks into 15-minute starter actions to reduce delay.`,
     });
   }
 
   if (completionRate >= 75) {
+    const confidence = Number(Math.min(0.4 + (completionRate / 100) * 0.55, 0.95).toFixed(2));
     insights.push({
       key: "strong_completion_rate",
       severity: "low",
-      confidence: 0.8,
-      message:
-        "Your completion rate is strong. Keep using the same planning rhythm and protect your current focus blocks.",
+      confidence,
+      evidence: { completionRate },
+      message: `Your completion rate is ${completionRate}%, which is strong. Keep using the same planning rhythm and protect your current focus blocks.`,
     });
   } else if (completionRate <= 45) {
+    const confidence = Number(Math.min(0.4 + ((100 - completionRate) / 100) * 0.55, 0.95).toFixed(2));
     insights.push({
       key: "low_completion_rate",
       severity: "high",
-      confidence: 0.76,
-      message:
-        "Your completion rate is currently low. Focus on fewer tasks per day and prioritize high-impact items first.",
+      confidence,
+      evidence: { completionRate },
+      message: `Your completion rate is currently ${completionRate}%. Focus on fewer tasks per day and prioritize high-impact items first.`,
     });
   }
 
   if (riskTrend.length >= 6) {
     const half = Math.floor(riskTrend.length / 2);
-    const firstHalf = riskTrend.slice(0, half);
-    const secondHalf = riskTrend.slice(half);
+    const avg = (list) => list.length === 0 ? 0 : list.reduce((sum, i) => sum + i.avgProbability, 0) / list.length;
+    const firstAvg = avg(riskTrend.slice(0, half));
+    const secondAvg = avg(riskTrend.slice(half));
+    const delta = secondAvg - firstAvg;
 
-    const avg = (list) => {
-      if (list.length === 0) {
-        return 0;
-      }
-      return list.reduce((sum, item) => sum + item.avgProbability, 0) / list.length;
-    };
-
-    const firstAvg = avg(firstHalf);
-    const secondAvg = avg(secondHalf);
-
-    if (secondAvg - firstAvg >= 0.08) {
+    if (delta >= 0.08) {
+      const confidence = Number(Math.min(0.5 + delta * 2, 0.95).toFixed(2)); // scales with how sharp the rise is
       insights.push({
         key: "rising_risk_trend",
         severity: "high",
-        confidence: 0.74,
-        message:
-          "Task risk is trending up recently. Try moving difficult tasks earlier in the day and checking progress midday.",
+        confidence,
+        evidence: { firstHalfAvg: Number(firstAvg.toFixed(3)), secondHalfAvg: Number(secondAvg.toFixed(3)), delta: Number(delta.toFixed(3)) },
+        message: `Task risk probability rose from ${(firstAvg * 100).toFixed(1)}% to ${(secondAvg * 100).toFixed(1)}% over the period. Try moving difficult tasks earlier in the day and checking progress midday.`,
       });
     }
   }
@@ -128,8 +134,8 @@ const generateInsights = ({
       key: "stable_pattern",
       severity: "low",
       confidence: 0.65,
-      message:
-        "Your recent behavior pattern is stable. Continue tracking missed tasks and keep your daily priorities visible.",
+      evidence: {},
+      message: "Your recent behavior pattern is stable. Continue tracking missed tasks and keep your daily priorities visible.",
     });
   }
 
@@ -313,6 +319,7 @@ export const userBehaviorInsightsService = {
         labelCounts,
         completionRate,
         riskTrend,
+        behaviorSignals,
       }),
       meta: {
         rangeDays: resolvedRange,

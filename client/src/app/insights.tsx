@@ -312,7 +312,7 @@ export default function InsightsScreen() {
                 <View className="flex-1 pr-3">
                   <Text className="text-white font-semibold">Risk Probability Trend</Text>
                   <Text className="text-gray-400 text-xs mt-1">
-                    Average predicted risk over the last 14 days
+                    Average predicted risk over the last days
                   </Text>
                 </View>
                 <View className="items-end gap-2">
@@ -320,7 +320,7 @@ export default function InsightsScreen() {
                     <View className="w-3 h-3 rounded-full bg-orange-500" />
                     <Text className="text-gray-300 text-[11px]">Avg risk</Text>
                   </View>
-                  <Text className="text-gray-500 text-[10px]">0% to 100%</Text>
+                  {/* <Text className="text-gray-500 text-[10px]">0% to 100%</Text> */}
                 </View>
               </View>
 

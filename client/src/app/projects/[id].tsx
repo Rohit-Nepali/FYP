@@ -572,6 +572,7 @@ export default function ProjectDetail() {
             value={attachments.length}
             color="#A78BFA"
             index={2}
+            onPress={() => router.push(`/projects/${id}/files`)}
           />
         </View>
 
